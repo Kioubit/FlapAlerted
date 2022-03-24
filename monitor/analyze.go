@@ -149,11 +149,11 @@ func pathsEqual(path1, path2 bgp.AsPath) bool {
 		return false
 	}
 	for i := range path1.Asn {
-		if path1.Asn[i] != path2.Asn[i] {
-			return false
+		if path1.Asn[i] == path2.Asn[i] {
+			return true
 		}
 	}
-	return true
+	return false
 }
 
 func toNetCidr(prefix []byte, prefixlenBits int, isV6 bool) (*net.IPNet, error) {
