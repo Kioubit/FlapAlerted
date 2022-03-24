@@ -1,6 +1,6 @@
-# Makefile for FlapAlerted Pro
+# Makefile for FlapAlertedPro
 
-BINARY=FlapAlerted
+BINARY=FlapAlertedPro
 MODULES=mod_log,mod_jsonapi
 VERSION=`git describe --tags`
 LDFLAGS=-ldflags "-X main.Version=${VERSION}"

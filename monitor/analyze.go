@@ -17,6 +17,7 @@ func StartMonitoring(asn uint32, flapPeriod int64, notifytarget uint64) {
 	bgp.GlobalDebug = false
 	go bgp.StartBGP(asn, updateChannel)
 	go cleanUpFlapList()
+	go moduleCallback()
 	processUpdates(updateChannel)
 }
 

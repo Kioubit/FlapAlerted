@@ -27,7 +27,8 @@ func main() {
 		checkError(err)
 		fmt.Println("Using custom parameters", defaultCounter, defaultPeriod)
 	} else {
-		fmt.Println("required commandline args missing: counter, period,asn")
+		fmt.Println("Required commandline args missing: routeChangeCounter, flapPeriod,asn")
+		os.Exit(1)
 	}
 
 	empty := true

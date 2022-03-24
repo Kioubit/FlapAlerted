@@ -50,3 +50,13 @@ func GetActiveFlaps() []*Flap {
 func GetUserParamterers() (int64, uint64) {
 	return FlapPeriod, NotifyTarget
 }
+
+func moduleCallback() {
+	moduleMu.Lock()
+	defer moduleMu.Unlock()
+	for _, m := range moduleList {
+		if m.StartComplete != nil {
+			go m.StartComplete()
+		}
+	}
+}
