@@ -18,8 +18,8 @@ func init() {
 
 func logFlap(f *monitor.Flap) {
 	var IfaceList string
-	for i := range f.LastPath.Asn {
-		IfaceList = IfaceList + fmt.Sprint(f.LastPath.Asn) + " "
+	for i := range f.Paths {
+		IfaceList = IfaceList + fmt.Sprint(f.Paths[i].Asn) + " "
 		if i == 10 {
 			IfaceList = IfaceList + "and more..."
 			break

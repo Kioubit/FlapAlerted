@@ -89,13 +89,14 @@ func updateList(prefix []byte, prefixlenBits int, aspath []bgp.AsPath, isV6 bool
 		return
 	}
 	cleanPath := aspath[0] // Multiple AS paths currently unsupported
-	flaplistMu.Lock()
-	defer flaplistMu.Unlock()
 
 	cidr, err := toNetCidr(prefix, prefixlenBits, isV6)
 	if err != nil {
 		return
 	}
+
+	flaplistMu.Lock()
+	defer flaplistMu.Unlock()
 
 	var found = false
 	for i := range flapList {
@@ -104,6 +105,7 @@ func updateList(prefix []byte, prefixlenBits int, aspath []bgp.AsPath, isV6 bool
 			if flapList[i].LastSeen+FlapPeriod <= time.Now().Unix() {
 				flapList[i].PathChangeCount = 0
 				flapList[i].Paths = []bgp.AsPath{cleanPath}
+				flapList[i].LastPath = cleanPath
 			} else {
 				exists := false
 				for b := range flapList[i].Paths {
@@ -150,11 +152,11 @@ func pathsEqual(path1, path2 bgp.AsPath) bool {
 		return false
 	}
 	for i := range path1.Asn {
-		if path1.Asn[i] == path2.Asn[i] {
-			return true
+		if path1.Asn[i] != path2.Asn[i] {
+			return false
 		}
 	}
-	return false
+	return true
 }
 
 func toNetCidr(prefix []byte, prefixlenBits int, isV6 bool) (*net.IPNet, error) {

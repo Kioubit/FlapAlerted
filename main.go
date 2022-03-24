@@ -8,7 +8,7 @@ import (
 	"strconv"
 )
 
-var Version = "0.1"
+var Version = "0.2"
 
 func main() {
 	fmt.Println("FlapAlerted Pro", Version, "by Kioubit.dn42")
