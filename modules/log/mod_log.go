@@ -19,7 +19,6 @@ func init() {
 func logFlap(f *monitor.Flap) {
 	var IfaceList string
 	for i := range f.LastPath.Asn {
-
 		IfaceList = IfaceList + fmt.Sprint(f.LastPath.Asn) + " "
 		if i == 10 {
 			IfaceList = IfaceList + "and more..."
@@ -27,7 +26,7 @@ func logFlap(f *monitor.Flap) {
 		}
 	}
 
-	log.Println("Prefix:", f.Cidr, ":", IfaceList, "Path change count:", f.PathChangeCountTotal, "Duration (sec):", f.LastSeen-f.FirstSeen)
+	log.Println("Prefix:", f.Cidr, " Paths:", IfaceList, " Path change count:", f.PathChangeCountTotal, "Duration (sec):", f.LastSeen-f.FirstSeen)
 	summary := monitor.GetActiveFlaps()
 	var summaryText string
 	for i := range summary {

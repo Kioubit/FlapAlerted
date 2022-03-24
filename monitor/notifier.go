@@ -40,7 +40,7 @@ func GetActiveFlaps() []*Flap {
 	flaplistMu.RLock()
 	defer flaplistMu.RUnlock()
 	for i := range flapList {
-		if flapList[i].PathChangeCount >= uint64(NotifyTarget) {
+		if flapList[i].PathChangeCountTotal >= uint64(NotifyTarget) {
 			aFlap = append(aFlap, flapList[i])
 		}
 	}
