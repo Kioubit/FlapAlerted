@@ -2,7 +2,6 @@ package monitor
 
 import (
 	"FlapAlertedPro/bgp"
-	"errors"
 	"fmt"
 	"math"
 	"net"
@@ -118,15 +117,12 @@ func updateList(prefix []byte, prefixlenBits int, aspath []bgp.AsPath, isV6 bool
 	}
 	cleanPath := aspath[0] // Multiple AS paths in a single update message currently unsupported (not used by bird)
 
-	cidr, err := toNetCidr(prefix, prefixlenBits, isV6)
-	if err != nil {
-		return
-	}
+	cidr := toNetCidr(prefix, prefixlenBits, isV6)
 
 	currentTime := time.Now().Unix()
 	var found = false
 	for i := range flapList {
-		if cidr.String() == flapList[i].Cidr {
+		if cidr == flapList[i].Cidr {
 			found = true
 			if flapList[i].LastSeen+FlapPeriod <= currentTime {
 				flapList[i].PathChangeCount = 0
@@ -174,7 +170,7 @@ func updateList(prefix []byte, prefixlenBits int, aspath []bgp.AsPath, isV6 bool
 
 	if !found {
 		newFlap := &Flap{
-			Cidr:                 cidr.String(),
+			Cidr:                 cidr,
 			LastSeen:             currentTime,
 			FirstSeen:            currentTime,
 			PathChangeCount:      1,
@@ -211,7 +207,7 @@ func pathsEqual(path1, path2 bgp.AsPath) bool {
 	return true
 }
 
-func toNetCidr(prefix []byte, prefixlenBits int, isV6 bool) (*net.IPNet, error) {
+func toNetCidr(prefix []byte, prefixlenBits int, isV6 bool) string {
 	if isV6 {
 		needBytes := 16 - len(prefix)
 		toAppend := make([]byte, needBytes)
@@ -219,21 +215,15 @@ func toNetCidr(prefix []byte, prefixlenBits int, isV6 bool) (*net.IPNet, error) 
 		ip := net.IP{prefix[0], prefix[1], prefix[2], prefix[3], prefix[4], prefix[5],
 			prefix[6], prefix[7], prefix[8], prefix[9], prefix[10], prefix[11], prefix[12],
 			prefix[13], prefix[14], prefix[15]}
-		_, cidr, err := net.ParseCIDR(ip.String() + "/" + strconv.Itoa(prefixlenBits))
-		if err != nil {
-			return nil, errors.New("error parsing")
-		}
-		return cidr, nil
+		cidr := ip.String() + "/" + strconv.Itoa(prefixlenBits)
+		return cidr
 	} else {
 		needBytes := 4 - len(prefix)
 		toAppend := make([]byte, needBytes)
 		prefix = append(prefix, toAppend...)
 		ip := net.IP{prefix[0], prefix[1], prefix[2], prefix[3]}
-		_, cidr, err := net.ParseCIDR(ip.String() + "/" + strconv.Itoa(prefixlenBits))
-		if err != nil {
-			return nil, errors.New("error parsing")
-		}
-		return cidr, nil
+		cidr := ip.String() + "/" + strconv.Itoa(prefixlenBits)
+		return cidr
 	}
 }
 
