@@ -7,6 +7,7 @@ import (
 	"FlapAlertedPro/bgp"
 	"FlapAlertedPro/monitor"
 	"encoding/json"
+	"log"
 	"net/http"
 )
 
@@ -19,7 +20,10 @@ func init() {
 
 func startComplete() {
 	http.HandleFunc("/flaps/active", activeFlapsJson)
-	http.ListenAndServe(":8699", nil)
+	err := http.ListenAndServe(":8699", nil)
+	if err != nil {
+		log.Println("[mod_jsonapi] Error starting JSON api server", err.Error())
+	}
 }
 
 type activeFlap struct {

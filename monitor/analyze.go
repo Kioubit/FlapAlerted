@@ -10,21 +10,36 @@ import (
 	"time"
 )
 
-func StartMonitoring(asn uint32, flapPeriod int64, notifytarget uint64) {
+func StartMonitoring(asn uint32, flapPeriod int64, notifytarget uint64, addpath bool, perPeerState bool, debug bool, notifyOnce bool) {
 	FlapPeriod = flapPeriod
 	NotifyTarget = notifytarget
 	updateChannel := make(chan *bgp.UserUpdate, 200)
-	bgp.GlobalDebug = false
+	if addpath {
+		bgp.GlobalAdpath = true
+	}
+	if perPeerState {
+		GlobalPerPeerState = true
+	}
+	if debug {
+		bgp.GlobalDebug = true
+	}
+	if notifyOnce {
+		GlobalNotifyOnce = true
+	}
+
 	go bgp.StartBGP(asn, updateChannel)
 	go cleanUpFlapList()
 	go moduleCallback()
 	processUpdates(updateChannel)
 }
 
+var GlobalPerPeerState = false
+var GlobalNotifyOnce = false
+
 type Flap struct {
 	Cidr                 string
 	Paths                []bgp.AsPath
-	LastPath             bgp.AsPath
+	LastPath             map[uint32]bgp.AsPath
 	PathChangeCount      uint64
 	PathChangeCountTotal uint64
 	FirstSeen            int64
@@ -105,7 +120,7 @@ func updateList(prefix []byte, prefixlenBits int, aspath []bgp.AsPath, isV6 bool
 			if flapList[i].LastSeen+FlapPeriod <= time.Now().Unix() {
 				flapList[i].PathChangeCount = 0
 				flapList[i].Paths = []bgp.AsPath{cleanPath}
-				flapList[i].LastPath = cleanPath
+				flapList[i].LastPath[getFirstAsn(cleanPath)] = cleanPath
 			} else {
 				exists := false
 				for b := range flapList[i].Paths {
@@ -118,13 +133,26 @@ func updateList(prefix []byte, prefixlenBits int, aspath []bgp.AsPath, isV6 bool
 					flapList[i].Paths = append(flapList[i].Paths, cleanPath)
 				}
 			}
-			if !pathsEqual(flapList[i].LastPath, cleanPath) {
+			if !pathsEqual(flapList[i].LastPath[getFirstAsn(cleanPath)], cleanPath) {
+
+				if GlobalPerPeerState {
+					if len(flapList[i].LastPath[getFirstAsn(cleanPath)].Asn) == 0 {
+						flapList[i].LastPath[getFirstAsn(cleanPath)] = cleanPath
+						return
+					}
+				}
+
 				flapList[i].PathChangeCount = incrementUint64(flapList[i].PathChangeCount)
 				flapList[i].PathChangeCountTotal = incrementUint64(flapList[i].PathChangeCountTotal)
 
 				flapList[i].LastSeen = time.Now().Unix()
-				flapList[i].LastPath = cleanPath
+				flapList[i].LastPath[getFirstAsn(cleanPath)] = cleanPath
 				if flapList[i].PathChangeCount > NotifyTarget {
+					if GlobalNotifyOnce {
+						if flapList[i].PathChangeCount > NotifyTarget+1 {
+							return
+						}
+					}
 					flapList[i].PathChangeCount = 0
 					go mainNotify(flapList[i])
 				}
@@ -141,9 +169,22 @@ func updateList(prefix []byte, prefixlenBits int, aspath []bgp.AsPath, isV6 bool
 			PathChangeCount:      1,
 			PathChangeCountTotal: 1,
 			Paths:                []bgp.AsPath{cleanPath},
-			LastPath:             cleanPath,
+			LastPath:             make(map[uint32]bgp.AsPath),
 		}
+		newFlap.LastPath[getFirstAsn(cleanPath)] = cleanPath
 		flapList = append(flapList, newFlap)
+	}
+}
+
+func getFirstAsn(aspath bgp.AsPath) uint32 {
+	if GlobalPerPeerState {
+		if len(aspath.Asn) == 0 {
+			return 0
+		}
+
+		return aspath.Asn[0]
+	} else {
+		return 0
 	}
 }
 

@@ -7,6 +7,7 @@ import (
 	"FlapAlertedPro/monitor"
 	"fmt"
 	"log"
+	"strconv"
 )
 
 func init() {
@@ -17,16 +18,16 @@ func init() {
 }
 
 func logFlap(f *monitor.Flap) {
-	var IfaceList string
+	var PathList string
 	for i := range f.Paths {
-		IfaceList = IfaceList + fmt.Sprint(f.Paths[i].Asn) + " "
+		PathList = PathList + fmt.Sprint(f.Paths[i].Asn) + " "
 		if i == 10 {
-			IfaceList = IfaceList + "and more..."
+			PathList = PathList + "and" + strconv.Itoa(len(f.Paths)-10) + " more..."
 			break
 		}
 	}
 
-	log.Println("Prefix:", f.Cidr, " Paths:", IfaceList, " Path change count:", f.PathChangeCountTotal, "Duration (sec):", f.LastSeen-f.FirstSeen)
+	log.Println("Prefix:", f.Cidr, " Paths:", PathList, " Path change count:", f.PathChangeCountTotal, "Duration (sec):", f.LastSeen-f.FirstSeen)
 	summary := monitor.GetActiveFlaps()
 	var summaryText string
 	for i := range summary {

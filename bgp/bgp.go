@@ -8,6 +8,8 @@ import (
 	"net"
 )
 
+var GlobalAdpath = false
+
 type msgType byte
 
 const (
@@ -34,6 +36,7 @@ type open struct {
 
 var mpBGP4Cap = []byte{0x01, 0x04, 0x00, 0x01, 0x00, 0x01}
 var mpBGP6Cap = []byte{0x01, 0x04, 0x00, 0x02, 0x00, 0x01}
+var addPathCap = []byte{0x45, 0x08, 0x00, 0x01, 0x01, 0x01, 0x00, 0x02, 0x01, 0x01}
 
 func fourByteAsnCap(asn uint32) []byte {
 	a := []byte{0x41, 0x04}
@@ -168,12 +171,19 @@ func readHeaders(raw []byte) []*header {
 }
 
 func getOpen(asn uint32) []byte {
-	r := constructOpen(open{
+
+	defaultOpenParamters := open{
 		version:  0x4,
 		asn:      []byte{0x5b, 0xa0},
 		holdTime: 240,
 		routerID: 55,
-	}, mpBGP4Cap, mpBGP6Cap, fourByteAsnCap(asn))
+	}
+	var r []byte
+	if GlobalAdpath {
+		r = constructOpen(defaultOpenParamters, mpBGP4Cap, mpBGP6Cap, fourByteAsnCap(asn), addPathCap)
+	} else {
+		r = constructOpen(defaultOpenParamters, mpBGP4Cap, mpBGP6Cap, fourByteAsnCap(asn))
+	}
 	result := addHeader(r, msgOpen)
 	return result
 }

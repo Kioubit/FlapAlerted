@@ -163,7 +163,10 @@ func parseAttr(a []byte, upd *UserUpdate) {
 			e++                // skip SNPA
 			//BEGIN NLRA
 			for e < attrLen {
-				//e = e + 4          //skip pathid
+
+				if GlobalAdpath {
+					e = e + 4 //skip pathid
+				}
 
 				prefixlenBits := int(uint8(a[pos+e]))
 				e++
@@ -198,7 +201,9 @@ func parseAttr(a []byte, upd *UserUpdate) {
 func parsev4Nlri(a []byte, upd *UserUpdate) {
 	e := 0
 	for e < len(a)-1 {
-		//e = e + 4          //skip pathid
+		if GlobalAdpath {
+			e = e + 4 //skip pathid
+		}
 
 		prefixlenBits := int(uint8(a[e]))
 		e++
