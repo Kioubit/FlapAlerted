@@ -14,7 +14,7 @@ import (
 func StartMonitoring(asn uint32, flapPeriod int64, notifytarget uint64, addpath bool, perPeerState bool, debug bool, notifyOnce bool) {
 	FlapPeriod = flapPeriod
 	NotifyTarget = notifytarget
-	updateChannel := make(chan *bgp.UserUpdate, 1000)
+	updateChannel := make(chan *bgp.UserUpdate, 10000)
 	if addpath {
 		bgp.GlobalAdpath = true
 	}
@@ -64,13 +64,14 @@ func processUpdates(updateChannel chan *bgp.UserUpdate) {
 			return
 		}
 
-		if len(updateChannel) > 950 {
-			fmt.Println("[WARNING] Can't keep up! Dropping 20 updates")
-			for i := 0; i < 20; i++ {
+		for len(updateChannel) > 9800 {
+			fmt.Println("[WARNING] Can't keep up! Dropping 100 updates")
+			for i := 0; i < 100; i++ {
 				<-updateChannel
 			}
 		}
 
+		flaplistMu.Lock()
 		for i := range update.Prefix {
 			if update.Prefix[i].Prefix4 != nil {
 				if len(update.Prefix[i].Prefix4) == 0 {
@@ -85,6 +86,7 @@ func processUpdates(updateChannel chan *bgp.UserUpdate) {
 				updateList(update.Prefix[i].Prefix6, update.Prefix[i].PrefixLenBits, update.Path, true)
 			}
 		}
+		flaplistMu.Unlock()
 
 	}
 
@@ -95,16 +97,18 @@ func cleanUpFlapList() {
 		select {
 		case <-time.After(2 * time.Duration(FlapPeriod) * time.Second):
 		}
-		flaplistMu.Lock()
+
+		currentTime := time.Now().Unix()
 		newFlapList := make([]*Flap, 0)
+		flaplistMu.Lock()
 		for i := range flapList {
-			if flapList[i].LastSeen+FlapPeriod <= time.Now().Unix() {
+			if flapList[i].LastSeen+FlapPeriod <= currentTime {
 				continue
 			}
 			newFlapList = append(newFlapList, flapList[i])
 		}
-		flapList = newFlapList
 		flaplistMu.Unlock()
+		flapList = newFlapList
 	}
 }
 
@@ -119,14 +123,12 @@ func updateList(prefix []byte, prefixlenBits int, aspath []bgp.AsPath, isV6 bool
 		return
 	}
 
-	flaplistMu.Lock()
-	defer flaplistMu.Unlock()
-
+	currentTime := time.Now().Unix()
 	var found = false
 	for i := range flapList {
 		if cidr.String() == flapList[i].Cidr {
 			found = true
-			if flapList[i].LastSeen+FlapPeriod <= time.Now().Unix() {
+			if flapList[i].LastSeen+FlapPeriod <= currentTime {
 				flapList[i].PathChangeCount = 0
 				flapList[i].Paths = []bgp.AsPath{cleanPath}
 				flapList[i].LastPath[getFirstAsn(cleanPath)] = cleanPath
@@ -154,7 +156,7 @@ func updateList(prefix []byte, prefixlenBits int, aspath []bgp.AsPath, isV6 bool
 				flapList[i].PathChangeCount = incrementUint64(flapList[i].PathChangeCount)
 				flapList[i].PathChangeCountTotal = incrementUint64(flapList[i].PathChangeCountTotal)
 
-				flapList[i].LastSeen = time.Now().Unix()
+				flapList[i].LastSeen = currentTime
 				flapList[i].LastPath[getFirstAsn(cleanPath)] = cleanPath
 				if flapList[i].PathChangeCount > NotifyTarget {
 					if GlobalNotifyOnce {
@@ -173,8 +175,8 @@ func updateList(prefix []byte, prefixlenBits int, aspath []bgp.AsPath, isV6 bool
 	if !found {
 		newFlap := &Flap{
 			Cidr:                 cidr.String(),
-			LastSeen:             time.Now().Unix(),
-			FirstSeen:            time.Now().Unix(),
+			LastSeen:             currentTime,
+			FirstSeen:            currentTime,
 			PathChangeCount:      1,
 			PathChangeCountTotal: 1,
 			Paths:                []bgp.AsPath{cleanPath},
