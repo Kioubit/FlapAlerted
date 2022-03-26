@@ -77,10 +77,6 @@ func newBGPConnection(conn net.Conn, asn uint32, updates chan *UserUpdate) {
 		if err != nil {
 			panic(err)
 		}
-		if n == BGPBuffSize {
-			_, _ = conn.Read(buff)
-			continue
-		}
 
 		newBuff := make([]byte, n)
 		copy(newBuff, buff[:n])
