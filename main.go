@@ -22,7 +22,7 @@ func main() {
 	var doDebug = false
 	var notifyOnce = false
 
-	if len(os.Args) == 7 {
+	if len(os.Args) == 8 {
 		var err error
 		defaultCounter, err = strconv.Atoi(os.Args[1])
 		checkError(err)
