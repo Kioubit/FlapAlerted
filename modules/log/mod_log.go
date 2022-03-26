@@ -22,7 +22,7 @@ func logFlap(f *monitor.Flap) {
 	for i := range f.Paths {
 		PathList = PathList + fmt.Sprint(f.Paths[i].Asn) + " "
 		if i == 10 {
-			PathList = PathList + "and" + strconv.Itoa(len(f.Paths)-10) + " more..."
+			PathList = PathList + "and " + strconv.Itoa(len(f.Paths)-10) + " more..."
 			break
 		}
 	}
@@ -34,5 +34,6 @@ func logFlap(f *monitor.Flap) {
 		summaryText = summaryText + " " + summary[i].Cidr
 	}
 	log.Println("Summary of currently active flaps:", summaryText)
+	fmt.Println()
 
 }

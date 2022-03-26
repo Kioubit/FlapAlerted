@@ -3,6 +3,7 @@ package monitor
 import (
 	"FlapAlertedPro/bgp"
 	"errors"
+	"fmt"
 	"math"
 	"net"
 	"strconv"
@@ -13,7 +14,7 @@ import (
 func StartMonitoring(asn uint32, flapPeriod int64, notifytarget uint64, addpath bool, perPeerState bool, debug bool, notifyOnce bool) {
 	FlapPeriod = flapPeriod
 	NotifyTarget = notifytarget
-	updateChannel := make(chan *bgp.UserUpdate, 200)
+	updateChannel := make(chan *bgp.UserUpdate, 400)
 	if addpath {
 		bgp.GlobalAdpath = true
 	}
@@ -62,6 +63,14 @@ func processUpdates(updateChannel chan *bgp.UserUpdate) {
 		if update == nil {
 			return
 		}
+
+		if len(updateChannel) > 398 {
+			fmt.Println("[WARNING] Can't keep up! Dropping 20 updates")
+			for i := 0; i < 20; i++ {
+				continue
+			}
+		}
+
 		for i := range update.Prefix {
 			if update.Prefix[i].Prefix4 != nil {
 				if len(update.Prefix[i].Prefix4) == 0 {
@@ -103,7 +112,7 @@ func updateList(prefix []byte, prefixlenBits int, aspath []bgp.AsPath, isV6 bool
 	if len(aspath) == 0 {
 		return
 	}
-	cleanPath := aspath[0] // Multiple AS paths currently unsupported
+	cleanPath := aspath[0] // Multiple AS paths in a single update message currently unsupported (not used by bird)
 
 	cidr, err := toNetCidr(prefix, prefixlenBits, isV6)
 	if err != nil {

@@ -8,21 +8,25 @@ import (
 	"FlapAlertedPro/monitor"
 	"encoding/json"
 	"log"
+	"math"
 	"net/http"
 )
 
+var moduleName = "mod_jsonapi"
+
 func init() {
 	monitor.RegisterModule(&monitor.Module{
-		Name:          "mod_jsonapi",
+		Name:          moduleName,
 		StartComplete: startComplete,
 	})
 }
 
 func startComplete() {
-	http.HandleFunc("/flaps/active", activeFlapsJson)
+	http.HandleFunc("/flaps/active", activeFlaps)
+	http.HandleFunc("/flaps/metrics", metrics)
 	err := http.ListenAndServe(":8699", nil)
 	if err != nil {
-		log.Println("[mod_jsonapi] Error starting JSON api server", err.Error())
+		log.Println("["+moduleName+"] Error starting JSON api server", err.Error())
 	}
 }
 
@@ -35,7 +39,7 @@ type activeFlap struct {
 	TotalCount uint64
 }
 
-func activeFlapsJson(w http.ResponseWriter, req *http.Request) {
+func activeFlaps(w http.ResponseWriter, req *http.Request) {
 	var jsonFlapList = make([]activeFlap, 0)
 	activeFlaps := monitor.GetActiveFlaps()
 	for i := range activeFlaps {
@@ -55,4 +59,37 @@ func activeFlapsJson(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	w.Write(b)
+}
+
+func metrics(w http.ResponseWriter, req *http.Request) {
+	type metric struct {
+		ActiveFlapCount            int
+		ActiveFlapTotalUpdateCount uint64
+	}
+	activeFlaps := monitor.GetActiveFlaps()
+
+	var totalUpdateCount uint64
+	for i := range activeFlaps {
+		totalUpdateCount = addUint64(totalUpdateCount, activeFlaps[i].PathChangeCountTotal)
+	}
+
+	newMetric := metric{
+		ActiveFlapCount:            len(activeFlaps),
+		ActiveFlapTotalUpdateCount: totalUpdateCount,
+	}
+
+	b, err := json.Marshal(newMetric)
+	if err != nil {
+		w.WriteHeader(500)
+		return
+	}
+	w.Write(b)
+
+}
+
+func addUint64(left, right uint64) uint64 {
+	if left > math.MaxUint64-right {
+		return math.MaxUint64
+	}
+	return left + right
 }
