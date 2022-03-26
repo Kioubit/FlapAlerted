@@ -70,6 +70,9 @@ func newBGPConnection(conn net.Conn, asn uint32, updates chan *UserUpdate) {
 			}
 		}
 	}()
+
+	connDetails := &connectionDetails{}
+
 	const BGPBuffSize = 10000 * 1000
 	buff := make([]byte, BGPBuffSize) //Reused
 	for {
@@ -82,7 +85,7 @@ func newBGPConnection(conn net.Conn, asn uint32, updates chan *UserUpdate) {
 		copy(newBuff, buff[:n])
 		debugPrintln("READ", len(newBuff), n)
 
-		headers := readHeaders(newBuff)
+		headers := readHeaders(newBuff, connDetails)
 		for i := range headers {
 			switch headers[i].msgType {
 			case byte(msgOpen):
@@ -106,15 +109,17 @@ func newBGPConnection(conn net.Conn, asn uint32, updates chan *UserUpdate) {
 	}
 }
 
-var nextBuffer []byte
+type connectionDetails struct {
+	nextBuffer []byte
+}
 
-func readHeaders(raw []byte) []*header {
+func readHeaders(raw []byte, connDetails *connectionDetails) []*header {
 	var marker = []byte{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}
 	//for next
-	if nextBuffer != nil {
+	if connDetails.nextBuffer != nil {
 		debugPrintln("nextBuf not nil")
-		raw = append(nextBuffer, raw...)
-		nextBuffer = nil
+		raw = append(connDetails.nextBuffer, raw...)
+		connDetails.nextBuffer = nil
 	}
 
 	headers := make([]*header, 0)
@@ -126,7 +131,7 @@ func readHeaders(raw []byte) []*header {
 		//for next
 		if cov-pos < 19-1 {
 			debugPrintln("smaller than 19", cov, pos)
-			nextBuffer = raw[pos:]
+			connDetails.nextBuffer = raw[pos:]
 			return headers
 		}
 
@@ -153,7 +158,7 @@ func readHeaders(raw []byte) []*header {
 		//for next
 		if cov-pos < int(realLength)-1 {
 			debugPrintln("smaller than realLength", cov, pos, realLength)
-			nextBuffer = raw[pos-19:]
+			connDetails.nextBuffer = raw[pos-19:]
 			return headers
 		}
 

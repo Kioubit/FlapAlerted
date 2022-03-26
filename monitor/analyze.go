@@ -14,7 +14,7 @@ import (
 func StartMonitoring(asn uint32, flapPeriod int64, notifytarget uint64, addpath bool, perPeerState bool, debug bool, notifyOnce bool) {
 	FlapPeriod = flapPeriod
 	NotifyTarget = notifytarget
-	updateChannel := make(chan *bgp.UserUpdate, 400)
+	updateChannel := make(chan *bgp.UserUpdate, 1000)
 	if addpath {
 		bgp.GlobalAdpath = true
 	}
@@ -64,10 +64,10 @@ func processUpdates(updateChannel chan *bgp.UserUpdate) {
 			return
 		}
 
-		if len(updateChannel) > 398 {
+		if len(updateChannel) > 950 {
 			fmt.Println("[WARNING] Can't keep up! Dropping 20 updates")
 			for i := 0; i < 20; i++ {
-				continue
+				<-updateChannel
 			}
 		}
 
