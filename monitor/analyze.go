@@ -107,8 +107,8 @@ func cleanUpFlapList() {
 			}
 			newFlapList = append(newFlapList, flapList[i])
 		}
-		flaplistMu.Unlock()
 		flapList = newFlapList
+		flaplistMu.Unlock()
 	}
 }
 
