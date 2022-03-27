@@ -13,7 +13,7 @@ import (
 func StartMonitoring(asn uint32, flapPeriod int64, notifytarget uint64, addpath bool, perPeerState bool, debug bool, notifyOnce bool) {
 	FlapPeriod = flapPeriod
 	NotifyTarget = notifytarget
-	updateChannel := make(chan *bgp.UserUpdate, 10000)
+	updateChannel := make(chan *bgp.UserUpdate, 11000)
 	if addpath {
 		bgp.GlobalAdpath = true
 	}
@@ -63,7 +63,7 @@ func processUpdates(updateChannel chan *bgp.UserUpdate) {
 			return
 		}
 
-		for len(updateChannel) > 9800 {
+		for len(updateChannel) > 10700 {
 			fmt.Println("[WARNING] Can't keep up! Dropping 100 updates")
 			for i := 0; i < 100; i++ {
 				<-updateChannel
@@ -94,7 +94,7 @@ func processUpdates(updateChannel chan *bgp.UserUpdate) {
 func cleanUpFlapList() {
 	for {
 		select {
-		case <-time.After(2 * time.Duration(FlapPeriod) * time.Second):
+		case <-time.After(1 * time.Duration(FlapPeriod) * time.Second):
 		}
 
 		currentTime := time.Now().Unix()
@@ -124,22 +124,17 @@ func updateList(prefix []byte, prefixlenBits int, aspath []bgp.AsPath, isV6 bool
 	for i := range flapList {
 		if cidr == flapList[i].Cidr {
 			found = true
-			if flapList[i].LastSeen+FlapPeriod <= currentTime {
-				flapList[i].PathChangeCount = 0
-				flapList[i].Paths = []bgp.AsPath{cleanPath}
-				flapList[i].LastPath[getFirstAsn(cleanPath)] = cleanPath
-			} else {
-				exists := false
-				for b := range flapList[i].Paths {
-					if pathsEqual(flapList[i].Paths[b], cleanPath) {
-						exists = true
-						break
-					}
-				}
-				if !exists {
-					flapList[i].Paths = append(flapList[i].Paths, cleanPath)
+			exists := false
+			for b := range flapList[i].Paths {
+				if pathsEqual(flapList[i].Paths[b], cleanPath) {
+					exists = true
+					break
 				}
 			}
+			if !exists {
+				flapList[i].Paths = append(flapList[i].Paths, cleanPath)
+			}
+
 			if !pathsEqual(flapList[i].LastPath[getFirstAsn(cleanPath)], cleanPath) {
 
 				if GlobalPerPeerState {
@@ -155,12 +150,12 @@ func updateList(prefix []byte, prefixlenBits int, aspath []bgp.AsPath, isV6 bool
 				flapList[i].LastSeen = currentTime
 				flapList[i].LastPath[getFirstAsn(cleanPath)] = cleanPath
 				if flapList[i].PathChangeCount > NotifyTarget {
+					flapList[i].PathChangeCount = 0
 					if GlobalNotifyOnce {
 						if flapList[i].PathChangeCount > NotifyTarget+1 {
 							return
 						}
 					}
-					flapList[i].PathChangeCount = 0
 					go mainNotify(flapList[i])
 				}
 			}
