@@ -3,7 +3,7 @@ FROM golang:1.18.0-bullseye AS build
 WORKDIR /go/src/project/
 COPY . /go/src/project/
 
-RUN CGO_ENABLED=0 go build -tags=mod_log,mod_jsonapi-trimpath -o /bin/FlapAlertedPro
+RUN CGO_ENABLED=0 go build -tags=mod_log,mod_jsonapi -trimpath -o /bin/FlapAlertedPro
 
 FROM scratch
 WORKDIR /
