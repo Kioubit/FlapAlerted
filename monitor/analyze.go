@@ -2,11 +2,12 @@ package monitor
 
 import (
 	"FlapAlertedPro/bgp"
-	"fmt"
+	"log"
 	"math"
 	"net"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -63,10 +64,9 @@ func processUpdates(updateChannel chan *bgp.UserUpdate) {
 			return
 		}
 
-		for len(updateChannel) > 10700 {
-			fmt.Println("[WARNING] Can't keep up! Dropping 100 updates")
-			for i := 0; i < 100; i++ {
-				<-updateChannel
+		if len(updateChannel) > 10700 {
+			if atomic.CompareAndSwapInt32(&updateDropperRunning, int32(0), int32(1)) {
+				go updateDropper(updateChannel)
 			}
 		}
 
@@ -120,10 +120,8 @@ func updateList(prefix []byte, prefixlenBits int, aspath []bgp.AsPath, isV6 bool
 	cidr := toNetCidr(prefix, prefixlenBits, isV6)
 
 	currentTime := time.Now().Unix()
-	var found = false
 	for i := range flapList {
 		if cidr == flapList[i].Cidr {
-			found = true
 			exists := false
 			for b := range flapList[i].Paths {
 				if pathsEqual(flapList[i].Paths[b], cleanPath) {
@@ -159,23 +157,22 @@ func updateList(prefix []byte, prefixlenBits int, aspath []bgp.AsPath, isV6 bool
 					go mainNotify(flapList[i])
 				}
 			}
-			break
+			return
 		}
 	}
 
-	if !found {
-		newFlap := &Flap{
-			Cidr:                 cidr,
-			LastSeen:             currentTime,
-			FirstSeen:            currentTime,
-			PathChangeCount:      1,
-			PathChangeCountTotal: 1,
-			Paths:                []bgp.AsPath{cleanPath},
-			LastPath:             make(map[uint32]bgp.AsPath),
-		}
-		newFlap.LastPath[getFirstAsn(cleanPath)] = cleanPath
-		flapList = append(flapList, newFlap)
+	// If not returned above
+	newFlap := &Flap{
+		Cidr:                 cidr,
+		LastSeen:             currentTime,
+		FirstSeen:            currentTime,
+		PathChangeCount:      1,
+		PathChangeCountTotal: 1,
+		Paths:                []bgp.AsPath{cleanPath},
+		LastPath:             make(map[uint32]bgp.AsPath),
 	}
+	newFlap.LastPath[getFirstAsn(cleanPath)] = cleanPath
+	flapList = append(flapList, newFlap)
 }
 
 func getFirstAsn(aspath bgp.AsPath) uint32 {
@@ -183,7 +180,6 @@ func getFirstAsn(aspath bgp.AsPath) uint32 {
 		if len(aspath.Asn) == 0 {
 			return 0
 		}
-
 		return aspath.Asn[0]
 	} else {
 		return 0
@@ -223,8 +219,20 @@ func toNetCidr(prefix []byte, prefixlenBits int, isV6 bool) string {
 }
 
 func incrementUint64(n uint64) uint64 {
-	if n == math.MaxUint64-1 {
+	if n == math.MaxUint64 {
 		return n
 	}
 	return n + 1
+}
+
+var updateDropperRunning int32 = 0
+
+func updateDropper(updateChannel chan *bgp.UserUpdate) {
+	log.Println("[WARNING] Can't keep up! Dropping some updates")
+	for len(updateChannel) > 10700 {
+		for i := 0; i < 50; i++ {
+			<-updateChannel
+		}
+	}
+	atomic.StoreInt32(&updateDropperRunning, int32(0))
 }
