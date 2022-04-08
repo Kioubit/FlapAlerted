@@ -7,8 +7,8 @@ import (
 	"FlapAlertedPro/bgp"
 	"FlapAlertedPro/monitor"
 	"encoding/json"
+	"fmt"
 	"log"
-	"math"
 	"net/http"
 )
 
@@ -24,6 +24,7 @@ func init() {
 func startComplete() {
 	http.HandleFunc("/flaps/active", activeFlaps)
 	http.HandleFunc("/flaps/metrics", metrics)
+	http.HandleFunc("/flaps/metrics/prometheus", prometheus)
 	err := http.ListenAndServe(":8699", nil)
 	if err != nil {
 		log.Println("["+moduleName+"] Error starting JSON api server", err.Error())
@@ -58,38 +59,28 @@ func activeFlaps(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(500)
 		return
 	}
-	w.Write(b)
+	_, _ = w.Write(b)
 }
 
 func metrics(w http.ResponseWriter, req *http.Request) {
-	type metric struct {
-		ActiveFlapCount            int
-		ActiveFlapTotalUpdateCount uint64
-	}
-	activeFlaps := monitor.GetActiveFlaps()
-
-	var totalUpdateCount uint64
-	for i := range activeFlaps {
-		totalUpdateCount = addUint64(totalUpdateCount, activeFlaps[i].PathChangeCountTotal)
-	}
-
-	newMetric := metric{
-		ActiveFlapCount:            len(activeFlaps),
-		ActiveFlapTotalUpdateCount: totalUpdateCount,
-	}
-
-	b, err := json.Marshal(newMetric)
+	b, err := json.Marshal(monitor.GetMetric())
 	if err != nil {
 		w.WriteHeader(500)
 		return
 	}
-	w.Write(b)
-
+	_, _ = w.Write(b)
 }
 
-func addUint64(left, right uint64) uint64 {
-	if left > math.MaxUint64-right {
-		return math.MaxUint64
-	}
-	return left + right
+func prometheus(w http.ResponseWriter, req *http.Request) {
+	metric := monitor.GetMetric()
+	var output string
+	output = fmt.Sprintln("# HELP active_flap_count Number of actively flapping prefixes")
+	output = output + fmt.Sprintln("# TYPE active_flap_count gauge")
+	output = output + fmt.Sprintln("active_flap_count", metric.ActiveFlapCount)
+
+	output = fmt.Sprintln("# HELP active_flap_update_count Number route updates caused by actively flapping prefixes")
+	output = output + fmt.Sprintln("# TYPE active_flap_update_count gauge")
+	output = output + fmt.Sprintln("active_flap_update_count", metric.ActiveFlapTotalUpdateCount)
+
+	_, _ = w.Write([]byte(output))
 }

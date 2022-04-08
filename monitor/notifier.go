@@ -1,6 +1,9 @@
 package monitor
 
-import "sync"
+import (
+	"math"
+	"sync"
+)
 
 type Module struct {
 	Name          string
@@ -47,6 +50,25 @@ func GetActiveFlaps() []*Flap {
 	return aFlap
 }
 
+type Metric struct {
+	ActiveFlapCount            int
+	ActiveFlapTotalUpdateCount uint64
+}
+
+func GetMetric() Metric {
+	activeFlaps := GetActiveFlaps()
+
+	var totalUpdateCount uint64
+	for i := range activeFlaps {
+		totalUpdateCount = addUint64(totalUpdateCount, activeFlaps[i].PathChangeCountTotal)
+	}
+
+	return Metric{
+		ActiveFlapCount:            len(activeFlaps),
+		ActiveFlapTotalUpdateCount: totalUpdateCount,
+	}
+}
+
 func GetUserParamterers() (int64, uint64) {
 	return FlapPeriod, NotifyTarget
 }
@@ -59,4 +81,11 @@ func moduleCallback() {
 			go m.StartComplete()
 		}
 	}
+}
+
+func addUint64(left, right uint64) uint64 {
+	if left > math.MaxUint64-right {
+		return math.MaxUint64
+	}
+	return left + right
 }

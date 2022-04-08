@@ -41,3 +41,4 @@ Provides the following JSON http endpoints on port `8699`:
 
 - `/flaps/active`
 - `/flaps/metrics`
+- `/flaps/metrics/prometheus`
