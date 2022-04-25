@@ -3,7 +3,6 @@ package bgp
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
 	"log"
 	"net"
 )
@@ -27,7 +26,7 @@ type header struct {
 }
 
 type open struct {
-	version          byte //4
+	version          byte // BGP-4
 	asn              []byte
 	holdTime         uint16
 	routerID         uint32
@@ -54,24 +53,42 @@ func StartBGP(asn uint32, updates chan *UserUpdate) {
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			log.Fatal(err)
+			debugPrintln("Error accepting tcp connection", err.Error())
+			continue
 		}
 		debugPrintln("New connection")
 		go newBGPConnection(conn, asn, updates)
 	}
 }
 
+func rawUpdateMesageWorker(channel chan *[]byte, user chan *UserUpdate) {
+	for {
+		u := <-channel
+		if u == nil {
+			break
+		}
+		parseUpdateMsgNew(*u, user)
+	}
+}
+
 func newBGPConnection(conn net.Conn, asn uint32, updates chan *UserUpdate) {
+	const workerCount = 4
+	connDetails := &connectionState{}
+	connDetails.rawUpdateBytesChan = make(chan *[]byte, 5000)
+
 	defer func() {
 		if r := recover(); r != nil {
 			debugPrintln("Panic", r)
 			if conn != nil {
 				conn.Close()
+				close(connDetails.rawUpdateBytesChan)
 			}
 		}
 	}()
 
-	connDetails := &connectionDetails{}
+	for i := 0; i < workerCount; i++ {
+		go rawUpdateMesageWorker(connDetails.rawUpdateBytesChan, updates)
+	}
 
 	const BGPBuffSize = 10000 * 1000
 	buff := make([]byte, BGPBuffSize) //Reused
@@ -97,10 +114,10 @@ func newBGPConnection(conn net.Conn, asn uint32, updates chan *UserUpdate) {
 			case byte(msgUpdate):
 				debugPrintln("received BGP UPDATE MESSAGE", len(headers[i].msg))
 				debugPrintf("%x\n", headers[i].msg)
-				parseUpdateMsgNew(headers[i].msg, updates)
+				connDetails.rawUpdateBytesChan <- &headers[i].msg
 			default:
 				debugPrintln("Received BGP UNKNOWN Message. Closing connection")
-				fmt.Println("BGP Error notification")
+				debugPrintln("BGP Error notification")
 				conn.Close()
 				return
 			}
@@ -109,11 +126,12 @@ func newBGPConnection(conn net.Conn, asn uint32, updates chan *UserUpdate) {
 	}
 }
 
-type connectionDetails struct {
-	nextBuffer []byte
+type connectionState struct {
+	nextBuffer         []byte
+	rawUpdateBytesChan chan *[]byte
 }
 
-func readHeaders(raw []byte, connDetails *connectionDetails) []*header {
+func readHeaders(raw []byte, connDetails *connectionState) []*header {
 	var marker = []byte{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}
 	//for next
 	if connDetails.nextBuffer != nil {

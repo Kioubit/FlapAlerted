@@ -1,7 +1,4 @@
-//go:build mod_jsonapi
-// +build mod_jsonapi
-
-package jsonapi
+package httpAPI
 
 import (
 	"FlapAlertedPro/bgp"
@@ -12,7 +9,7 @@ import (
 	"net/http"
 )
 
-var moduleName = "mod_jsonapi"
+var moduleName = "mod_httpAPI"
 
 func init() {
 	monitor.RegisterModule(&monitor.Module{
@@ -22,6 +19,7 @@ func init() {
 }
 
 func startComplete() {
+	http.HandleFunc("/version", showversion)
 	http.HandleFunc("/flaps/active", activeFlaps)
 	http.HandleFunc("/flaps/metrics", metrics)
 	http.HandleFunc("/flaps/metrics/prometheus", prometheus)
@@ -38,6 +36,10 @@ type activeFlap struct {
 	LastSeen   int64
 	Count      uint64
 	TotalCount uint64
+}
+
+func showversion(w http.ResponseWriter, req *http.Request) {
+	_, _ = w.Write([]byte(monitor.GetVersion()))
 }
 
 func activeFlaps(w http.ResponseWriter, req *http.Request) {
@@ -78,9 +80,9 @@ func prometheus(w http.ResponseWriter, req *http.Request) {
 	output = output + fmt.Sprintln("# TYPE active_flap_count gauge")
 	output = output + fmt.Sprintln("active_flap_count", metric.ActiveFlapCount)
 
-	output = fmt.Sprintln("# HELP active_flap_update_count Number route updates caused by actively flapping prefixes")
-	output = output + fmt.Sprintln("# TYPE active_flap_update_count gauge")
-	output = output + fmt.Sprintln("active_flap_update_count", metric.ActiveFlapTotalUpdateCount)
+	output = output + fmt.Sprintln("# HELP active_flap_route_change_count Number of path changes caused by actively flapping prefixes")
+	output = output + fmt.Sprintln("# TYPE active_flap_route_change_count gauge")
+	output = output + fmt.Sprintln("active_flap_route_change_count", metric.ActiveFlapTotalPathChangeCount)
 
 	_, _ = w.Write([]byte(output))
 }

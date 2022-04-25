@@ -36,9 +36,10 @@ To enable or disable modules edit the `MODULES` variable in `Makefile`.
 #### mod_log
 Simple logger to STDOUT for events.
 
-#### mod_jsonapi
-Provides the following JSON http endpoints on port `8699`:
+#### mod_httpAPI
+Provides the following http API endpoints on port `8699`:
 
+- `/version`
 - `/flaps/active`
 - `/flaps/metrics`
 - `/flaps/metrics/prometheus`

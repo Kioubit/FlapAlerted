@@ -9,10 +9,11 @@ import (
 	"time"
 )
 
-var Version = "0.8"
+var Version = "0.9"
 
 func main() {
 	fmt.Println("FlapAlertedPro", Version, "by Kioubit.dn42")
+	monitor.SetVersion(Version)
 
 	var defaultPeriod = 30
 	var defaultCounter = 230
@@ -71,9 +72,9 @@ func main() {
 			time.Sleep(10 * time.Second)
 		}
 
-		fmt.Println("Using custom parameters", defaultCounter, defaultPeriod, defaultAsn, doAddPath, doPerPeerState, notifyOnce, doDebug)
 	} else {
 		fmt.Println("Required commandline args missing: routeChangeCounter, flapPeriod, asn, addPath, PerPeerState, notifyOnce, debug")
+		fmt.Println("Refer to the documentation for more information.")
 		os.Exit(1)
 	}
 
@@ -84,8 +85,13 @@ func main() {
 	}
 	if empty {
 		fmt.Println("Error: No modules enabled during compilation!")
+		fmt.Printf("It is recommended to use the included Makefile")
 		os.Exit(1)
 	}
+
+	fmt.Println("Using the following parameters:")
+	fmt.Println("Detecting a flap if the route to a prefix changes within", defaultPeriod, "seconds at least", defaultCounter, "time(s)")
+	fmt.Println("ASN:", defaultAsn, "| AddPath Capability:", doAddPath, "| Keep per-peer State:", doPerPeerState, "| Notify once:", notifyOnce, "| Debug:", doDebug)
 
 	fmt.Println("Started")
 	monitor.StartMonitoring(uint32(defaultAsn), int64(defaultPeriod), uint64(defaultCounter), doAddPath, doPerPeerState, doDebug, notifyOnce)

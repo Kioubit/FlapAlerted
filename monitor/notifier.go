@@ -15,6 +15,9 @@ var (
 	moduleList = make([]*Module, 0)
 	moduleMu   sync.Mutex
 )
+var (
+	version string
+)
 
 func mainNotify(f *Flap) {
 	moduleMu.Lock()
@@ -38,6 +41,14 @@ func GetRegisteredModules() []*Module {
 	return moduleList
 }
 
+func SetVersion(v string) {
+	version = v
+}
+
+func GetVersion() string {
+	return version
+}
+
 func GetActiveFlaps() []*Flap {
 	aFlap := make([]*Flap, 0)
 	flaplistMu.RLock()
@@ -51,21 +62,21 @@ func GetActiveFlaps() []*Flap {
 }
 
 type Metric struct {
-	ActiveFlapCount            int
-	ActiveFlapTotalUpdateCount uint64
+	ActiveFlapCount                int
+	ActiveFlapTotalPathChangeCount uint64
 }
 
 func GetMetric() Metric {
 	activeFlaps := GetActiveFlaps()
 
-	var totalUpdateCount uint64
+	var totalPathChangeCount uint64
 	for i := range activeFlaps {
-		totalUpdateCount = addUint64(totalUpdateCount, activeFlaps[i].PathChangeCountTotal)
+		totalPathChangeCount = addUint64(totalPathChangeCount, activeFlaps[i].PathChangeCountTotal)
 	}
 
 	return Metric{
-		ActiveFlapCount:            len(activeFlaps),
-		ActiveFlapTotalUpdateCount: totalUpdateCount,
+		ActiveFlapCount:                len(activeFlaps),
+		ActiveFlapTotalPathChangeCount: totalPathChangeCount,
 	}
 }
 
