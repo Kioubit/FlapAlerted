@@ -118,6 +118,7 @@ func newBGPConnection(conn net.Conn, asn uint32, updates chan *UserUpdate) {
 			default:
 				debugPrintln("Received BGP UNKNOWN Message. Closing connection")
 				debugPrintln("BGP Error notification")
+				close(connDetails.rawUpdateBytesChan)
 				conn.Close()
 				return
 			}
