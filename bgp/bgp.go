@@ -159,8 +159,9 @@ func readHeaders(raw []byte, connDetails *connectionState) []*header {
 			debugPrintln("CAUTION: Trying to recover from NO BGP")
 			pos++
 			if pos > cov {
-				debugPrintf("------------------- NO BGP Panic ------------------------\n%x\n------------------- NO BGP Panic ------------------------\n", raw[pos:])
-				panic("NO BGP")
+				debugPrintf("------------------- NO BGP FAILED RECOVERY ------------------------\n%x\n------------------- NO BGP FAILED RECOVERY ------------------------\n", raw[pos:])
+				connDetails.nextBuffer = nil
+				return headers
 			}
 		}
 		pos += 16
