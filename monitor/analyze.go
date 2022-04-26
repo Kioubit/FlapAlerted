@@ -147,10 +147,10 @@ func updateList(prefix []byte, prefixlenBits int, aspath []bgp.AsPath, isV6 bool
 
 				flapList[i].LastSeen = currentTime
 				flapList[i].LastPath[getFirstAsn(cleanPath)] = cleanPath
-				if flapList[i].PathChangeCount > NotifyTarget {
+				if flapList[i].PathChangeCount >= NotifyTarget {
 					flapList[i].PathChangeCount = 0
 					if GlobalNotifyOnce {
-						if flapList[i].PathChangeCount > NotifyTarget+1 {
+						if flapList[i].PathChangeCount >= NotifyTarget+1 {
 							return
 						}
 					}

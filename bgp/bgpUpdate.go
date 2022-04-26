@@ -34,6 +34,12 @@ type Prefix struct {
 }
 
 func parseUpdateMsgNew(raw []byte, updateChannel chan *UserUpdate) {
+	defer func() {
+		if r := recover(); r != nil {
+			debugPrintln("Panic at updateParse", r)
+		}
+	}()
+
 	userUpdate := &UserUpdate{}
 	userUpdate.Prefix = make([]Prefix, 0)
 	userUpdate.Path = make([]AsPath, 0)
