@@ -118,6 +118,9 @@ func updateList(prefix []byte, prefixlenBits int, aspath []bgp.AsPath, isV6 bool
 	cleanPath := aspath[0] // Multiple AS paths in a single update message currently unsupported (not used by bird)
 
 	cidr := toNetCidr(prefix, prefixlenBits, isV6)
+	if cidr == "" {
+		return
+	}
 
 	currentTime := time.Now().Unix()
 	for i := range flapList {
@@ -199,6 +202,12 @@ func pathsEqual(path1, path2 bgp.AsPath) bool {
 }
 
 func toNetCidr(prefix []byte, prefixlenBits int, isV6 bool) string {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Println("Warning: BGP data format error")
+		}
+	}()
+
 	if isV6 {
 		needBytes := 16 - len(prefix)
 		toAppend := make([]byte, needBytes)

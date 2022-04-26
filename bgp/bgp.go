@@ -155,8 +155,13 @@ func readHeaders(raw []byte, connDetails *connectionState) []*header {
 		}
 
 		newHeader := &header{}
-		if !bytes.Equal(raw[pos:pos+16], marker) {
-			panic("NO BGP")
+		for !bytes.Equal(raw[pos:pos+16], marker) {
+			debugPrintln("CAUTION: Trying to recover from NO BGP")
+			pos++
+			if pos > cov {
+				debugPrintf("------------------- NO BGP Panic ------------------------\n%x\n------------------- NO BGP Panic ------------------------\n", raw[pos:])
+				panic("NO BGP")
+			}
 		}
 		pos += 16
 
