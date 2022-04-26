@@ -6,7 +6,7 @@
 ### Setup notes
 
 The program will listen on port 1790 for incoming BGP sessions (passive mode - no outgoing connections).
-Peering multiple nodes with a single FlapAlertedPro instance is also possible in most cases. The 'multihop' mode in your BGP daemon (i.e bird) should be enabled to allow for running this program on the same host.
+Peering multiple nodes with a single FlapAlertedPro instance is also possible in most cases. The 'multihop' mode in your BGP daemon (i.e BIRD) should be enabled to allow for running this program on the same host. Note that with the latest BIRD there is a bug that requires using another IP address that belongs to the host (for example an IP from a dymmy interface) for it to correctly send bgp information to a local FlapAlertedPro instance.
 
 
 ### Commandline arguments
