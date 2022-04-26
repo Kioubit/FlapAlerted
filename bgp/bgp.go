@@ -76,11 +76,15 @@ func newBGPConnection(conn net.Conn, asn uint32, updates chan *UserUpdate) {
 	connDetails := &connectionState{}
 	connDetails.rawUpdateBytesChan = make(chan *[]byte, 5000)
 
+	var rawChannel = make(chan []byte, 25)
+	go receiveHeadersWorker(connDetails, rawChannel, asn, conn)
+
 	defer func() {
 		if r := recover(); r != nil {
 			debugPrintln("Panic", r)
 			if conn != nil {
 				conn.Close()
+				close(rawChannel)
 				close(connDetails.rawUpdateBytesChan)
 			}
 		}
@@ -97,11 +101,23 @@ func newBGPConnection(conn net.Conn, asn uint32, updates chan *UserUpdate) {
 		if err != nil {
 			panic(err)
 		}
+		if n == 0 {
+			continue
+		}
 
 		newBuff := make([]byte, n)
 		copy(newBuff, buff[:n])
-		debugPrintln("READ", len(newBuff), n)
+		debugPrintln("READ", n)
+		rawChannel <- newBuff
+	}
+}
 
+func receiveHeadersWorker(connDetails *connectionState, ch chan []byte, asn uint32, conn net.Conn) {
+	for {
+		newBuff := <-ch
+		if len(newBuff) == 0 {
+			return
+		}
 		headers := readHeaders(newBuff, connDetails)
 		for i := range headers {
 			switch headers[i].msgType {
@@ -123,8 +139,8 @@ func newBGPConnection(conn net.Conn, asn uint32, updates chan *UserUpdate) {
 				return
 			}
 		}
-
 	}
+
 }
 
 type connectionState struct {
