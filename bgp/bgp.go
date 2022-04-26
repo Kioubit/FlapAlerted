@@ -5,7 +5,6 @@ import (
 	"encoding/binary"
 	"log"
 	"net"
-	"runtime"
 )
 
 var GlobalAdpath = false
@@ -73,7 +72,7 @@ func rawUpdateMesageWorker(channel chan *[]byte, user chan *UserUpdate) {
 }
 
 func newBGPConnection(conn net.Conn, asn uint32, updates chan *UserUpdate) {
-	var workerCount = runtime.NumCPU()
+	var workerCount = 4
 	connDetails := &connectionState{}
 	connDetails.rawUpdateBytesChan = make(chan *[]byte, 5000)
 
