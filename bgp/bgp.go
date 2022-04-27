@@ -134,7 +134,6 @@ func receiveHeadersWorker(connDetails *connectionState, ch chan []byte, asn uint
 			default:
 				debugPrintln("Received BGP UNKNOWN Message. Closing connection")
 				debugPrintln("BGP Error notification")
-				close(connDetails.rawUpdateBytesChan)
 				conn.Close()
 				return
 			}
