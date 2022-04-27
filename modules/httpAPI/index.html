@@ -51,7 +51,7 @@
                 ctx.save();
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                ctx.fillText('Waiting for data', centerX, centerY);
+                ctx.fillText('Waiting for BGP flapping...', centerX, centerY);
                 ctx.restore();
             }
         }
@@ -137,7 +137,7 @@
         liveChart.data.labels.push(timeStamp);
         liveChart.data.datasets[0].data.push(point)
 
-        if (liveChart.data.datasets[0].data.length > 5) {
+        if (liveChart.data.datasets[0].data.length > 50) {
             liveChart.data.labels.shift();
             liveChart.data.datasets[0].data.shift();
         }
@@ -146,17 +146,18 @@
 
     var refreshInterval = setInterval(function () {
         fetch("/flaps/metrics").then(function (response) {
-            const obj = JSON.parse(response);
-            addToChart(liveRouteChart, obj.ActiveFlapTotalPathChangeCount)
-            addToChart(liveFlapChart, obj.ActiveFlapCount)
-        }).catch(function (error) {
+            return response.json();
+        }).then(function(json) {
+            console.log(json.ActiveFlapCount);
+            console.log(json.ActiveFlapTotalPathChangeCount);
+            addToChart(liveRouteChart, json.ActiveFlapTotalPathChangeCount)
+            addToChart(liveFlapChart, json.ActiveFlapCount)
+	}).catch(function (error) {
             clearInterval(refreshInterval);
             alert("Could not communicate with server: " + error)
         });
 
-    }, 3000);
-
-
+    }, 5000);
 
 </script>
 
