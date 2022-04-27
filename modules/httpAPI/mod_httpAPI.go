@@ -6,6 +6,7 @@ package httpAPI
 import (
 	"FlapAlertedPro/bgp"
 	"FlapAlertedPro/monitor"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -13,6 +14,9 @@ import (
 )
 
 var moduleName = "mod_httpAPI"
+
+//go:embed index.html
+var dashboardHtml []byte
 
 func init() {
 	monitor.RegisterModule(&monitor.Module{
@@ -23,6 +27,8 @@ func init() {
 
 func startComplete() {
 	http.HandleFunc("/version", showversion)
+	http.HandleFunc("/dashboard", showDashboard)
+	http.HandleFunc("/dashboard/", showDashboard)
 	http.HandleFunc("/flaps/active", activeFlaps)
 	http.HandleFunc("/flaps/metrics", metrics)
 	http.HandleFunc("/flaps/metrics/prometheus", prometheus)
@@ -43,6 +49,10 @@ type activeFlap struct {
 
 func showversion(w http.ResponseWriter, req *http.Request) {
 	_, _ = w.Write([]byte(monitor.GetVersion()))
+}
+
+func showDashboard(w http.ResponseWriter, req *http.Request) {
+	_, _ = w.Write(dashboardHtml)
 }
 
 func activeFlaps(w http.ResponseWriter, req *http.Request) {
