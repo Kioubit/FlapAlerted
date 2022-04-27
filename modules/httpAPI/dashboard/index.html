@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html>
+<h2 style="margin-bottom:0.2em">FlapAlertedPro</h2>
+<h3 style="margin-top:0em">Live Data</h3>
+
+
+<div class="chartBox" style="width: 25em; height: 25em;">
+    <canvas id="gauge"></canvas>
+</div>
+
+<canvas id="chartFlapCount" width="10em" height="2em"></canvas>
+<canvas id="chartRouteCount" width="10em" height="2em"></canvas>
+<canvas id="chartRoute" width="10em" height="2em"></canvas>
+
+<br>
+<div id="box"></div>
+<a href="/flaps/active">List of all flapping prefixes</a>
+<script src="chart.js"></script>
+<script>
+    const ctxFlapCount = document.getElementById('chartFlapCount').getContext('2d');
+    const ctxRouteCount = document.getElementById('chartRouteCount').getContext('2d');
+    const ctxRoute = document.getElementById('chartRoute').getContext('2d');
+
+    const emptyChartPlugin = {
+        id: 'emptyChart',
+        afterDraw(chart, args, options) {
+            const { datasets } = chart.data;
+            let hasData = false;
+
+            for (let dataset of datasets) {
+                if (dataset.data.length > 0 && dataset.data.some(item => item !== 0)) {
+                    hasData = true;
+                    break;
+                }
+            }
+
+            if (!hasData) {
+                const { chartArea: { left, top, right, bottom }, ctx } = chart;
+                const centerX = (left + right) / 2;
+                const centerY = (top + bottom) / 2;
+
+                chart.clear();
+                ctx.save();
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('Waiting for BGP flapping...', centerX, centerY);
+                ctx.restore();
+            }
+        }
+    };
+
+    var dataFlapCount = {
+        labels: [],
+        datasets: [
+            {
+                label: "Count of actively flapping prefixes",
+                fill: false,
+                lineTension: 0.1,
+                backgroundColor: "rgba(255,47,5,0.4)",
+                borderColor: "rgba(255,47,5,1)",
+                borderCapStyle: 'butt',
+                borderDash: [],
+                borderDashOffset: 0.0,
+                borderJoinStyle: 'miter',
+                pointBorderColor: "rgba(75,192,192,1)",
+                pointBackgroundColor: "#fff",
+                pointBorderWidth: 1,
+                pointHoverRadius: 5,
+                pointHoverBackgroundColor: "rgba(75,192,192,1)",
+                pointHoverBorderColor: "rgba(220,220,220,1)",
+                pointHoverBorderWidth: 2,
+                pointRadius: 5,
+                pointHitRadius: 10,
+                data: [],
+            }
+        ]
+    };
+
+
+    var dataRouteChangeCount = {
+        labels: [],
+        datasets: [
+            {
+                label: "Route Change count",
+                fill: false,
+                lineTension: 0.1,
+                backgroundColor: "rgba(75,192,192,0.4)",
+                borderColor: "rgba(75,192,192,1)",
+                borderCapStyle: 'butt',
+                borderDash: [],
+                borderDashOffset: 0.0,
+                borderJoinStyle: 'miter',
+                pointBorderColor: "rgba(75,192,192,1)",
+                pointBackgroundColor: "#fff",
+                pointBorderWidth: 1,
+                pointHoverRadius: 5,
+                pointHoverBackgroundColor: "rgba(75,192,192,1)",
+                pointHoverBorderColor: "rgba(220,220,220,1)",
+                pointHoverBorderWidth: 2,
+                pointRadius: 5,
+                pointHitRadius: 10,
+                data: [],
+            }
+        ]
+    };
+
+
+    var dataRouteChange = {
+        labels: [],
+        datasets: [
+            {
+                label: "Route Changes",
+                fill: false,
+                lineTension: 0.1,
+                backgroundColor: "rgba(75,192,192,0.4)",
+                borderColor: "rgba(75,192,192,1)",
+                borderCapStyle: 'butt',
+                borderDash: [],
+                borderDashOffset: 0.0,
+                borderJoinStyle: 'miter',
+                pointBorderColor: "rgba(75,192,192,1)",
+                pointBackgroundColor: "#fff",
+                pointBorderWidth: 1,
+                pointHoverRadius: 5,
+                pointHoverBackgroundColor: "rgba(75,192,192,1)",
+                pointHoverBorderColor: "rgba(220,220,220,1)",
+                pointHoverBorderWidth: 2,
+                pointRadius: 5,
+                pointHitRadius: 10,
+                data: [],
+            }
+        ]
+    };
+
+
+
+    var liveFlapChart = new Chart(ctxFlapCount, {
+        type: "line",
+        data: dataFlapCount,
+        plugins: [emptyChartPlugin],
+    })
+
+    var liveRouteCountChart = new Chart(ctxRouteCount, {
+        type: "line",
+        data: dataRouteChangeCount,
+        plugins: [emptyChartPlugin],
+    })
+
+    var liveRouteChart = new Chart(ctxRoute, {
+        type: "line",
+        data: dataRouteChange,
+        plugins: [emptyChartPlugin],
+    })
+
+
+
+
+
+
+
+
+    // setup
+    const data = {
+        labels: ["Low", "High", "Extreme"],
+        datasets: [
+            {
+                label: "Gauge",
+                data: [100, 65, 35],
+                backgroundColor: [
+                    "rgba(75, 192, 192, 0.8)",
+                    "rgba(255, 206, 86, 0.8)",
+                    "rgba(255, 26, 104, 0.8)",
+                ],
+                needleValue: 0,
+                borderColor: "white",
+                borderWidth: 2,
+                cutout: "95%",
+                circumference: 180,
+                rotation: 270,
+                borderRadius: 5,
+            },
+        ],
+    };
+
+    //gaugeNeedle
+    const gaugeNeedle = {
+        id: "gaugeNeedle",
+        afterDatasetDraw(chart, args, options) {
+            const {
+                ctx,
+                config,
+                data,
+                chartArea: { top, right, bottom, left, width, height },
+            } = chart;
+            ctx.save();
+            const needleValue = data.datasets[0].needleValue;
+            const dataTotal = data.datasets[0].data.reduce((a, b) => a + b, 0);
+
+            if (needleValue <= 100) {
+                var angle = Math.PI + (1 / 200) * needleValue * Math.PI;
+            } else if (needleValue <= 10000) {
+                var angle =
+                    Math.PI +
+                    (1 / 200) * 100 * Math.PI +
+                    ((1 / 200) * needleValue * Math.PI * 65) / 10000;
+            } else if (needleValue <= 1000000) {
+                var angle =
+                    Math.PI +
+                    (1 / 200) * 100 * Math.PI +
+                    ((1 / 200) * 10000 * Math.PI * 65) / 10000 +
+                    ((1 / 200) * needleValue * Math.PI * 35) / 1000000;
+            } else {
+                var angle = 0;
+            }
+
+            const cx = width / 2;
+            const cy = chart._metasets[0].data[0].y;
+
+            //needle
+            ctx.translate(cx, cy);
+            ctx.rotate(angle);
+            ctx.beginPath();
+            ctx.moveTo(0, -2);
+            ctx.lineTo(height - ctx.canvas.offsetTop - 160, 0); // change 160 value if the needle size gets changed
+            ctx.lineTo(0, 2);
+            ctx.fillStyle = "#444";
+            ctx.fill();
+            //needle dot
+            ctx.translate(-cx, -cy);
+            ctx.beginPath();
+            ctx.arc(cx, cy, 5, 0, 10);
+            ctx.fill();
+            ctx.restore();
+
+            //text
+            ctx.font = "20px Ubuntu";
+            ctx.fillStyle = "#444";
+            ctx.fillText(needleValue + " AVG RU", cx, cy + 50);
+            ctx.font = "10px Ubuntu";
+            ctx.fillText(0, 5, cy + 20);
+            ctx.fillText(100, cx, 90);
+            ctx.fillText("10k", cx + 185, 200); // change values if the position gets changed
+            ctx.fillText("1M", cx + 193, 320); // change values if the position gets changed
+            ctx.textAlign = "center";
+            ctx.restore();
+        },
+    };
+    // config
+    const config = {
+        type: "doughnut",
+        data,
+        options: {
+            plugins: {
+                legend: {
+                    display: false,
+                },
+                tooltip: {
+                    yAlign: "bottom",
+                    displayColors: false,
+                    callbacks: {
+                        label: function (tooltipItem, data, value) {
+                            return tooltipItem.label;
+                        },
+                    },
+                },
+            },
+        },
+        plugins: [gaugeNeedle],
+    };
+
+    // render init block
+    const gougeChart = new Chart(document.getElementById("gauge"), config);
+
+
+
+
+
+
+
+
+
+
+
+    function addToChart(liveChart, point) {
+        const now = new Date();
+        const timeStamp = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0')
+            + ":" + String(now.getSeconds()).padStart(2, '0');
+
+        liveChart.data.labels.push(timeStamp);
+        liveChart.data.datasets[0].data.push(point)
+
+        if (liveChart.data.datasets[0].data.length > 50) {
+            liveChart.data.labels.shift();
+            liveChart.data.datasets[0].data.shift();
+        }
+        liveChart.update();
+    }
+
+
+    var flapList = [];
+    var avgDerivArr = [];
+    var newCount = 0;
+    var oldCount = 0;
+    var refreshInterval = setInterval(function () {
+        /*
+        fetch("/flaps/metrics").then(function (response) {
+            return response.json();
+        }).then(function (json) {
+            addToChart(liveRouteChart, json.ActiveFlapTotalPathChangeCount);
+            addToChart(liveFlapChart, json.ActiveFlapCount);
+        }).catch(function (error) {
+            clearInterval(refreshInterval);
+            alert("Could not communicate with server: " + error);
+        });
+        */
+
+        fetch("/flaps/active/compact").then(function (response) {
+            return response.json();
+        }).then(function (json) {
+            for (const key in json) {
+                let prefix = json[key].Prefix;
+                let index = flapList.findIndex((obj => obj.Prefix === prefix));
+                if (index === -1) {
+                    flapList.push(json[key]);
+                    continue;
+                }
+
+                //reuse
+                if (flapList[index].FirstSeen < json[key].FirstSeen) {
+                    if ('reuse' in flapList[index]) {
+                        flapList[index].reuse += flapList[index].TotalCount;
+                    } else {
+                        flapList[index].reuse = flapList[index].TotalCount
+                    }
+                    flapList[index].FirstSeen = json[key].FirstSeen;
+                }
+
+                if ('reuse' in flapList[index]) {
+                    flapList[index].TotalCount = json[key].TotalCount;
+                    flapList[index].LastSeen = json[key].LastSeen;
+                } else {
+                    flapList[index] = json[key];
+                }
+            }
+
+            let index = flapList.length
+            while (index--) {
+                let searchPrefix = flapList[index].Prefix;
+                let jsonIndex = json.findIndex((obj => obj.Prefix === searchPrefix));
+                if (jsonIndex === -1) {
+                    oldCount = oldCount - flapList[index].TotalCount;
+                    if ('reuse' in flapList[index]) {
+                        oldCount = oldCount - flapList[index].reuse;
+                    }
+                    flapList.splice(index, 1);
+                } else {
+                    if ('reuse' in flapList[index]) {
+                        newCount = newCount + flapList[index].TotalCount + flapList[index].reuse;
+                    } else {
+                        newCount = newCount + flapList[index].TotalCount;
+                    }
+                }
+            }
+            let difference = newCount - oldCount;
+            oldCount = newCount;
+            newCount = 0;
+
+
+            avgDerivArr.push(difference);
+            if (avgDerivArr.length > 50) {
+                avgDerivArr.splice(0, 1);
+            }
+            var avgDeriv = 0
+            for (let i = 0; i < avgDerivArr.length; i++) {
+                avgDeriv = avgDeriv + avgDerivArr[i];
+            }
+            avgDeriv = avgDeriv / avgDerivArr.length
+
+            addToChart(liveRouteCountChart, oldCount);
+            addToChart(liveRouteChart, difference);
+            addToChart(liveFlapChart, flapList.length);
+            data.datasets[0].needleValue = avgDeriv;
+            gougeChart.update();
+
+
+
+            var html = "<table border='1|1'>";
+            html += "<tr><th>Prefix</th><th>Seconds</th><th>Route Changes</th></tr>";
+
+            for (var i = 0; i < flapList.length; i++) {
+                let duration = flapList[i].LastSeen - flapList[i].FirstSeen;
+                html += "<tr>";
+                html += "<td>" + flapList[i].Prefix + "</td>";
+                html += "<td>" + duration + "</td>";
+                html += "<td>" + flapList[i].TotalCount + "</td>";
+                html += "</tr>";
+            }
+            html += "</table>";
+            document.getElementById("box").innerHTML = html;
+
+        }).catch(function (error) {
+            clearInterval(refreshInterval);
+            alert("Could not communicate with server: " + error);
+        });
+
+    }, 5000);
+
+
+
+</script>
+
+</html>
