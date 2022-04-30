@@ -6,7 +6,7 @@
         #prefixTable {
             font-family: Arial, Helvetica, sans-serif;
             border-collapse: collapse;
-            width: 100%;
+            width: 40%;
         }
 
         #prefixTable td,
@@ -57,9 +57,6 @@
 <script>
     let getFlapAlertedVersionFunction = async () => {
         const response = fetch("../version");
-        if (response.status !== 200) {
-            throw new Error("non-200 response");
-        }
         let data = await response.text();
         return data;
     }
