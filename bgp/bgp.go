@@ -46,7 +46,7 @@ func fourByteAsnCap(asn uint32) []byte {
 func StartBGP(asn uint32, updates chan *UserUpdate) {
 	listener, err := net.Listen("tcp", ":1790")
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("[FATAL]", err.Error())
 	}
 	debugPrintln("Listening")
 	defer listener.Close()

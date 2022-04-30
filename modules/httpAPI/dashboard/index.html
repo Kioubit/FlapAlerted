@@ -1,22 +1,65 @@
 <!DOCTYPE html>
 <html>
-<h2 style="margin-bottom:0.2em">FlapAlertedPro</h2>
-<h3 style="margin-top:0em">Live Data</h3>
+
+<head>
+    <style>
+        #prefixTable {
+            font-family: Arial, Helvetica, sans-serif;
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+        #prefixTable td,
+        #prefixTable th {
+            border: 1px solid #ddd;
+            padding: 8px;
+        }
+
+        #prefixTable tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+
+        #prefixTable tr:hover {
+            background-color: #ddd;
+        }
+
+        #prefixTable th {
+            padding-top: 12px;
+            padding-bottom: 12px;
+            text-align: left;
+            background-color: #c04c09;
+            color: white;
+        }
+    </style>
+</head>
+
+<body>
+    <h2 style="margin-bottom:0.2em">FlapAlertedPro by Kioubit</h2>
+    <h3 style="margin-top:0em">Live Data</h3>
 
 
-<div class="chartBox" style="width: 25em; height: 25em;">
-    <canvas id="gauge"></canvas>
-</div>
+    <div class="chartBox" style="width: 25em; height: 25em;">
+        <canvas id="gauge"></canvas>
+    </div>
 
-<canvas id="chartFlapCount" width="10em" height="2em"></canvas>
-<canvas id="chartRouteCount" width="10em" height="2em"></canvas>
-<canvas id="chartRoute" width="10em" height="2em"></canvas>
+    <canvas id="chartFlapCount" width="10em" height="2em"></canvas>
+    <canvas id="chartRouteCount" width="10em" height="2em"></canvas>
+    <canvas id="chartRoute" width="10em" height="2em"></canvas>
 
-<br>
-<div id="box"></div>
-<a href="/flaps/active">List of all flapping prefixes</a>
+    <br>
+
+    <div id="prefixTableBox"></div>
+    <br>
+    <a href="../flaps/active">List of all paths for the flapping prefixes</a>
+    <div id="version"></div>
+</body>
 <script src="chart.js"></script>
 <script>
+
+    let version = getFlapAlertedVersion();
+    let versionBox = document.getElementById("version");
+    versionBox.innerHTML = "Version: Kioubit FlapAlertedPro" + version;
+
     const ctxFlapCount = document.getElementById('chartFlapCount').getContext('2d');
     const ctxRouteCount = document.getElementById('chartRouteCount').getContext('2d');
     const ctxRoute = document.getElementById('chartRoute').getContext('2d');
@@ -153,11 +196,7 @@
     })
 
 
-
-
-
-
-
+    //Begin Gauge
 
     // setup
     const data = {
@@ -272,13 +311,7 @@
     const gougeChart = new Chart(document.getElementById("gauge"), config);
 
 
-
-
-
-
-
-
-
+    //End Gauge
 
 
     function addToChart(liveChart, point) {
@@ -301,20 +334,10 @@
     var avgDerivArr = [];
     var newCount = 0;
     var oldCount = 0;
-    var refreshInterval = setInterval(function () {
-        /*
-        fetch("/flaps/metrics").then(function (response) {
-            return response.json();
-        }).then(function (json) {
-            addToChart(liveRouteChart, json.ActiveFlapTotalPathChangeCount);
-            addToChart(liveFlapChart, json.ActiveFlapCount);
-        }).catch(function (error) {
-            clearInterval(refreshInterval);
-            alert("Could not communicate with server: " + error);
-        });
-        */
-
-        fetch("/flaps/active/compact").then(function (response) {
+    updateInfo();
+    var refreshInterval = setInterval(updateInfo, 5000);
+    function updateInfo() {
+        fetch("../flaps/active/compact").then(function (response) {
             return response.json();
         }).then(function (json) {
             for (const key in json) {
@@ -384,29 +407,33 @@
 
 
 
-            var html = "<table border='1|1'>";
-            html += "<tr><th>Prefix</th><th>Seconds</th><th>Route Changes</th></tr>";
-
+            var prefixTableHtml = '<table id="customers"><tr><th>Prefix</th><th>Seconds</th><th>Route Changes</th></tr>';
             for (var i = 0; i < flapList.length; i++) {
                 let duration = flapList[i].LastSeen - flapList[i].FirstSeen;
-                html += "<tr>";
-                html += "<td>" + flapList[i].Prefix + "</td>";
-                html += "<td>" + duration + "</td>";
-                html += "<td>" + flapList[i].TotalCount + "</td>";
-                html += "</tr>";
+                prefixTableHtml += "<tr>";
+                prefixTableHtml += "<td>" + flapList[i].Prefix + "</td>";
+                prefixTableHtml += "<td>" + duration + "</td>";
+                prefixTableHtml += "<td>" + flapList[i].TotalCount + "</td>";
+                prefixTableHtml += "</tr>";
             }
-            html += "</table>";
-            document.getElementById("box").innerHTML = html;
+            prefixTableHtml += "</table>";
+            document.getElementById("prefixTableBox").innerHTML = prefixTableHtml;
 
         }).catch(function (error) {
             clearInterval(refreshInterval);
             alert("Could not communicate with server: " + error);
         });
 
-    }, 5000);
+    }
 
 
-
+    function getFlapAlertedVersion() {
+        fetch("../version").then(function (response) {
+            return response;
+        }).catch(function (error) {
+            console.log(error)
+        });
+    }
 </script>
 
 </html>

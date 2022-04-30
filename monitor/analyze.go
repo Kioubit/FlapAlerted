@@ -204,7 +204,7 @@ func pathsEqual(path1, path2 bgp.AsPath) bool {
 func toNetCidr(prefix []byte, prefixlenBits int, isV6 bool) string {
 	defer func() {
 		if r := recover(); r != nil {
-			log.Println("Warning: BGP data format error")
+			log.Println("[WARNING] BGP data format error")
 		}
 	}()
 
@@ -243,5 +243,6 @@ func updateDropper(updateChannel chan *bgp.UserUpdate) {
 			<-updateChannel
 		}
 	}
+	log.Println("[INFO] Recovered")
 	atomic.StoreInt32(&updateDropperRunning, int32(0))
 }

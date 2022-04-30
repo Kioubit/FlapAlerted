@@ -11,5 +11,6 @@ COPY --from=build /bin/FlapAlertedPro /bin/FlapAlertedPro
 
 EXPOSE 1790:1790
 EXPOSE 8699:8699
+EXPOSE 8700:8700
 LABEL description="FlapAlertedPro"
 ENTRYPOINT ["/bin/FlapAlertedPro"]

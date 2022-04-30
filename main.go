@@ -4,12 +4,13 @@ import (
 	_ "FlapAlertedPro/modules"
 	"FlapAlertedPro/monitor"
 	"fmt"
+	"log"
 	"os"
 	"strconv"
 	"time"
 )
 
-var Version = "1.5"
+var Version = "1.6"
 
 func main() {
 	fmt.Println("FlapAlertedPro", Version, "by Kioubit.dn42")
@@ -93,7 +94,7 @@ func main() {
 	fmt.Println("Detecting a flap if the route to a prefix changes within", defaultPeriod, "seconds at least", defaultCounter, "time(s)")
 	fmt.Println("ASN:", defaultAsn, "| AddPath Capability:", doAddPath, "| Keep per-peer State:", doPerPeerState, "| Notify once:", notifyOnce, "| Debug:", doDebug)
 
-	fmt.Println("Started")
+	log.Println("Started")
 	monitor.StartMonitoring(uint32(defaultAsn), int64(defaultPeriod), uint64(defaultCounter), doAddPath, doPerPeerState, doDebug, notifyOnce)
 }
 

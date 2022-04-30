@@ -6,7 +6,7 @@
 ### Setup notes
 
 The program will listen on port 1790 for incoming BGP sessions (passive mode - no outgoing connections).
-Peering multiple nodes with a single FlapAlertedPro instance is also possible in most cases. The 'multihop' mode in your BGP daemon (i.e BIRD) should be enabled to allow for running this program on the same host. Note that with the latest BIRD there is a bug that requires using another IP address that belongs to the host (for example an IP from a dymmy interface) for it to correctly send bgp information to a local FlapAlertedPro instance.
+Peering multiple nodes with a single FlapAlertedPro instance is also possible in most cases. The 'multihop' mode in your BGP daemon (i.e BIRD) should be enabled to allow for running this program on the same host. Note that with BIRD there is a bug that requires using another IP address that belongs to the host (for example an IP from a dymmy interface) for it to correctly send bgp information to a local FlapAlertedPro instance.
 
 
 ### Commandline arguments
@@ -43,3 +43,6 @@ Provides the following http API endpoints on port `8699`:
 - `/flaps/active`
 - `/flaps/metrics`
 - `/flaps/metrics/prometheus`
+
+#### mod_tcpNotify (Disabled by default)
+Listens for tcp connections on port `8700` and sends a json object for every flap containing more information about the event.
