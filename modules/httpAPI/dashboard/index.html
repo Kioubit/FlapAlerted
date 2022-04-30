@@ -55,6 +55,14 @@
 </body>
 <script src="chart.js"></script>
 <script>
+    let getFlapAlertedVersionFunction = async () => {
+        const response = fetch("../version");
+        if (response.status !== 200) {
+            throw new Error("non-200 response");
+        }
+        let data = await response.text();
+        return data;
+    }
     let versionBox = document.getElementById("version");
     versionBox.innerHTML = "Version: Kioubit FlapAlertedPro ";
     getFlapAlertedVersionFunction().then((data) => {
@@ -428,17 +436,5 @@
         });
 
     }
-
-
-    let getFlapAlertedVersionFunction = async () => {
-        const response = fetch("../version");
-        if (response.status !== 200) {
-            throw new Error("non-200 response");
-        }
-        let data = await response.text();
-        return data;
-    }
-
 </script>
-
 </html>
