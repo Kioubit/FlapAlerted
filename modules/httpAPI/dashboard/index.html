@@ -56,7 +56,7 @@
 <script src="chart.js"></script>
 <script>
     let getFlapAlertedVersionFunction = async () => {
-        const response = fetch("../version");
+        const response = await fetch("../version");
         let data = await response.text();
         return data;
     }
