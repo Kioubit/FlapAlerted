@@ -55,10 +55,13 @@
 </body>
 <script src="chart.js"></script>
 <script>
-
-    let version = getFlapAlertedVersion();
     let versionBox = document.getElementById("version");
-    versionBox.innerHTML = "Version: Kioubit FlapAlertedPro" + version;
+    versionBox.innerHTML = "Version: Kioubit FlapAlertedPro ";
+    getFlapAlertedVersionFunction().then((data) => {
+        versionBox.innerHTML += data;
+    }).catch((err) => {
+        versionBox.innerHTML += "N/A";
+    });
 
     const ctxFlapCount = document.getElementById('chartFlapCount').getContext('2d');
     const ctxRouteCount = document.getElementById('chartRouteCount').getContext('2d');
@@ -407,7 +410,7 @@
 
 
 
-            var prefixTableHtml = '<table id="customers"><tr><th>Prefix</th><th>Seconds</th><th>Route Changes</th></tr>';
+            var prefixTableHtml = '<table id="prefixTable"><tr><th>Prefix</th><th>Seconds</th><th>Route Changes</th></tr>';
             for (var i = 0; i < flapList.length; i++) {
                 let duration = flapList[i].LastSeen - flapList[i].FirstSeen;
                 prefixTableHtml += "<tr>";
@@ -427,13 +430,15 @@
     }
 
 
-    function getFlapAlertedVersion() {
-        fetch("../version").then(function (response) {
-            return response;
-        }).catch(function (error) {
-            console.log(error)
-        });
+    let getFlapAlertedVersionFunction = async () => {
+        const response = fetch("../version");
+        if (response.status !== 200) {
+            throw new Error("non-200 response");
+        }
+        let data = await response.text();
+        return data;
     }
+
 </script>
 
 </html>
