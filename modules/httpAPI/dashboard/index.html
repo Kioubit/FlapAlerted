@@ -1,11 +1,12 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <title>FlapAlertedPro</title>
     <style>
         #prefixTable {
+            width: 100%;
             font-family: Arial, Helvetica, sans-serif;
             border-collapse: collapse;
-            width: 40%;
         }
 
         #prefixTable td,
@@ -29,29 +30,47 @@
             background-color: #c04c09;
             color: white;
         }
+
+        .headerDiv {
+            height: 16em !important;
+            display: inline-block;
+            /*border: 1px solid red; */
+            width: 50%;
+            box-sizing: border-box;
+        }
+
+        #wrapper {
+            box-sizing: border-box;
+            /* border: 1px solid blue; */
+        }
     </style>
 </head>
 
 <body>
     <h2 style="margin-bottom:0.2em">FlapAlertedPro by Kioubit</h2>
     <h3 style="margin-top:0em">Live Data</h3>
-
-    <div id="justgage"></div>
-
-    <div class="chartBox" style="width: 25em; height: 25em;">
-        <canvas id="gauge"></canvas>
+    <div>
+        <div style="height: 16em; padding-bottom: 16em;" id="wrapper">
+            <!-- Must be written in one line-->
+            <div class="headerDiv">
+                <div style="height: 16em; overflow: hidden;" id="justgage"></div>
+            </div>
+            <div style="float: right;" class="headerDiv">
+                <div style="height: 16em; overflow: auto;" id="prefixTableBox"></div>
+            </div>
+        </div>
+        <div style="clear: both;"></div>
+        <div>
+            <canvas id="chartFlapCount" width="10em" height="2em"></canvas>
+            <canvas id="chartRouteCount" width="10em" height="2em"></canvas>
+            <canvas id="chartRoute" width="10em" height="2em"></canvas>
+            <br><br>
+            <a id="PathListLink" href="../flaps/active" target="_blank">List of all paths for the flapping prefixes</a>
+            <div id="version"></div>
+        </div>
     </div>
 
-    <canvas id="chartFlapCount" width="10em" height="2em"></canvas>
-    <canvas id="chartRouteCount" width="10em" height="2em"></canvas>
-    <canvas id="chartRoute" width="10em" height="2em"></canvas>
-
-    <br>
-
-    <div id="prefixTableBox"></div>
-    <br>
-    <a id="PathListLink" href="../flaps/active" target="_blank">List of all paths for the flapping prefixes</a>
-    <div id="version"></div>
+    
 </body>
 <script src="assets/chart.js"></script>
 <script src="assets/raphael-2.1.4.min.js"></script>
@@ -68,12 +87,44 @@
     getCapabilitiesFunction().then((data) => {
         versionBox.innerHTML += data.Version;
         if (!data.UserParameters.KeepPathInfo) {
-            pathListLink.href="#";
-            pathListLink.innerText+=" (Disabled by administrator)";
+            pathListLink.href = "#";
+            pathListLink.innerText += " (Disabled by administrator)";
         }
     }).catch((err) => {
         versionBox.innerHTML += "N/A";
     });
+
+
+    var gauge = new JustGage({
+        id: "justgage",
+        value: 0,
+        min: 0,
+        max: 1000,
+        label: "Average Route Changes",
+        decimals: 2,
+        gaugeWidthScale: 0.2,
+        pointer: true,
+        relativeGaugeSize: true,
+        customSectors: {
+            percents: true, // lo and hi values are in %
+            ranges: [{
+                color: "#43bf58",
+                lo: 0,
+                hi: 10
+            },
+            {
+                color: "#f7bc08",
+                lo: 11,
+                hi: 50
+            },
+            {
+                color: "#ff3b30",
+                lo: 51,
+                hi: 100
+            }]
+        }
+    });
+
 
     const ctxFlapCount = document.getElementById('chartFlapCount').getContext('2d');
     const ctxRouteCount = document.getElementById('chartRouteCount').getContext('2d');
@@ -210,125 +261,6 @@
         plugins: [emptyChartPlugin],
     })
 
-
-    //Begin Gauge
-
-    // setup
-    const data = {
-        labels: ["Low", "High", "Extreme"],
-        datasets: [
-            {
-                label: "Gauge",
-                data: [100, 65, 35],
-                backgroundColor: [
-                    "rgba(75, 192, 192, 0.8)",
-                    "rgba(255, 206, 86, 0.8)",
-                    "rgba(255, 26, 104, 0.8)",
-                ],
-                needleValue: 0,
-                borderColor: "white",
-                borderWidth: 2,
-                cutout: "95%",
-                circumference: 180,
-                rotation: 270,
-                borderRadius: 5,
-            },
-        ],
-    };
-
-    //gaugeNeedle
-    const gaugeNeedle = {
-        id: "gaugeNeedle",
-        afterDatasetDraw(chart, args, options) {
-            const {
-                ctx,
-                config,
-                data,
-                chartArea: { top, right, bottom, left, width, height },
-            } = chart;
-            ctx.save();
-            const needleValue = data.datasets[0].needleValue;
-            const dataTotal = data.datasets[0].data.reduce((a, b) => a + b, 0);
-
-            if (needleValue <= 100) {
-                var angle = Math.PI + (1 / 200) * needleValue * Math.PI;
-            } else if (needleValue <= 10000) {
-                var angle =
-                    Math.PI +
-                    (1 / 200) * 100 * Math.PI +
-                    ((1 / 200) * needleValue * Math.PI * 65) / 10000;
-            } else if (needleValue <= 1000000) {
-                var angle =
-                    Math.PI +
-                    (1 / 200) * 100 * Math.PI +
-                    ((1 / 200) * 10000 * Math.PI * 65) / 10000 +
-                    ((1 / 200) * needleValue * Math.PI * 35) / 1000000;
-            } else {
-                var angle = 0;
-            }
-
-            const cx = width / 2;
-            const cy = chart._metasets[0].data[0].y;
-
-            //needle
-            ctx.translate(cx, cy);
-            ctx.rotate(angle);
-            ctx.beginPath();
-            ctx.moveTo(0, -2);
-            ctx.lineTo(height - ctx.canvas.offsetTop - 160, 0); // change 160 value if the needle size gets changed
-            ctx.lineTo(0, 2);
-            ctx.fillStyle = "#444";
-            ctx.fill();
-            //needle dot
-            ctx.translate(-cx, -cy);
-            ctx.beginPath();
-            ctx.arc(cx, cy, 5, 0, 10);
-            ctx.fill();
-            ctx.restore();
-
-            //text
-            ctx.font = "20px Ubuntu";
-            ctx.fillStyle = "#444";
-            ctx.fillText(needleValue + " AVG RU", cx, cy + 50);
-            ctx.font = "10px Ubuntu";
-            ctx.fillText(0, 5, cy + 20);
-            ctx.fillText(100, cx, 90);
-            ctx.fillText("10k", cx + 185, 200); // change values if the position gets changed
-            ctx.fillText("1M", cx + 193, 320); // change values if the position gets changed
-            ctx.textAlign = "center";
-            ctx.restore();
-        },
-    };
-    // config
-    const config = {
-        type: "doughnut",
-        data,
-        options: {
-            plugins: {
-                legend: {
-                    display: false,
-                },
-                tooltip: {
-                    yAlign: "bottom",
-                    displayColors: false,
-                    callbacks: {
-                        label: function (tooltipItem, data, value) {
-                            return tooltipItem.label;
-                        },
-                    },
-                },
-            },
-        },
-        plugins: [gaugeNeedle],
-    };
-
-    // render init block
-    const gougeChart = new Chart(document.getElementById("gauge"), config);
-
-
-    //End Gauge
-
-
     function addToChart(liveChart, point) {
         const now = new Date();
         const timeStamp = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0')
@@ -417,9 +349,7 @@
             addToChart(liveRouteCountChart, oldCount);
             addToChart(liveRouteChart, difference);
             addToChart(liveFlapChart, flapList.length);
-            data.datasets[0].needleValue = avgDeriv;
-            gougeChart.update();
-
+            gauge.refresh(avgDeriv);
 
 
             var prefixTableHtml = '<table id="prefixTable"><tr><th>Prefix</th><th>Seconds</th><th>Route Changes</th></tr>';
@@ -431,6 +361,9 @@
                 prefixTableHtml += "<td>" + flapList[i].TotalCount + "</td>";
                 prefixTableHtml += "</tr>";
             }
+            if (flapList.length === 0) {
+                prefixTableHtml += '<tr><td colspan="3"  style="text-align:center;">Waiting for BGP flapping...</td></tr>';
+            }
             prefixTableHtml += "</table>";
             document.getElementById("prefixTableBox").innerHTML = prefixTableHtml;
 
@@ -441,4 +374,5 @@
 
     }
 </script>
+
 </html>
