@@ -24,6 +24,10 @@ The following commandline arguments are required:
 
 ### Building
 
+#### Enabling or disabling modules
+
+To enable or disable modules edit the `MODULES` variable in `Makefile` or the `Dockerfile` if you are using Docker.
+
 #### Manual
 
 You will need to have GO installed on your system. Then run `make release` and find the binary in the `bin/` directory.
@@ -32,9 +36,6 @@ You will need to have GO installed on your system. Then run `make release` and f
 
 Clone this repository and run `docker build .` to generate a docker image.
 
-##### Enabling or disabling modules
-
-To enable or disable modules edit the `MODULES` variable in `Makefile`.
 
 ***
 
@@ -50,6 +51,9 @@ Provides the following http API endpoints on port `8699`:
 - `/flaps/active`
 - `/flaps/metrics`
 - `/flaps/metrics/prometheus`
+
+It also provides the following user interface:
+- `/dashboard`
 
 #### mod_tcpNotify (Disabled by default)
 Listens for tcp connections on port `8700` and sends a json object for every flap containing more information about the event.
