@@ -1,5 +1,5 @@
-//go:build !core_doubleAddPath
-// +build !core_doubleAddPath
+//go:build core_doubleAddPath
+// +build core_doubleAddPath
 
 package monitor
 
@@ -23,6 +23,11 @@ func StartMonitoring(asn uint32, flapPeriod int64, notifytarget uint64, addpath 
 	GlobalNotifyOnce = notifyOnce
 	GlobalKeepPathInfo = keepPathInfo
 
+	// Register as module to be listed in the module list
+	RegisterModule(&Module{
+		Name: "core_doubleAddPath",
+	})
+
 	updateChannel := make(chan *bgp.UserUpdate, 11000)
 	go bgp.StartBGP(asn, updateChannel)
 	go cleanUpFlapList()
@@ -37,7 +42,7 @@ var GlobalKeepPathInfo = true
 type Flap struct {
 	Cidr                 string
 	Paths                []bgp.AsPath
-	LastPath             map[uint32]bgp.AsPath
+	LastPath             map[uint32]map[uint32]bgp.AsPath
 	PathChangeCount      uint64
 	PathChangeCountTotal uint64
 	FirstSeen            int64
@@ -135,11 +140,11 @@ func updateList(prefix []byte, prefixlenBits int, aspath []bgp.AsPath, isV6 bool
 				}
 			}
 
-			if !pathsEqual(flapList[i].LastPath[getFirstAsn(cleanPath)], cleanPath) {
+			if !pathsEqual(flapList[i].LastPath[getFirstAsn(cleanPath)][getSecondAsn(cleanPath)], cleanPath) {
 
 				if GlobalPerPeerState {
-					if len(flapList[i].LastPath[getFirstAsn(cleanPath)].Asn) == 0 {
-						flapList[i].LastPath[getFirstAsn(cleanPath)] = cleanPath
+					if len(flapList[i].LastPath[getFirstAsn(cleanPath)][getSecondAsn(cleanPath)].Asn) == 0 {
+						flapList[i].LastPath[getFirstAsn(cleanPath)][getSecondAsn(cleanPath)] = cleanPath
 						return
 					}
 				}
@@ -148,7 +153,7 @@ func updateList(prefix []byte, prefixlenBits int, aspath []bgp.AsPath, isV6 bool
 				flapList[i].PathChangeCountTotal = incrementUint64(flapList[i].PathChangeCountTotal)
 
 				flapList[i].LastSeen = currentTime
-				flapList[i].LastPath[getFirstAsn(cleanPath)] = cleanPath
+				flapList[i].LastPath[getFirstAsn(cleanPath)][getSecondAsn(cleanPath)] = cleanPath
 				if flapList[i].PathChangeCount >= NotifyTarget {
 					flapList[i].PathChangeCount = 0
 					if GlobalNotifyOnce {
@@ -171,9 +176,9 @@ func updateList(prefix []byte, prefixlenBits int, aspath []bgp.AsPath, isV6 bool
 		PathChangeCount:      1,
 		PathChangeCountTotal: 1,
 		Paths:                []bgp.AsPath{cleanPath},
-		LastPath:             make(map[uint32]bgp.AsPath),
+		LastPath:             make(map[uint32]map[uint32]bgp.AsPath),
 	}
-	newFlap.LastPath[getFirstAsn(cleanPath)] = cleanPath
+	newFlap.LastPath[getFirstAsn(cleanPath)][getSecondAsn(cleanPath)] = cleanPath
 	flapList = append(flapList, newFlap)
 }
 
@@ -183,6 +188,17 @@ func getFirstAsn(aspath bgp.AsPath) uint32 {
 			return 0
 		}
 		return aspath.Asn[0]
+	} else {
+		return 0
+	}
+}
+
+func getSecondAsn(aspath bgp.AsPath) uint32 {
+	if GlobalPerPeerState {
+		if len(aspath.Asn) < 2 {
+			return 0
+		}
+		return aspath.Asn[1]
 	} else {
 		return 0
 	}

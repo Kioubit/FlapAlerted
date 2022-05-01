@@ -1,6 +1,7 @@
 package monitor
 
 import (
+	"FlapAlertedPro/bgp"
 	"math"
 	"sync"
 )
@@ -80,8 +81,32 @@ func GetMetric() Metric {
 	}
 }
 
-func GetUserParamterers() (int64, uint64) {
-	return FlapPeriod, NotifyTarget
+type UserParameters struct {
+	FlapPeriod   int64
+	NotifyTarget uint64
+	KeepPathInfo bool
+	AddPath      bool
+	PerPeerState bool
+}
+
+func GetUserParameters() UserParameters {
+	return UserParameters{
+		FlapPeriod:   FlapPeriod,
+		NotifyTarget: NotifyTarget,
+		KeepPathInfo: GlobalKeepPathInfo,
+		AddPath:      bgp.GlobalAdpath,
+		PerPeerState: GlobalPerPeerState,
+	}
+}
+
+func GetModuleList() []string {
+	moduleMu.Lock()
+	defer moduleMu.Unlock()
+	moduleNameList := make([]string, len(moduleList))
+	for i := range moduleList {
+		moduleNameList[i] = moduleList[i].Name
+	}
+	return moduleNameList
 }
 
 func moduleCallback() {

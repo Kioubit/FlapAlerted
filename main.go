@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-var Version = "1.6"
+var Version = "2.1"
 
 func main() {
 	fmt.Println("FlapAlertedPro", Version, "by Kioubit.dn42")
@@ -19,12 +19,13 @@ func main() {
 	var defaultPeriod = 30
 	var defaultCounter = 230
 	var defaultAsn = 0
+	var keepPathInfo = false
 	var doAddPath = false
 	var doPerPeerState = false
 	var doDebug = false
 	var notifyOnce = false
 
-	if len(os.Args) == 8 {
+	if len(os.Args) == 9 {
 		var err error
 		defaultCounter, err = strconv.Atoi(os.Args[1])
 		checkError(err)
@@ -34,21 +35,28 @@ func main() {
 		checkError(err)
 
 		if checkIsInputBool(os.Args[4]) {
-			doAddPath = os.Args[4] == "true"
+			keepPathInfo = os.Args[4] == "true"
+		} else {
+			fmt.Println("keepPathInfo must be either 'true' or 'false'")
+			os.Exit(1)
+		}
+
+		if checkIsInputBool(os.Args[5]) {
+			doAddPath = os.Args[5] == "true"
 		} else {
 			fmt.Println("addPath must be either 'true' or 'false'")
 			os.Exit(1)
 		}
 
-		if checkIsInputBool(os.Args[5]) {
-			doPerPeerState = os.Args[5] == "true"
+		if checkIsInputBool(os.Args[6]) {
+			doPerPeerState = os.Args[6] == "true"
 		} else {
 			fmt.Println("perPeerState must be either 'true' or 'false'")
 			os.Exit(1)
 		}
 
-		if checkIsInputBool(os.Args[6]) {
-			notifyOnce = os.Args[6] == "true"
+		if checkIsInputBool(os.Args[7]) {
+			notifyOnce = os.Args[7] == "true"
 		} else {
 			fmt.Println("notifyOnce must be either 'true' or 'false'")
 			os.Exit(1)
@@ -58,8 +66,8 @@ func main() {
 			fmt.Println("Warning: You will only get one notification per event with this option. That way you will not know when the flap event has ended.")
 		}
 
-		if checkIsInputBool(os.Args[7]) {
-			doDebug = os.Args[7] == "true"
+		if checkIsInputBool(os.Args[8]) {
+			doDebug = os.Args[8] == "true"
 		} else {
 			fmt.Println("doDebug must be either 'true' or 'false'")
 			os.Exit(1)
@@ -74,7 +82,7 @@ func main() {
 		}
 
 	} else {
-		fmt.Println("Required commandline args missing: routeChangeCounter, flapPeriod, asn, addPath, PerPeerState, notifyOnce, debug")
+		fmt.Println("Required commandline args missing: routeChangeCounter, flapPeriod, asn, keepPathInfo, addPath, PerPeerState, notifyOnce, debug")
 		fmt.Println("Refer to the documentation for more information.")
 		os.Exit(1)
 	}
@@ -92,10 +100,10 @@ func main() {
 
 	fmt.Println("Using the following parameters:")
 	fmt.Println("Detecting a flap if the route to a prefix changes within", defaultPeriod, "seconds at least", defaultCounter, "time(s)")
-	fmt.Println("ASN:", defaultAsn, "| AddPath Capability:", doAddPath, "| Keep per-peer State:", doPerPeerState, "| Notify once:", notifyOnce, "| Debug:", doDebug)
+	fmt.Println("ASN:", defaultAsn, "| Keep Path Info:", keepPathInfo, "| AddPath Capability:", doAddPath, "| Keep per-peer State:", doPerPeerState, "| Notify once:", notifyOnce, "| Debug:", doDebug)
 
 	log.Println("Started")
-	monitor.StartMonitoring(uint32(defaultAsn), int64(defaultPeriod), uint64(defaultCounter), doAddPath, doPerPeerState, doDebug, notifyOnce)
+	monitor.StartMonitoring(uint32(defaultAsn), int64(defaultPeriod), uint64(defaultCounter), doAddPath, doPerPeerState, doDebug, notifyOnce, keepPathInfo)
 }
 
 func checkIsInputBool(input string) bool {

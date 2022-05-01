@@ -1,13 +1,9 @@
-//go:build mod_httpAPI
-// +build mod_httpAPI
-
 package httpAPI
 
 import (
 	"FlapAlertedPro/bgp"
 	"FlapAlertedPro/monitor"
 	"embed"
-	_ "embed"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -27,7 +23,7 @@ func init() {
 }
 
 func startComplete() {
-	http.HandleFunc("/version", showversion)
+	http.HandleFunc("/capabilities", showCapabilities)
 	http.Handle("/dashboard/", http.FileServer(http.FS(dashboardContent)))
 
 	http.HandleFunc("/flaps/active", activeFlaps)
@@ -40,8 +36,23 @@ func startComplete() {
 	}
 }
 
-func showversion(w http.ResponseWriter, req *http.Request) {
-	_, _ = w.Write([]byte(monitor.GetVersion()))
+func showCapabilities(w http.ResponseWriter, req *http.Request) {
+	type capabilities struct {
+		Version        string
+		Modules        []string
+		UserParameters monitor.UserParameters
+	}
+	caps := capabilities{
+		Version:        monitor.GetVersion(),
+		Modules:        monitor.GetModuleList(),
+		UserParameters: monitor.GetUserParameters(),
+	}
+	b, err := json.Marshal(caps)
+	if err != nil {
+		w.WriteHeader(500)
+		return
+	}
+	_, _ = w.Write(b)
 }
 
 func activeFlaps(w http.ResponseWriter, req *http.Request) {

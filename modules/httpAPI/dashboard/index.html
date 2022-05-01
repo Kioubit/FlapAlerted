@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html>
-
 <head>
     <style>
         #prefixTable {
@@ -37,6 +36,7 @@
     <h2 style="margin-bottom:0.2em">FlapAlertedPro by Kioubit</h2>
     <h3 style="margin-top:0em">Live Data</h3>
 
+    <div id="justgage"></div>
 
     <div class="chartBox" style="width: 25em; height: 25em;">
         <canvas id="gauge"></canvas>
@@ -50,20 +50,27 @@
 
     <div id="prefixTableBox"></div>
     <br>
-    <a href="../flaps/active" target="_blank">List of all paths for the flapping prefixes</a>
+    <a id="PathListLink" href="../flaps/active" target="_blank">List of all paths for the flapping prefixes</a>
     <div id="version"></div>
 </body>
-<script src="chart.js"></script>
+<script src="assets/chart.js"></script>
+<script src="assets/raphael-2.1.4.min.js"></script>
+<script src="assets/justgage-1.5.1.min.js"></script>
 <script>
-    let getFlapAlertedVersionFunction = async () => {
-        const response = await fetch("../version");
-        let data = await response.text();
+    let getCapabilitiesFunction = async () => {
+        const response = await fetch("../capabilities");
+        let data = await response.json();
         return data;
     }
-    let versionBox = document.getElementById("version");
+    const versionBox = document.getElementById("version");
+    const pathListLink = document.getElementById("PathListLink");
     versionBox.innerHTML = "Version: Kioubit FlapAlertedPro ";
-    getFlapAlertedVersionFunction().then((data) => {
-        versionBox.innerHTML += data;
+    getCapabilitiesFunction().then((data) => {
+        versionBox.innerHTML += data.Version;
+        if (!data.UserParameters.KeepPathInfo) {
+            pathListLink.href="#";
+            pathListLink.innerText+=" (Disabled by administrator)";
+        }
     }).catch((err) => {
         versionBox.innerHTML += "N/A";
     });

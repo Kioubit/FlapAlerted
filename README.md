@@ -16,10 +16,11 @@ The following commandline arguments are required:
 1. Number of times a route path needs to change
 2. Interval in seconds within which a notification will be triggered if the number given in [1] is exceeded.
 3. Your asn
-4. Recommended: 'false'. Whether AddPath support should be enabled. In most cases option [5] must be enabled as well for this option to produce the intended output. Values: 'true' or 'false'
-5. Recommended: 'false'. Whether separate state should be kept for each eBGP peer. Requires iBGP peering with FlapAlertedPro. (The first ASN in each path must be the eBGP peer) Values: 'true' or 'false'
-6. Recommended: 'false'. Whether to notify only once for each flapping event. Values: 'true' or 'false'
-7. Recommended: 'false'. Enable or disable debug output. Values: 'true' or 'false'
+4. Recommended: 'true'. Whether to store all possible AS paths for a flap event. Only disable if performance is a concern. Values: 'true' or 'false'
+5. Recommended: 'false'. Whether AddPath support should be enabled. In most cases option [6] must be enabled as well for this option to produce the intended output. Values: 'true' or 'false'
+6. Recommended: 'false'. Whether separate state should be kept for each eBGP peer. Requires iBGP peering with FlapAlertedPro. (The first ASN in each path must be the eBGP peer) Values: 'true' or 'false'
+7. Recommended: 'false'. Whether to notify only once for each flapping event. Values: 'true' or 'false'
+8. Recommended: 'false'. Enable or disable debug output. Values: 'true' or 'false'
 
 ### Building
 
@@ -39,10 +40,13 @@ Simple logger to STDOUT for events.
 #### mod_httpAPI
 Provides the following http API endpoints on port `8699`:
 
-- `/version`
+- `/capabilities`
 - `/flaps/active`
 - `/flaps/metrics`
 - `/flaps/metrics/prometheus`
 
 #### mod_tcpNotify (Disabled by default)
 Listens for tcp connections on port `8700` and sends a json object for every flap containing more information about the event.
+
+#### core_doubleAddPath (Disabled by default)
+Only for route collectors. Support double add path scenarios. (When peers also supply add path information)
