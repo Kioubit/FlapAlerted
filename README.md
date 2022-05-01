@@ -19,7 +19,7 @@ The following commandline arguments are required:
 4. Recommended: 'true'. Whether to store all possible AS paths for a flap event. Only disable if performance is a concern. Values: 'true' or 'false'
 5. Recommended: 'false'. Whether AddPath support should be enabled. In most cases option [6] must be enabled as well for this option to produce the intended output. Values: 'true' or 'false'
 6. Recommended: 'false'. Whether separate state should be kept for each eBGP peer. Requires iBGP peering with FlapAlertedPro. (The first ASN in each path must be the eBGP peer) Values: 'true' or 'false'
-7. Recommended: 'false'. Whether to notify only once for each flapping event. Setting this to 'false' may break the functionality of some modules. Values: 'true' or 'false'
+7. Recommended: 'false'. Whether to notify only once for each flapping event. Setting this to 'true' may break the functionality of some modules. Values: 'true' or 'false'
 8. Recommended: 'false'. Enable or disable debug output. This option produces a lot of output. Values: 'true' or 'false'
 
 ### Building
