@@ -24,9 +24,15 @@ The following commandline arguments are required:
 
 ### Building
 
+#### Manual
+
 You will need to have GO installed on your system. Then run `make release` and find the binary in the `bin/` directory.
 
-#### Enabling or disabling modules
+#### Docker
+
+Clone this repository and run `docker build .` to generate a docker image.
+
+##### Enabling or disabling modules
 
 To enable or disable modules edit the `MODULES` variable in `Makefile`.
 
