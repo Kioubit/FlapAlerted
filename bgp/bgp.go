@@ -119,6 +119,9 @@ func receiveHeadersWorker(connDetails *connectionState, ch chan []byte, asn uint
 			return
 		}
 		headers := readHeaders(newBuff, connDetails)
+		if headers == nil {
+			continue
+		}
 		for i := range headers {
 			switch headers[i].msgType {
 			case byte(msgOpen):
@@ -148,6 +151,12 @@ type connectionState struct {
 }
 
 func readHeaders(raw []byte, connDetails *connectionState) []*header {
+	defer func() {
+		if r := recover(); r != nil {
+			debugPrintln("Panic in readHeaders", r)
+		}
+	}()
+
 	var marker = []byte{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}
 	//for next
 	if connDetails.nextBuffer != nil {
@@ -173,7 +182,7 @@ func readHeaders(raw []byte, connDetails *connectionState) []*header {
 		for !bytes.Equal(raw[pos:pos+16], marker) {
 			debugPrintln("CAUTION: Trying to recover from NO BGP")
 			pos++
-			if pos > cov {
+			if pos-16 > cov {
 				debugPrintf("------------------- NO BGP FAILED RECOVERY ------------------------\n%x\n------------------- NO BGP FAILED RECOVERY ------------------------\n", raw[pos:])
 				connDetails.nextBuffer = nil
 				return headers

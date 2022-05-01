@@ -170,8 +170,10 @@ func updateList(prefix []byte, prefixlenBits int, aspath []bgp.AsPath, isV6 bool
 		FirstSeen:            currentTime,
 		PathChangeCount:      1,
 		PathChangeCountTotal: 1,
-		Paths:                []bgp.AsPath{cleanPath},
 		LastPath:             make(map[uint32]bgp.AsPath),
+	}
+	if GlobalKeepPathInfo {
+		newFlap.Paths = []bgp.AsPath{cleanPath}
 	}
 	newFlap.LastPath[getFirstAsn(cleanPath)] = cleanPath
 	flapList = append(flapList, newFlap)

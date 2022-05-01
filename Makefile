@@ -7,7 +7,7 @@ LDFLAGS=-ldflags "-X main.Version=${VERSION}"
 BUILDFLAGS=-trimpath
 
 build:
-	go build -tags=${MODULES} -o bin/${BINARY} .
+	go build -tags=${MODULES} ${BUILDFLAGS} -o bin/${BINARY} .
 
 release:
 	CGO_ENABLED=0 GOOS=linux go build -tags=${MODULES} ${BUILDFLAGS} ${LDFLAGS} -o bin/${BINARY}_${VERSION}_linux_amd64.bin .

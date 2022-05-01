@@ -1,3 +1,6 @@
+//go:build mod_httpAPI
+// +build mod_httpAPI
+
 package httpAPI
 
 import (
@@ -32,7 +35,7 @@ func startComplete() {
 	http.HandleFunc("/flaps/metrics/prometheus", prometheus)
 	err := http.ListenAndServe(":8699", nil)
 	if err != nil {
-		log.Println("["+moduleName+"] Error starting JSON api server", err.Error())
+		log.Println("["+moduleName+"] Error starting HTTP api server", err.Error())
 	}
 }
 
@@ -126,14 +129,13 @@ func metrics(w http.ResponseWriter, req *http.Request) {
 
 func prometheus(w http.ResponseWriter, req *http.Request) {
 	metric := monitor.GetMetric()
-	var output string
-	output = fmt.Sprintln("# HELP active_flap_count Number of actively flapping prefixes")
-	output = output + fmt.Sprintln("# TYPE active_flap_count gauge")
-	output = output + fmt.Sprintln("active_flap_count", metric.ActiveFlapCount)
+	output := fmt.Sprintln("# HELP active_flap_count Number of actively flapping prefixes")
+	output += fmt.Sprintln("# TYPE active_flap_count gauge")
+	output += fmt.Sprintln("active_flap_count", metric.ActiveFlapCount)
 
-	output = output + fmt.Sprintln("# HELP active_flap_route_change_count Number of path changes caused by actively flapping prefixes")
-	output = output + fmt.Sprintln("# TYPE active_flap_route_change_count gauge")
-	output = output + fmt.Sprintln("active_flap_route_change_count", metric.ActiveFlapTotalPathChangeCount)
+	output += fmt.Sprintln("# HELP active_flap_route_change_count Number of path changes caused by actively flapping prefixes")
+	output += fmt.Sprintln("# TYPE active_flap_route_change_count gauge")
+	output += fmt.Sprintln("active_flap_route_change_count", metric.ActiveFlapTotalPathChangeCount)
 
 	_, _ = w.Write([]byte(output))
 }

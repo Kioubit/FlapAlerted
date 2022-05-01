@@ -87,6 +87,7 @@ type UserParameters struct {
 	KeepPathInfo bool
 	AddPath      bool
 	PerPeerState bool
+	NotifyOnce   bool
 }
 
 func GetUserParameters() UserParameters {
@@ -96,6 +97,7 @@ func GetUserParameters() UserParameters {
 		KeepPathInfo: GlobalKeepPathInfo,
 		AddPath:      bgp.GlobalAdpath,
 		PerPeerState: GlobalPerPeerState,
+		NotifyOnce:   GlobalNotifyOnce,
 	}
 }
 
