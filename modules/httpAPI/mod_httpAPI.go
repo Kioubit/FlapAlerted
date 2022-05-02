@@ -1,6 +1,3 @@
-//go:build mod_httpAPI
-// +build mod_httpAPI
-
 package httpAPI
 
 import (
@@ -40,16 +37,7 @@ func startComplete() {
 }
 
 func showCapabilities(w http.ResponseWriter, req *http.Request) {
-	type capabilities struct {
-		Version        string
-		Modules        []string
-		UserParameters monitor.UserParameters
-	}
-	caps := capabilities{
-		Version:        monitor.GetVersion(),
-		Modules:        monitor.GetModuleList(),
-		UserParameters: monitor.GetUserParameters(),
-	}
+	caps := monitor.Getcapabilities()
 	b, err := json.Marshal(caps)
 	if err != nil {
 		w.WriteHeader(500)

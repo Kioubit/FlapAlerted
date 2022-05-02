@@ -2,6 +2,9 @@ package bgp
 
 import (
 	"encoding/binary"
+	"log"
+	"net"
+	"strconv"
 )
 
 const (
@@ -23,11 +26,12 @@ type update struct {
 */
 
 type UserUpdate struct {
-	Path   []AsPath
-	Prefix []Prefix
+	Path      []AsPath
+	rawPrefix []rawPrefix
+	Prefix    []string
 }
 
-type Prefix struct {
+type rawPrefix struct {
 	Prefix4       []byte
 	Prefix6       []byte
 	PrefixLenBits int
@@ -41,7 +45,7 @@ func parseUpdateMsgNew(raw []byte, updateChannel chan *UserUpdate) {
 	}()
 
 	userUpdate := &UserUpdate{}
-	userUpdate.Prefix = make([]Prefix, 0)
+	userUpdate.rawPrefix = make([]rawPrefix, 0)
 	userUpdate.Path = make([]AsPath, 0)
 
 	pos := 0
@@ -75,12 +79,59 @@ func parseUpdateMsgNew(raw []byte, updateChannel chan *UserUpdate) {
 	debugPrintln("NLRI length should be", len(raw)-int(tPalR)-4)
 	parsev4Nlri(nlriInfo, userUpdate)
 
+	pPrefixlist := make([]string, 0)
+	for i := range userUpdate.rawPrefix {
+		if userUpdate.rawPrefix[i].Prefix4 != nil {
+			if len(userUpdate.rawPrefix[i].Prefix4) == 0 {
+				continue
+			}
+			pPrefixlist = append(pPrefixlist, toNetCidr(userUpdate.rawPrefix[i].Prefix4, userUpdate.rawPrefix[i].PrefixLenBits, false))
+		}
+		if userUpdate.rawPrefix[i].Prefix6 != nil {
+			if len(userUpdate.rawPrefix[i].Prefix6) == 0 {
+				continue
+			}
+			pPrefixlist = append(pPrefixlist, toNetCidr(userUpdate.rawPrefix[i].Prefix6, userUpdate.rawPrefix[i].PrefixLenBits, true))
+		}
+	}
+
+	if len(pPrefixlist) == 0 {
+		return
+	}
+	userUpdate.Prefix = pPrefixlist
+
 	debugPrintln("-----------------------------------------------------------------------------")
 	debugPrintln("UPDATE UPDATE UPDATE")
 	debugPrintln("Prefixes:", userUpdate.Prefix)
 	debugPrintln("Paths:", userUpdate.Path)
 	debugPrintln("#############################################################################")
 	updateChannel <- userUpdate
+}
+
+func toNetCidr(prefix []byte, prefixlenBits int, isV6 bool) string {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Println("[WARNING] BGP data format error")
+		}
+	}()
+
+	if isV6 {
+		needBytes := 16 - len(prefix)
+		toAppend := make([]byte, needBytes)
+		prefix = append(prefix, toAppend...)
+		ip := net.IP{prefix[0], prefix[1], prefix[2], prefix[3], prefix[4], prefix[5],
+			prefix[6], prefix[7], prefix[8], prefix[9], prefix[10], prefix[11], prefix[12],
+			prefix[13], prefix[14], prefix[15]}
+		cidr := ip.String() + "/" + strconv.Itoa(prefixlenBits)
+		return cidr
+	} else {
+		needBytes := 4 - len(prefix)
+		toAppend := make([]byte, needBytes)
+		prefix = append(prefix, toAppend...)
+		ip := net.IP{prefix[0], prefix[1], prefix[2], prefix[3]}
+		cidr := ip.String() + "/" + strconv.Itoa(prefixlenBits)
+		return cidr
+	}
 }
 
 type AsPath struct {
@@ -170,7 +221,7 @@ func parseAttr(a []byte, upd *UserUpdate) {
 			//BEGIN NLRA
 			for e < attrLen {
 
-				if GlobalAdpath {
+				if GlobalAddpath {
 					e = e + 4 //skip pathid
 				}
 
@@ -185,7 +236,7 @@ func parseAttr(a []byte, upd *UserUpdate) {
 				prefixR := make([]byte, actualLen)
 				copy(prefixR, a[pos+e:pos+e+actualLen])
 				e = e + actualLen
-				prefixObj := Prefix{}
+				prefixObj := rawPrefix{}
 				if isV6 {
 					prefixObj.Prefix6 = prefixR
 				} else {
@@ -193,7 +244,7 @@ func parseAttr(a []byte, upd *UserUpdate) {
 				}
 				prefixObj.PrefixLenBits = prefixlenBits
 				debugPrintf("--------------------> Found new prefix: %x\n", prefixR)
-				upd.Prefix = append(upd.Prefix, prefixObj)
+				upd.rawPrefix = append(upd.rawPrefix, prefixObj)
 			}
 
 		}
@@ -207,7 +258,7 @@ func parseAttr(a []byte, upd *UserUpdate) {
 func parsev4Nlri(a []byte, upd *UserUpdate) {
 	e := 0
 	for e < len(a)-1 {
-		if GlobalAdpath {
+		if GlobalAddpath {
 			e = e + 4 //skip pathid
 		}
 
@@ -223,7 +274,7 @@ func parsev4Nlri(a []byte, upd *UserUpdate) {
 		copy(prefixv4, a[e:e+actualLen])
 		e = e + actualLen
 		debugPrintf("-v4--v4--v4--v4--v4--v4-> Found new prefix: %x\n", prefixv4)
-		upd.Prefix = append(upd.Prefix, Prefix{Prefix4: prefixv4, PrefixLenBits: prefixlenBits})
+		upd.rawPrefix = append(upd.rawPrefix, rawPrefix{Prefix4: prefixv4, PrefixLenBits: prefixlenBits})
 	}
 }
 

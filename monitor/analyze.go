@@ -7,17 +7,33 @@ import (
 	"FlapAlertedPro/bgp"
 	"log"
 	"math"
-	"net"
-	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
 )
 
+var (
+	GlobalPerPeerState bool   = false
+	GlobalNotifyOnce   bool   = false
+	GlobalKeepPathInfo bool   = true
+	FlapPeriod         int64  = 2
+	NotifyTarget       uint64 = 10
+)
+
+type Flap struct {
+	Cidr                 string
+	LastPath             map[uint32]bgp.AsPath
+	Paths                []bgp.AsPath
+	PathChangeCount      uint64
+	PathChangeCountTotal uint64
+	FirstSeen            int64
+	LastSeen             int64
+}
+
 func StartMonitoring(asn uint32, flapPeriod int64, notifytarget uint64, addpath bool, perPeerState bool, debug bool, notifyOnce bool, keepPathInfo bool) {
 	FlapPeriod = flapPeriod
 	NotifyTarget = notifytarget
-	bgp.GlobalAdpath = addpath
+	bgp.GlobalAddpath = addpath
 	GlobalPerPeerState = perPeerState
 	bgp.GlobalDebug = debug
 	GlobalNotifyOnce = notifyOnce
@@ -30,28 +46,9 @@ func StartMonitoring(asn uint32, flapPeriod int64, notifytarget uint64, addpath 
 	processUpdates(updateChannel)
 }
 
-var GlobalPerPeerState = false
-var GlobalNotifyOnce = false
-var GlobalKeepPathInfo = true
-
-type Flap struct {
-	Cidr                 string
-	Paths                []bgp.AsPath
-	LastPath             map[uint32]bgp.AsPath
-	PathChangeCount      uint64
-	PathChangeCountTotal uint64
-	FirstSeen            int64
-	LastSeen             int64
-}
-
 var (
 	flapList   []*Flap
 	flaplistMu sync.RWMutex
-)
-
-var (
-	FlapPeriod   int64  = 2
-	NotifyTarget uint64 = 10
 )
 
 func processUpdates(updateChannel chan *bgp.UserUpdate) {
@@ -69,23 +66,10 @@ func processUpdates(updateChannel chan *bgp.UserUpdate) {
 
 		flaplistMu.Lock()
 		for i := range update.Prefix {
-			if update.Prefix[i].Prefix4 != nil {
-				if len(update.Prefix[i].Prefix4) == 0 {
-					continue
-				}
-				updateList(update.Prefix[i].Prefix4, update.Prefix[i].PrefixLenBits, update.Path, false)
-			}
-			if update.Prefix[i].Prefix6 != nil {
-				if len(update.Prefix[i].Prefix6) == 0 {
-					continue
-				}
-				updateList(update.Prefix[i].Prefix6, update.Prefix[i].PrefixLenBits, update.Path, true)
-			}
+			updateList(update.Prefix[i], update.Path)
 		}
 		flaplistMu.Unlock()
-
 	}
-
 }
 
 func cleanUpFlapList() {
@@ -108,16 +92,11 @@ func cleanUpFlapList() {
 	}
 }
 
-func updateList(prefix []byte, prefixlenBits int, aspath []bgp.AsPath, isV6 bool) {
+func updateList(cidr string, aspath []bgp.AsPath) {
 	if len(aspath) == 0 {
 		return
 	}
 	cleanPath := aspath[0] // Multiple AS paths in a single update message currently unsupported (not used by bird)
-
-	cidr := toNetCidr(prefix, prefixlenBits, isV6)
-	if cidr == "" {
-		return
-	}
 
 	currentTime := time.Now().Unix()
 	for i := range flapList {
@@ -200,32 +179,6 @@ func pathsEqual(path1, path2 bgp.AsPath) bool {
 		}
 	}
 	return true
-}
-
-func toNetCidr(prefix []byte, prefixlenBits int, isV6 bool) string {
-	defer func() {
-		if r := recover(); r != nil {
-			log.Println("[WARNING] BGP data format error")
-		}
-	}()
-
-	if isV6 {
-		needBytes := 16 - len(prefix)
-		toAppend := make([]byte, needBytes)
-		prefix = append(prefix, toAppend...)
-		ip := net.IP{prefix[0], prefix[1], prefix[2], prefix[3], prefix[4], prefix[5],
-			prefix[6], prefix[7], prefix[8], prefix[9], prefix[10], prefix[11], prefix[12],
-			prefix[13], prefix[14], prefix[15]}
-		cidr := ip.String() + "/" + strconv.Itoa(prefixlenBits)
-		return cidr
-	} else {
-		needBytes := 4 - len(prefix)
-		toAppend := make([]byte, needBytes)
-		prefix = append(prefix, toAppend...)
-		ip := net.IP{prefix[0], prefix[1], prefix[2], prefix[3]}
-		cidr := ip.String() + "/" + strconv.Itoa(prefixlenBits)
-		return cidr
-	}
 }
 
 func incrementUint64(n uint64) uint64 {

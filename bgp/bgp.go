@@ -7,7 +7,7 @@ import (
 	"net"
 )
 
-var GlobalAdpath = false
+var GlobalAddpath = false
 
 type msgType byte
 
@@ -229,7 +229,7 @@ func getOpen(asn uint32) []byte {
 		routerID: 55,
 	}
 	var r []byte
-	if GlobalAdpath {
+	if GlobalAddpath {
 		r = constructOpen(defaultOpenParamters, mpBGP4Cap, mpBGP6Cap, fourByteAsnCap(asn), addPathCap)
 	} else {
 		r = constructOpen(defaultOpenParamters, mpBGP4Cap, mpBGP6Cap, fourByteAsnCap(asn))

@@ -46,10 +46,6 @@ func SetVersion(v string) {
 	version = v
 }
 
-func GetVersion() string {
-	return version
-}
-
 func GetActiveFlaps() []*Flap {
 	aFlap := make([]*Flap, 0)
 	flaplistMu.RLock()
@@ -81,6 +77,12 @@ func GetMetric() Metric {
 	}
 }
 
+type Capabilities struct {
+	Version        string
+	Modules        []string
+	UserParameters UserParameters
+}
+
 type UserParameters struct {
 	FlapPeriod   int64
 	NotifyTarget uint64
@@ -90,18 +92,23 @@ type UserParameters struct {
 	NotifyOnce   bool
 }
 
-func GetUserParameters() UserParameters {
-	return UserParameters{
+func Getcapabilities() Capabilities {
+	uParams := UserParameters{
 		FlapPeriod:   FlapPeriod,
 		NotifyTarget: NotifyTarget,
 		KeepPathInfo: GlobalKeepPathInfo,
-		AddPath:      bgp.GlobalAdpath,
+		AddPath:      bgp.GlobalAddpath,
 		PerPeerState: GlobalPerPeerState,
 		NotifyOnce:   GlobalNotifyOnce,
 	}
+	return Capabilities{
+		Version:        version,
+		Modules:        getModuleList(),
+		UserParameters: uParams,
+	}
 }
 
-func GetModuleList() []string {
+func getModuleList() []string {
 	moduleMu.Lock()
 	defer moduleMu.Unlock()
 	moduleNameList := make([]string, len(moduleList))
