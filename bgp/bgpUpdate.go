@@ -98,6 +98,7 @@ func parseUpdateMsgNew(raw []byte, updateChannel chan *UserUpdate) {
 	if len(pPrefixlist) == 0 {
 		return
 	}
+	userUpdate.rawPrefix = nil
 	userUpdate.Prefix = pPrefixlist
 
 	debugPrintln("-----------------------------------------------------------------------------")
