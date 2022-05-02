@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-var Version = "2.3"
+var Version = "2.4"
 
 func main() {
 	fmt.Println("FlapAlertedPro", Version, "by Kioubit.dn42")

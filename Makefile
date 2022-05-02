@@ -7,10 +7,10 @@ LDFLAGS=-ldflags "-X main.Version=${VERSION}"
 BUILDFLAGS=-trimpath
 
 build:
-	go build -tags=${MODULES} ${BUILDFLAGS} -o bin/${BINARY} .
+	go build -tags=${MODULES} ${BUILDFLAGS} ${LDFLAGS} -o bin/${BINARY}_${VERSION}.bin .
 
 release:
-	CGO_ENABLED=0 GOOS=linux go build -tags=${MODULES} ${BUILDFLAGS} ${LDFLAGS} -o bin/${BINARY}_${VERSION}_linux_amd64.bin .
+	CGO_ENABLED=0 go build -tags=${MODULES} ${BUILDFLAGS} ${LDFLAGS} -o bin/${BINARY}_${VERSION}.bin .
 
 release-all:
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags=${MODULES} ${BUILDFLAGS} ${LDFLAGS} -o bin/${BINARY}_${VERSION}_linux_amd64.bin

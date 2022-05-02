@@ -1,3 +1,6 @@
+//go:build mod_httpAPI
+// +build mod_httpAPI
+
 package httpAPI
 
 import (
