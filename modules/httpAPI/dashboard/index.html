@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html>
-
 <head>
     <title>FlapAlertedPro</title>
     <style>
@@ -44,6 +43,13 @@
             box-sizing: border-box;
             /* border: 1px solid blue; */
         }
+
+        .disabledLink {
+            color: currentColor;
+            cursor: not-allowed;
+            opacity: 0.5;
+            text-decoration: none;
+        }
     </style>
 </head>
 
@@ -63,13 +69,14 @@
                 <div style="height: 16em; overflow: auto;" id="prefixTableBox"></div>
             </div>
         </div>
-        <div style="clear: both;"></div>
+        <div style="clear: both; padding-bottom: 1em;"></div>
         <div>
             <canvas id="chartFlapCount" width="10em" height="1.7em"></canvas>
             <canvas id="chartRouteCount" width="10em" height="2em"></canvas>
             <canvas id="chartRoute" width="10em" height="2em"></canvas>
             <br><br>
             <a id="PathListLink" href="../flaps/active" target="_blank">List of all paths for the flapping prefixes</a>
+            <div id="info"></div>
             <div id="version"></div>
         </div>
     </div>
@@ -86,14 +93,17 @@
         return data;
     }
     const versionBox = document.getElementById("version");
+    const infoBox = document.getElementById("info");
     const pathListLink = document.getElementById("PathListLink");
     versionBox.innerHTML = "Version: Kioubit FlapAlertedPro ";
     getCapabilitiesFunction().then((data) => {
         versionBox.innerHTML += data.Version;
         if (!data.UserParameters.KeepPathInfo) {
-            pathListLink.href = "#";
+            pathListLink.href = '';
             pathListLink.innerText += " (Disabled by administrator)";
+            pathListLink.classList.add("disabledLink");
         }
+        infoBox.innerText = "Current settings: Detecting a flap if a route changes at least " + data.UserParameters.NotifyTarget + " times in " +  data.UserParameters.FlapPeriod + " seconds.";
     }).catch((err) => {
         versionBox.innerHTML += "N/A";
     });
