@@ -351,7 +351,14 @@
             addToChart(liveFlapChart, flapList.length);
             gauge.refresh(avgDeriv);
 
-
+            flapList.sort(function compareFn(a,b) {
+                if (a.TotalCount > b.TotalCount) {
+                    return 1;
+                } else {
+                    return -1;
+                }
+            });
+            
             var prefixTableHtml = '<table id="prefixTable"><tr><th>Prefix</th><th>Seconds</th><th>Route Changes</th></tr>';
             for (var i = 0; i < flapList.length; i++) {
                 let duration = flapList[i].LastSeen - flapList[i].FirstSeen;
