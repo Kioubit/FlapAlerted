@@ -131,7 +131,7 @@ func updateList(cidr string, aspath []bgp.AsPath) {
 			newFlap.Paths = []bgp.AsPath{cleanPath}
 		}
 		newFlap.LastPath[getFirstAsn(cleanPath)] = cleanPath
-		obj = newFlap
+		flapMap[cidr] = newFlap
 		return
 	}
 
