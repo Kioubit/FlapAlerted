@@ -17,6 +17,7 @@ var (
 	GlobalKeepPathInfo bool   = true
 	FlapPeriod         int64  = 2
 	NotifyTarget       uint64 = 10
+	GlobalDeepCopy     bool   = true
 )
 
 type Flap struct {
@@ -88,21 +89,21 @@ func cleanUpFlapList() {
 		for key, element := range flapMap {
 			if element.LastSeen+FlapPeriod <= currentTime {
 				delete(flapMap, key)
-			}
 
-			var activeIndex int
-			var found = false
-			for i := range activeFlapList {
-				if activeFlapList[i].Cidr == element.Cidr {
-					activeIndex = i
-					found = true
+				var activeIndex int
+				var found = false
+				for i := range activeFlapList {
+					if activeFlapList[i].Cidr == element.Cidr {
+						activeIndex = i
+						found = true
+					}
 				}
-			}
-			if found {
-				activeFlapList[activeIndex] = activeFlapList[len(activeFlapList)-1]
-				activeFlapList = activeFlapList[:len(activeFlapList)-1]
-			}
+				if found {
+					activeFlapList[activeIndex] = activeFlapList[len(activeFlapList)-1]
+					activeFlapList = activeFlapList[:len(activeFlapList)-1]
+				}
 
+			}
 		}
 		flapMapMu.Unlock()
 		activeFlapListMu.Unlock()
@@ -129,6 +130,8 @@ func updateList(cidr string, aspath []bgp.AsPath) {
 		}
 		if GlobalKeepPathInfo {
 			newFlap.Paths = []bgp.AsPath{cleanPath}
+		} else {
+			newFlap.Paths = make([]bgp.AsPath, 0, 0)
 		}
 		newFlap.LastPath[getFirstAsn(cleanPath)] = cleanPath
 		flapMap[cidr] = newFlap
@@ -218,4 +221,51 @@ func updateDropper(updateChannel chan *bgp.UserUpdate) {
 		}
 	}
 	log.Println("[INFO] Recovered")
+}
+
+func getActiveFlapList() []Flap {
+	aFlap := make([]Flap, 0)
+	if GlobalDeepCopy {
+		flapMapMu.RLock()
+		defer flapMapMu.RUnlock()
+	}
+	activeFlapListMu.RLock()
+	defer activeFlapListMu.RUnlock()
+	for i := range activeFlapList {
+		if GlobalDeepCopy {
+			newFlap := &Flap{
+				Cidr:                 activeFlapList[i].Cidr,
+				FirstSeen:            activeFlapList[i].FirstSeen,
+				LastSeen:             activeFlapList[i].LastSeen,
+				PathChangeCount:      activeFlapList[i].PathChangeCount,
+				PathChangeCountTotal: activeFlapList[i].PathChangeCountTotal,
+			}
+
+			newPaths := make([]bgp.AsPath, len(activeFlapList[i].Paths))
+			for p := range activeFlapList[i].Paths {
+				ASNs := activeFlapList[i].Paths[p].Asn
+				newASNs := make([]uint32, len(ASNs))
+				copy(newASNs, ASNs)
+				newPaths[p] = bgp.AsPath{
+					Asn: newASNs,
+				}
+			}
+			newFlap.Paths = newPaths
+
+			newLastPath := make(map[uint32]bgp.AsPath)
+			for k, v := range activeFlapList[i].LastPath {
+				newLastASNs := make([]uint32, len(v.Asn))
+				copy(newLastASNs, v.Asn)
+				newLastPath[k] = bgp.AsPath{Asn: newLastASNs}
+			}
+
+			newFlap.LastPath = newLastPath
+			aFlap = append(aFlap, *newFlap)
+
+		} else {
+			aFlap = append(aFlap, *activeFlapList[i])
+		}
+	}
+
+	return aFlap
 }

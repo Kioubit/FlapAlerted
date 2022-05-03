@@ -60,3 +60,6 @@ Listens for tcp connections on port `8700` and sends a json object for every fla
 
 #### core_doubleAddPath (Disabled by default)
 Only for route collectors. Support double add path scenarios. (When peers also supply add path information)
+
+#### core_unstable (Disabled by default)
+Do not enable. Squeeze out some additional performance by violating thread safety. May cause unexpected crashes in rare cases.

@@ -47,15 +47,7 @@ func SetVersion(v string) {
 }
 
 func GetActiveFlaps() []Flap {
-	aFlap := make([]Flap, 0)
-	activeFlapListMu.RLock()
-	flapMapMu.RLock()
-	defer activeFlapListMu.RUnlock()
-	defer flapMapMu.RUnlock()
-	for i := range activeFlapList {
-		aFlap = append(aFlap, *activeFlapList[i])
-	}
-	return aFlap
+	return getActiveFlapList()
 }
 
 type Metric struct {
