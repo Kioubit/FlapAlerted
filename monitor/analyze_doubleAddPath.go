@@ -8,6 +8,7 @@ import (
 	"log"
 	"math"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -54,7 +55,7 @@ func StartMonitoring(asn uint32, flapPeriod int64, notifytarget uint64, addpath 
 	go processUpdates(updateChannel)
 	go moduleCallback()
 	go bgp.StartBGP(asn, updateChannel)
-    cleanUpFlapList()
+	cleanUpFlapList()
 }
 
 var (
@@ -72,8 +73,9 @@ func processUpdates(updateChannel chan *bgp.UserUpdate) {
 		}
 
 		if len(updateChannel) > 10700 {
-			go updateDropper(updateChannel)
-
+			if atomic.CompareAndSwapInt32(&updateDropperRunning, int32(0), int32(1)) {
+				go updateDropper(updateChannel)
+			}
 		}
 
 		flapMapMu.Lock()
@@ -223,14 +225,17 @@ func incrementUint64(n uint64) uint64 {
 	return n + 1
 }
 
+var updateDropperRunning int32 = 0
+
 func updateDropper(updateChannel chan *bgp.UserUpdate) {
 	log.Println("[WARNING] Can't keep up! Dropping some updates")
 	for len(updateChannel) > 10700 {
-		for i := 0; i < 40; i++ {
+		for i := 0; i < 50; i++ {
 			<-updateChannel
 		}
 	}
 	log.Println("[INFO] Recovered")
+	atomic.StoreInt32(&updateDropperRunning, int32(0))
 }
 
 func getActiveFlapList() []Flap {
