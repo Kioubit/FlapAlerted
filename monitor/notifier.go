@@ -51,7 +51,7 @@ func GetActiveFlaps() []Flap {
 	activeFlapListMu.RLock()
 	flapMapMu.RLock()
 	defer activeFlapListMu.RUnlock()
-	defer flapMapMu.Unlock()
+	defer flapMapMu.RUnlock()
 	for i := range activeFlapList {
 		aFlap = append(aFlap, *activeFlapList[i])
 	}
