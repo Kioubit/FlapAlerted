@@ -8,7 +8,6 @@ import (
 	"log"
 	"math"
 	"sync"
-	"sync/atomic"
 	"time"
 )
 
@@ -31,6 +30,11 @@ type Flap struct {
 }
 
 func StartMonitoring(asn uint32, flapPeriod int64, notifytarget uint64, addpath bool, perPeerState bool, debug bool, notifyOnce bool, keepPathInfo bool) {
+	// DoubleAddPath
+	RegisterModule(&Module{
+		Name: "core_doubleAddPath",
+	})
+
 	FlapPeriod = flapPeriod
 	NotifyTarget = notifytarget
 	bgp.GlobalAddpath = addpath
@@ -40,6 +44,10 @@ func StartMonitoring(asn uint32, flapPeriod int64, notifytarget uint64, addpath 
 	GlobalKeepPathInfo = keepPathInfo
 
 	updateChannel := make(chan *bgp.UserUpdate, 11000)
+	// Initialize activeFlapList and flapMap
+	flapMap = make(map[string]*Flap)
+	activeFlapList = make([]*Flap, 0)
+
 	go bgp.StartBGP(asn, updateChannel)
 	go cleanUpFlapList()
 	go moduleCallback()
@@ -47,8 +55,10 @@ func StartMonitoring(asn uint32, flapPeriod int64, notifytarget uint64, addpath 
 }
 
 var (
-	flapList   []*Flap
-	flaplistMu sync.RWMutex
+	flapMap          map[string]*Flap
+	flapMapMu        sync.Mutex
+	activeFlapList   []*Flap
+	activeFlapListMu sync.RWMutex
 )
 
 func processUpdates(updateChannel chan *bgp.UserUpdate) {
@@ -59,16 +69,15 @@ func processUpdates(updateChannel chan *bgp.UserUpdate) {
 		}
 
 		if len(updateChannel) > 10700 {
-			if atomic.CompareAndSwapInt32(&updateDropperRunning, int32(0), int32(1)) {
-				go updateDropper(updateChannel)
-			}
+			go updateDropper(updateChannel)
+
 		}
 
-		flaplistMu.Lock()
+		flapMapMu.Lock()
 		for i := range update.Prefix {
 			updateList(update.Prefix[i], update.Path)
 		}
-		flaplistMu.Unlock()
+		flapMapMu.Unlock()
 	}
 }
 
@@ -79,16 +88,29 @@ func cleanUpFlapList() {
 		}
 
 		currentTime := time.Now().Unix()
-		newFlapList := make([]*Flap, 0)
-		flaplistMu.Lock()
-		for i := range flapList {
-			if flapList[i].LastSeen+FlapPeriod <= currentTime {
-				continue
+		flapMapMu.Lock()
+		activeFlapListMu.Lock()
+		for key, element := range flapMap {
+			if element.LastSeen+FlapPeriod <= currentTime {
+				delete(flapMap, key)
 			}
-			newFlapList = append(newFlapList, flapList[i])
+
+			var activeIndex int
+			var found = false
+			for i := range activeFlapList {
+				if activeFlapList[i].Cidr == element.Cidr {
+					activeIndex = i
+					found = true
+				}
+			}
+			if found {
+				activeFlapList[activeIndex] = activeFlapList[len(activeFlapList)-1]
+				activeFlapList = activeFlapList[:len(activeFlapList)-1]
+			}
+
 		}
-		flapList = newFlapList
-		flaplistMu.Unlock()
+		flapMapMu.Unlock()
+		activeFlapListMu.Unlock()
 	}
 }
 
@@ -99,63 +121,64 @@ func updateList(cidr string, aspath []bgp.AsPath) {
 	cleanPath := aspath[0] // Multiple AS paths in a single update message currently unsupported (not used by bird)
 
 	currentTime := time.Now().Unix()
-	for i := range flapList {
-		if cidr == flapList[i].Cidr {
-			if GlobalKeepPathInfo {
-				exists := false
-				for b := range flapList[i].Paths {
-					if pathsEqual(flapList[i].Paths[b], cleanPath) {
-						exists = true
-						break
-					}
-				}
-				if !exists {
-					flapList[i].Paths = append(flapList[i].Paths, cleanPath)
-				}
+	obj := flapMap[cidr]
+
+	if obj == nil {
+		newFlap := &Flap{
+			Cidr:                 cidr,
+			LastSeen:             currentTime,
+			FirstSeen:            currentTime,
+			PathChangeCount:      1,
+			PathChangeCountTotal: 1,
+			LastPath:             make(map[uint32]map[uint32]bgp.AsPath),
+		}
+		if GlobalKeepPathInfo {
+			newFlap.Paths = []bgp.AsPath{cleanPath}
+		}
+		newFlap.LastPath[getFirstAsn(cleanPath)][getSecondAsn(cleanPath)] = cleanPath
+		obj = newFlap
+		return
+	}
+
+	// If the entry already exists
+
+	if GlobalKeepPathInfo {
+		exists := false
+		for b := range flapMap[cidr].Paths {
+			if pathsEqual(flapMap[cidr].Paths[b], cleanPath) {
+				exists = true
+				break
 			}
-
-			if !pathsEqual(flapList[i].LastPath[getFirstAsn(cleanPath)][getSecondAsn(cleanPath)], cleanPath) {
-
-				if GlobalPerPeerState {
-					if len(flapList[i].LastPath[getFirstAsn(cleanPath)][getSecondAsn(cleanPath)].Asn) == 0 {
-						flapList[i].LastPath[getFirstAsn(cleanPath)][getSecondAsn(cleanPath)] = cleanPath
-						return
-					}
-				}
-
-				flapList[i].PathChangeCount = incrementUint64(flapList[i].PathChangeCount)
-				flapList[i].PathChangeCountTotal = incrementUint64(flapList[i].PathChangeCountTotal)
-
-				flapList[i].LastSeen = currentTime
-				flapList[i].LastPath[getFirstAsn(cleanPath)][getSecondAsn(cleanPath)] = cleanPath
-				if flapList[i].PathChangeCount >= NotifyTarget {
-					flapList[i].PathChangeCount = 0
-					if GlobalNotifyOnce {
-						if flapList[i].PathChangeCount >= NotifyTarget+1 {
-							return
-						}
-					}
-					go mainNotify(flapList[i])
-				}
-			}
-			return
+		}
+		if !exists {
+			flapMap[cidr].Paths = append(flapMap[cidr].Paths, cleanPath)
 		}
 	}
 
-	// If not returned above
-	newFlap := &Flap{
-		Cidr:                 cidr,
-		LastSeen:             currentTime,
-		FirstSeen:            currentTime,
-		PathChangeCount:      1,
-		PathChangeCountTotal: 1,
-		LastPath:             make(map[uint32]map[uint32]bgp.AsPath),
+	if !pathsEqual(flapMap[cidr].LastPath[getFirstAsn(cleanPath)][getSecondAsn(cleanPath)], cleanPath) {
+		if GlobalPerPeerState {
+			if len(flapMap[cidr].LastPath[getFirstAsn(cleanPath)][getSecondAsn(cleanPath)].Asn) == 0 {
+				flapMap[cidr].LastPath[getFirstAsn(cleanPath)][getSecondAsn(cleanPath)] = cleanPath
+				return
+			}
+		}
+
+		flapMap[cidr].PathChangeCount = incrementUint64(flapMap[cidr].PathChangeCount)
+		flapMap[cidr].PathChangeCountTotal = incrementUint64(flapMap[cidr].PathChangeCountTotal)
+
+		flapMap[cidr].LastSeen = currentTime
+		flapMap[cidr].LastPath[getFirstAsn(cleanPath)][getSecondAsn(cleanPath)] = cleanPath
+		if flapMap[cidr].PathChangeCount >= NotifyTarget {
+			flapMap[cidr].PathChangeCount = 0
+			if flapMap[cidr].PathChangeCountTotal > NotifyTarget {
+				activeFlapList = append(activeFlapList, flapMap[cidr])
+				if GlobalNotifyOnce {
+					return
+				}
+			}
+			go mainNotify(flapMap[cidr])
+		}
 	}
-	if GlobalKeepPathInfo {
-		newFlap.Paths = []bgp.AsPath{cleanPath}
-	}
-	newFlap.LastPath[getFirstAsn(cleanPath)][getSecondAsn(cleanPath)] = cleanPath
-	flapList = append(flapList, newFlap)
 }
 
 func getFirstAsn(aspath bgp.AsPath) uint32 {
@@ -188,8 +211,6 @@ func incrementUint64(n uint64) uint64 {
 	return n + 1
 }
 
-var updateDropperRunning int32 = 0
-
 func updateDropper(updateChannel chan *bgp.UserUpdate) {
 	log.Println("[WARNING] Can't keep up! Dropping some updates")
 	for len(updateChannel) > 10700 {
@@ -198,7 +219,6 @@ func updateDropper(updateChannel chan *bgp.UserUpdate) {
 		}
 	}
 	log.Println("[INFO] Recovered")
-	atomic.StoreInt32(&updateDropperRunning, int32(0))
 }
 
 // DoubleAddPath

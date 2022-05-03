@@ -46,14 +46,12 @@ func SetVersion(v string) {
 	version = v
 }
 
-func GetActiveFlaps() []*Flap {
-	aFlap := make([]*Flap, 0)
-	flaplistMu.RLock()
-	defer flaplistMu.RUnlock()
-	for i := range flapList {
-		if flapList[i].PathChangeCountTotal >= uint64(NotifyTarget) {
-			aFlap = append(aFlap, flapList[i])
-		}
+func GetActiveFlaps() []Flap {
+	aFlap := make([]Flap, 0)
+	activeFlapListMu.RLock()
+	defer activeFlapListMu.RUnlock()
+	for i := range activeFlapList {
+		aFlap = append(aFlap, *activeFlapList[i])
 	}
 	return aFlap
 }
