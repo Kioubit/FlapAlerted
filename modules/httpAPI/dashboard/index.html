@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>FlapAlertedPro</title>
     <style>
@@ -49,6 +50,9 @@
 <body>
     <h2 style="margin-bottom:0.2em">FlapAlertedPro by Kioubit</h2>
     <h3 style="margin-top:0em">Live Data</h3>
+    <div id="connectionLost" style="display: none;">
+        <p style="text-align:center;color:red; font-size:2em">Connection lost</p>
+    </div>
     <div>
         <div style="height: 16em; padding-bottom: 16em;" id="wrapper">
             <!-- Must be written in one line-->
@@ -61,7 +65,7 @@
         </div>
         <div style="clear: both;"></div>
         <div>
-            <canvas id="chartFlapCount" width="10em" height="2em"></canvas>
+            <canvas id="chartFlapCount" width="10em" height="1.7em"></canvas>
             <canvas id="chartRouteCount" width="10em" height="2em"></canvas>
             <canvas id="chartRoute" width="10em" height="2em"></canvas>
             <br><br>
@@ -70,7 +74,7 @@
         </div>
     </div>
 
-    
+
 </body>
 <script src="assets/chart.js"></script>
 <script src="assets/raphael-2.1.4.min.js"></script>
@@ -287,6 +291,7 @@
         fetch("../flaps/active/compact").then(function (response) {
             return response.json();
         }).then(function (json) {
+            document.getElementById('connectionLost').style.display = 'none';
             for (const key in json) {
                 let prefix = json[key].Prefix;
                 let index = flapList.findIndex((obj => obj.Prefix === prefix));
@@ -351,14 +356,14 @@
             addToChart(liveFlapChart, flapList.length);
             gauge.refresh(avgDeriv);
 
-            flapList.sort(function compareFn(a,b) {
+            flapList.sort(function compareFn(a, b) {
                 if (a.TotalCount > b.TotalCount) {
                     return -1;
                 } else {
                     return 1;
                 }
             });
-            
+
             var prefixTableHtml = '<table id="prefixTable"><tr><th>Prefix</th><th>Seconds</th><th>Route Changes</th></tr>';
             for (var i = 0; i < flapList.length; i++) {
                 let duration = flapList[i].LastSeen - flapList[i].FirstSeen;
@@ -375,8 +380,9 @@
             document.getElementById("prefixTableBox").innerHTML = prefixTableHtml;
 
         }).catch(function (error) {
-            clearInterval(refreshInterval);
-            alert("Could not communicate with server: " + error);
+            //clearInterval(refreshInterval);
+            document.getElementById('connectionLost').style.display = '';
+            console.log(error);
         });
 
     }
