@@ -20,6 +20,8 @@ var (
 	GlobalDeepCopy     bool   = true
 )
 
+const PathLimit = 1000
+
 type Flap struct {
 	Cidr                 string
 	LastPath             map[uint32]bgp.AsPath
@@ -140,20 +142,22 @@ func updateList(cidr string, aspath []bgp.AsPath) {
 
 	// If the entry already exists
 
-	if GlobalKeepPathInfo {
-		exists := false
-		for b := range obj.Paths {
-			if pathsEqual(obj.Paths[b], cleanPath) {
-				exists = true
-				break
+	if !pathsEqual(obj.LastPath[getFirstAsn(cleanPath)], cleanPath) {
+		if GlobalKeepPathInfo {
+			if len(obj.Paths) <= PathLimit {
+				exists := false
+				for b := range obj.Paths {
+					if pathsEqual(obj.Paths[b], cleanPath) {
+						exists = true
+						break
+					}
+				}
+				if !exists {
+					obj.Paths = append(obj.Paths, cleanPath)
+				}
 			}
 		}
-		if !exists {
-			obj.Paths = append(obj.Paths, cleanPath)
-		}
-	}
 
-	if !pathsEqual(obj.LastPath[getFirstAsn(cleanPath)], cleanPath) {
 		if GlobalPerPeerState {
 			if len(obj.LastPath[getFirstAsn(cleanPath)].Asn) == 0 {
 				obj.LastPath[getFirstAsn(cleanPath)] = cleanPath
@@ -166,12 +170,13 @@ func updateList(cidr string, aspath []bgp.AsPath) {
 
 		obj.LastSeen = currentTime
 		obj.LastPath[getFirstAsn(cleanPath)] = cleanPath
-		if obj.PathChangeCountTotal == NotifyTarget {
-			activeFlapListMu.Lock()
-			activeFlapList = append(activeFlapList, obj)
-			activeFlapListMu.Unlock()
-		}
-		if obj.PathChangeCount >= NotifyTarget {
+
+		if obj.PathChangeCount == NotifyTarget {
+			if obj.PathChangeCountTotal == NotifyTarget {
+				activeFlapListMu.Lock()
+				activeFlapList = append(activeFlapList, obj)
+				activeFlapListMu.Unlock()
+			}
 			obj.PathChangeCount = 0
 			if GlobalNotifyOnce {
 				if obj.PathChangeCountTotal > NotifyTarget {
