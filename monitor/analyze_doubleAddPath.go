@@ -170,11 +170,15 @@ func updateList(cidr string, aspath []bgp.AsPath) {
 		flapMap[cidr].LastPath[getFirstAsn(cleanPath)][getSecondAsn(cleanPath)] = cleanPath
 		if flapMap[cidr].PathChangeCount >= NotifyTarget {
 			flapMap[cidr].PathChangeCount = 0
-			if flapMap[cidr].PathChangeCountTotal > NotifyTarget {
-				activeFlapList = append(activeFlapList, flapMap[cidr])
-				if GlobalNotifyOnce {
+			if GlobalNotifyOnce {
+				if flapMap[cidr].PathChangeCountTotal > NotifyTarget {
 					return
 				}
+			}
+			if flapMap[cidr].PathChangeCountTotal == NotifyTarget {
+				activeFlapListMu.Lock()
+				activeFlapList = append(activeFlapList, flapMap[cidr])
+				activeFlapListMu.Unlock()
 			}
 			go mainNotify(flapMap[cidr])
 		}
