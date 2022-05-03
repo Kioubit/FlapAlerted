@@ -142,43 +142,43 @@ func updateList(cidr string, aspath []bgp.AsPath) {
 
 	if GlobalKeepPathInfo {
 		exists := false
-		for b := range flapMap[cidr].Paths {
-			if pathsEqual(flapMap[cidr].Paths[b], cleanPath) {
+		for b := range obj.Paths {
+			if pathsEqual(obj.Paths[b], cleanPath) {
 				exists = true
 				break
 			}
 		}
 		if !exists {
-			flapMap[cidr].Paths = append(flapMap[cidr].Paths, cleanPath)
+			obj.Paths = append(obj.Paths, cleanPath)
 		}
 	}
 
-	if !pathsEqual(flapMap[cidr].LastPath[getFirstAsn(cleanPath)], cleanPath) {
+	if !pathsEqual(obj.LastPath[getFirstAsn(cleanPath)], cleanPath) {
 		if GlobalPerPeerState {
-			if len(flapMap[cidr].LastPath[getFirstAsn(cleanPath)].Asn) == 0 {
-				flapMap[cidr].LastPath[getFirstAsn(cleanPath)] = cleanPath
+			if len(obj.LastPath[getFirstAsn(cleanPath)].Asn) == 0 {
+				obj.LastPath[getFirstAsn(cleanPath)] = cleanPath
 				return
 			}
 		}
 
-		flapMap[cidr].PathChangeCount = incrementUint64(flapMap[cidr].PathChangeCount)
-		flapMap[cidr].PathChangeCountTotal = incrementUint64(flapMap[cidr].PathChangeCountTotal)
+		obj.PathChangeCount = incrementUint64(obj.PathChangeCount)
+		obj.PathChangeCountTotal = incrementUint64(obj.PathChangeCountTotal)
 
-		flapMap[cidr].LastSeen = currentTime
-		flapMap[cidr].LastPath[getFirstAsn(cleanPath)] = cleanPath
-		if flapMap[cidr].PathChangeCountTotal == NotifyTarget {
+		obj.LastSeen = currentTime
+		obj.LastPath[getFirstAsn(cleanPath)] = cleanPath
+		if obj.PathChangeCountTotal == NotifyTarget {
 			activeFlapListMu.Lock()
-			activeFlapList = append(activeFlapList, flapMap[cidr])
+			activeFlapList = append(activeFlapList, obj)
 			activeFlapListMu.Unlock()
 		}
-		if flapMap[cidr].PathChangeCount >= NotifyTarget {
-			flapMap[cidr].PathChangeCount = 0
+		if obj.PathChangeCount >= NotifyTarget {
+			obj.PathChangeCount = 0
 			if GlobalNotifyOnce {
-				if flapMap[cidr].PathChangeCountTotal > NotifyTarget {
+				if obj.PathChangeCountTotal > NotifyTarget {
 					return
 				}
 			}
-			go mainNotify(flapMap[cidr])
+			go mainNotify(obj)
 		}
 	}
 }
@@ -216,7 +216,7 @@ func incrementUint64(n uint64) uint64 {
 func updateDropper(updateChannel chan *bgp.UserUpdate) {
 	log.Println("[WARNING] Can't keep up! Dropping some updates")
 	for len(updateChannel) > 10700 {
-		for i := 0; i < 50; i++ {
+		for i := 0; i < 40; i++ {
 			<-updateChannel
 		}
 	}
