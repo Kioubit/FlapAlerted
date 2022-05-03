@@ -51,10 +51,10 @@ func StartMonitoring(asn uint32, flapPeriod int64, notifytarget uint64, addpath 
 	flapMap = make(map[string]*Flap)
 	activeFlapList = make([]*Flap, 0)
 
-	go bgp.StartBGP(asn, updateChannel)
-	go cleanUpFlapList()
+	go processUpdates(updateChannel)
 	go moduleCallback()
-	processUpdates(updateChannel)
+	go bgp.StartBGP(asn, updateChannel)
+    cleanUpFlapList()
 }
 
 var (
