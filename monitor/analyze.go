@@ -51,7 +51,7 @@ func StartMonitoring(asn uint32, flapPeriod int64, notifytarget uint64, addpath 
 
 var (
 	flapMap          map[string]*Flap
-	flapMapMu        sync.Mutex
+	flapMapMu        sync.RWMutex
 	activeFlapList   []*Flap
 	activeFlapListMu sync.RWMutex
 )
@@ -123,8 +123,8 @@ func updateList(cidr string, aspath []bgp.AsPath) {
 			Cidr:                 cidr,
 			LastSeen:             currentTime,
 			FirstSeen:            currentTime,
-			PathChangeCount:      1,
-			PathChangeCountTotal: 1,
+			PathChangeCount:      0,
+			PathChangeCountTotal: 0,
 			LastPath:             make(map[uint32]bgp.AsPath),
 		}
 		if GlobalKeepPathInfo {
@@ -163,17 +163,17 @@ func updateList(cidr string, aspath []bgp.AsPath) {
 
 		flapMap[cidr].LastSeen = currentTime
 		flapMap[cidr].LastPath[getFirstAsn(cleanPath)] = cleanPath
+		if flapMap[cidr].PathChangeCountTotal == NotifyTarget {
+			activeFlapListMu.Lock()
+			activeFlapList = append(activeFlapList, flapMap[cidr])
+			activeFlapListMu.Unlock()
+		}
 		if flapMap[cidr].PathChangeCount >= NotifyTarget {
 			flapMap[cidr].PathChangeCount = 0
 			if GlobalNotifyOnce {
 				if flapMap[cidr].PathChangeCountTotal > NotifyTarget {
 					return
 				}
-			}
-			if flapMap[cidr].PathChangeCountTotal == NotifyTarget {
-				activeFlapListMu.Lock()
-				activeFlapList = append(activeFlapList, flapMap[cidr])
-				activeFlapListMu.Unlock()
 			}
 			go mainNotify(flapMap[cidr])
 		}
