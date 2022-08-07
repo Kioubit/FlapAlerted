@@ -34,14 +34,12 @@
         .headerDiv {
             height: 16em !important;
             display: inline-block;
-            /*border: 1px solid red; */
             width: 50%;
             box-sizing: border-box;
         }
 
         #wrapper {
             box-sizing: border-box;
-            /* border: 1px solid blue; */
         }
 
         .disabledLink {
@@ -61,7 +59,6 @@
     </div>
     <div>
         <div style="height: 16em; padding-bottom: 16em;" id="wrapper">
-            <!-- Must be written in one line-->
             <div class="headerDiv">
                 <div style="height: 16em; overflow: hidden;" id="justgage"></div>
             </div>
@@ -378,7 +375,7 @@
             for (var i = 0; i < flapList.length; i++) {
                 let duration = flapList[i].LastSeen - flapList[i].FirstSeen;
                 prefixTableHtml += "<tr>";
-                prefixTableHtml += "<td>" + flapList[i].Prefix + "</td>";
+                prefixTableHtml += "<td><a href='analyze/?prefix=" + encodeURIComponent(flapList[i].Prefix) +"'>" + flapList[i].Prefix + "</a></td>";
                 prefixTableHtml += "<td>" + duration + "</td>";
                 prefixTableHtml += "<td>" + flapList[i].TotalCount + "</td>";
                 prefixTableHtml += "</tr>";
@@ -390,7 +387,6 @@
             document.getElementById("prefixTableBox").innerHTML = prefixTableHtml;
 
         }).catch(function (error) {
-            //clearInterval(refreshInterval);
             document.getElementById('connectionLost').style.display = '';
             console.log(error);
         });
