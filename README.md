@@ -1,11 +1,11 @@
 # FlapAlerted Pro
 
-## Peers with your BGP daemon to receive BGP Update messages for accurate path change information for detecting BGP flapping
+## Receives BGP Update messages by peering with your BGP daemon. Accurately detects path changes and BGP flapping events.
 
 ### Setup notes
 
 The program will listen on port 1790 for incoming BGP sessions (passive mode - no outgoing connections).
-Peering multiple nodes with a single FlapAlertedPro instance is also possible in most cases. The 'multihop' mode in your BGP daemon (i.e BIRD) should be enabled to allow for running this program on the same host. Note that with BIRD there is a bug that requires using another IP address that belongs to the host (for example an IP from a dymmy interface) for it to correctly send bgp information to a local FlapAlertedPro instance.
+Peering multiple nodes with a single FlapAlertedPro instance is also possible in most cases. The 'multihop' mode in your BGP daemon (i.e. BIRD) should be enabled to allow for running this program on the same host. Note that with BIRD there is a bug that requires using another IP address that belongs to the host (for example an IP from a dummy interface) for it to correctly send bgp information to a local FlapAlertedPro instance.
 
 
 ### Commandline arguments

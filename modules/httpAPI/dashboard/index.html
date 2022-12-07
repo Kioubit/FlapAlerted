@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <title>FlapAlertedPro</title>
     <style>
@@ -53,7 +53,7 @@
 
 <body>
     <h2 style="margin-bottom:0.2em">FlapAlertedPro by Kioubit</h2>
-    <h3 style="margin-top:0em">Live Data</h3>
+    <h3 style="margin-top:0">Live Data</h3>
     <div id="connectionLost" style="display: none;">
         <p style="text-align:center;color:red; font-size:2em">Connection lost</p>
     </div>
@@ -86,8 +86,7 @@
 <script>
     let getCapabilitiesFunction = async () => {
         const response = await fetch("../capabilities");
-        let data = await response.json();
-        return data;
+        return await response.json();
     }
     const versionBox = document.getElementById("version");
     const infoBox = document.getElementById("info");
@@ -293,7 +292,7 @@
     var newCount = 0;
     var oldCount = 0;
     updateInfo();
-    var refreshInterval = setInterval(updateInfo, 5000);
+    setInterval(updateInfo, 5000);
     function updateInfo() {
         fetch("../flaps/active/compact").then(function (response) {
             return response.json();

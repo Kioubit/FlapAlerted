@@ -1,4 +1,4 @@
-<html>
+<html lang="en">
 
 <head>
     <title>Flap analysis</title>
@@ -65,7 +65,7 @@
                 return;
             }
 
-            for (var i = 0; i < json.length; i++) {
+            for (let i = 0; i < json.length; i++) {
                 if (json[i].Prefix === prefix) {
                     pJson = json[i].Paths
                     break;
@@ -78,7 +78,7 @@
             }
 
             let obj = [];
-            for (var i = 0; i < pJson.length; i++) {
+            for (let i = 0; i < pJson.length; i++) {
                 let firstasn = pJson[i].Asn[0];
 
                 if (obj[firstasn] == null) {
@@ -121,14 +121,15 @@
 
 
     function stringToColor(str) {
-        var hash = 0;
-        for (var i = 0; i < str.length; i++) {
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) {
             hash = str.charCodeAt(i) + ((hash << 5) - hash);
         }
-        var colour = '#';
-        for (var i = 0; i < 3; i++) {
-            var value = (hash >> (i * 8)) & 0xFF;
-            colour += ('00' + value.toString(16)).substr(-2);
+        let colour = '#';
+        for (let i = 0; i < 3; i++) {
+            let value = (hash >> (i * 8)) & 0xFF;
+            let rawcolour = '00' + value.toString(16);
+            colour += rawcolour.substring(rawcolour.length-2);
         }
         return colour;
     }
