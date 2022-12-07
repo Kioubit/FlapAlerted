@@ -33,15 +33,15 @@ type Flap struct {
 	LastSeen             int64
 }
 
-func StartMonitoring(asn uint32, flapPeriod int64, notifytarget uint64, addpath bool, perPeerState bool, debug bool, notifyOnce bool, keepPathInfo bool) {
+func StartMonitoring(asn uint32, flapPeriod int64, notifyTarget uint64, addPath bool, perPeerState bool, debug bool, notifyOnce bool, keepPathInfo bool) {
 	// DoubleAddPath
 	RegisterModule(&Module{
 		Name: "core_doubleAddPath",
 	})
 
 	FlapPeriod = flapPeriod
-	NotifyTarget = notifytarget
-	bgp.GlobalAddpath = addpath
+	NotifyTarget = notifyTarget
+	bgp.GlobalAddPath = addPath
 	GlobalPerPeerState = perPeerState
 	bgp.GlobalDebug = debug
 	GlobalNotifyOnce = notifyOnce
@@ -119,11 +119,11 @@ func cleanUpFlapList() {
 	}
 }
 
-func updateList(cidr string, aspath []bgp.AsPath) {
-	if len(aspath) == 0 {
+func updateList(cidr string, asPath []bgp.AsPath) {
+	if len(asPath) == 0 {
 		return
 	}
-	cleanPath := aspath[0] // Multiple AS paths in a single update message currently unsupported (not used by bird)
+	cleanPath := asPath[0] // Multiple AS paths in a single update message currently unsupported (not used by bird)
 
 	currentTime := time.Now().Unix()
 	obj := flapMap[cidr]
@@ -195,12 +195,12 @@ func updateList(cidr string, aspath []bgp.AsPath) {
 	}
 }
 
-func getFirstAsn(aspath bgp.AsPath) uint32 {
+func getFirstAsn(asPath bgp.AsPath) uint32 {
 	if GlobalPerPeerState {
-		if len(aspath.Asn) == 0 {
+		if len(asPath.Asn) == 0 {
 			return 0
 		}
-		return aspath.Asn[0]
+		return asPath.Asn[0]
 	} else {
 		return 0
 	}
@@ -279,12 +279,12 @@ func getActiveFlapList() []Flap {
 }
 
 // DoubleAddPath
-func getSecondAsn(aspath bgp.AsPath) uint32 {
+func getSecondAsn(asPath bgp.AsPath) uint32 {
 	if GlobalPerPeerState {
-		if len(aspath.Asn) < 2 {
+		if len(asPath.Asn) < 2 {
 			return 0
 		}
-		return aspath.Asn[1]
+		return asPath.Asn[1]
 	} else {
 		return 0
 	}

@@ -3,7 +3,7 @@
 BINARY=FlapAlertedPro
 MODULES=mod_httpAPI
 VERSION=`git describe --tags`
-LDFLAGS=-ldflags "-X main.Version=${VERSION}"
+LDFLAGS=-ldflags "-X main.Version=${VERSION} -s -w"
 BUILDFLAGS=-trimpath
 
 build:

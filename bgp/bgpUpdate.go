@@ -15,16 +15,6 @@ const (
 	MPNLRI_AFI_6 = 0x02
 )
 
-/*
-type update struct {
-	withdrawnRoutesLen uint16
-	withdrawnRoutes    []byte
-	totalPathAttrLen   uint16
-	attrs              []byte
-	nlri               []byte
-}
-*/
-
 type UserUpdate struct {
 	Path      []AsPath
 	rawPrefix []rawPrefix
@@ -70,7 +60,7 @@ func parseUpdateMsgNew(raw []byte, updateChannel chan *UserUpdate) {
 	}
 
 	attributes := raw[pos : pos+int(tPalR)]
-	debugPrintf("ATTRS: %x\n", attributes)
+	debugPrintf("Attributes: %x\n", attributes)
 	parseAttr(attributes, userUpdate)
 	pos += int(tPalR)
 
@@ -101,8 +91,8 @@ func parseUpdateMsgNew(raw []byte, updateChannel chan *UserUpdate) {
 	userUpdate.rawPrefix = nil
 	userUpdate.Prefix = pPrefixlist
 
-	debugPrintln("-----------------------------------------------------------------------------")
-	debugPrintln("UPDATE UPDATE UPDATE")
+	debugPrintln("#############################################################################")
+	debugPrintln("BGP UPDATE")
 	debugPrintln("Prefixes:", userUpdate.Prefix)
 	debugPrintln("Paths:", userUpdate.Path)
 	debugPrintln("#############################################################################")
@@ -140,7 +130,7 @@ type AsPath struct {
 }
 
 func parseAttr(a []byte, upd *UserUpdate) {
-	debugPrintln(":BEGIN ATTRS:")
+	debugPrintln(":BEGIN ATTRIBUTES:")
 
 	pos := 0
 	for pos < len(a)-1 {
@@ -169,12 +159,12 @@ func parseAttr(a []byte, upd *UserUpdate) {
 			pos++
 		}
 
-		debugPrintln("ATTRLEN", attrLen)
+		debugPrintln("AttrLen value:", attrLen)
 		switch attrType {
 		case BA_AS_PATH:
 			e := 0
 			for e < attrLen {
-				debugPrintln("as=path=pass", e, attrLen)
+				debugPrintln("As path attrLen value:", e, attrLen)
 				debugPrintf("%x\n", a[pos:pos+attrLen])
 				segType := a[pos+e]
 				e++
@@ -183,7 +173,7 @@ func parseAttr(a []byte, upd *UserUpdate) {
 				}
 
 				segLen := int(uint8(a[pos+e]))
-				debugPrintln("ASes in the path", segLen)
+				debugPrintln("Number of ASNs in the path", segLen)
 				e++
 
 				newAsPath := AsPath{}
@@ -193,7 +183,7 @@ func parseAttr(a []byte, upd *UserUpdate) {
 					e += 4
 				}
 				upd.Path = append(upd.Path, newAsPath)
-				debugPrintln("found path", newAsPath)
+				debugPrintln("Found path", newAsPath)
 			}
 		case BA_MP_REACH_NLRI:
 			var isV6 = true
@@ -222,7 +212,7 @@ func parseAttr(a []byte, upd *UserUpdate) {
 			//BEGIN NLRA
 			for e < attrLen {
 
-				if GlobalAddpath {
+				if GlobalAddPath {
 					e = e + 4 //skip pathid
 				}
 
@@ -244,7 +234,7 @@ func parseAttr(a []byte, upd *UserUpdate) {
 					prefixObj.Prefix4 = prefixR
 				}
 				prefixObj.PrefixLenBits = prefixlenBits
-				debugPrintf("--------------------> Found new prefix: %x\n", prefixR)
+				debugPrintf("--> Found new prefix: %x\n", prefixR)
 				upd.rawPrefix = append(upd.rawPrefix, prefixObj)
 			}
 
@@ -259,7 +249,7 @@ func parseAttr(a []byte, upd *UserUpdate) {
 func parsev4Nlri(a []byte, upd *UserUpdate) {
 	e := 0
 	for e < len(a)-1 {
-		if GlobalAddpath {
+		if GlobalAddPath {
 			e = e + 4 //skip pathid
 		}
 
@@ -274,7 +264,7 @@ func parsev4Nlri(a []byte, upd *UserUpdate) {
 		prefixv4 := make([]byte, actualLen)
 		copy(prefixv4, a[e:e+actualLen])
 		e = e + actualLen
-		debugPrintf("-v4--v4--v4--v4--v4--v4-> Found new prefix: %x\n", prefixv4)
+		debugPrintf("--> Found new prefix (v4): %x\n", prefixv4)
 		upd.rawPrefix = append(upd.rawPrefix, rawPrefix{Prefix4: prefixv4, PrefixLenBits: prefixlenBits})
 	}
 }

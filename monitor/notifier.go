@@ -84,12 +84,12 @@ type UserParameters struct {
 	NotifyOnce   bool
 }
 
-func Getcapabilities() Capabilities {
+func GetCapabilities() Capabilities {
 	uParams := UserParameters{
 		FlapPeriod:   FlapPeriod,
 		NotifyTarget: NotifyTarget,
 		KeepPathInfo: GlobalKeepPathInfo,
-		AddPath:      bgp.GlobalAddpath,
+		AddPath:      bgp.GlobalAddPath,
 		PerPeerState: GlobalPerPeerState,
 		NotifyOnce:   GlobalNotifyOnce,
 	}

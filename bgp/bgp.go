@@ -7,7 +7,7 @@ import (
 	"net"
 )
 
-var GlobalAddpath = false
+var GlobalAddPath = false
 
 type msgType byte
 
@@ -39,7 +39,7 @@ var addPathCap = []byte{0x45, 0x08, 0x00, 0x01, 0x01, 0x01, 0x00, 0x02, 0x01, 0x
 
 func fourByteAsnCap(asn uint32) []byte {
 	a := []byte{0x41, 0x04}
-	a = append(a, uint32tobyte(asn)...)
+	a = append(a, uint32toByte(asn)...)
 	return a
 }
 
@@ -61,7 +61,7 @@ func StartBGP(asn uint32, updates chan *UserUpdate) {
 	}
 }
 
-func rawUpdateMesageWorker(channel chan *[]byte, user chan *UserUpdate) {
+func rawUpdateMessageWorker(channel chan *[]byte, user chan *UserUpdate) {
 	for {
 		u := <-channel
 		if u == nil {
@@ -83,7 +83,7 @@ func newBGPConnection(conn net.Conn, asn uint32, updates chan *UserUpdate) {
 		if r := recover(); r != nil {
 			debugPrintln("Panic", r)
 			if conn != nil {
-				conn.Close()
+				_ = conn.Close()
 				close(rawChannel)
 				close(connDetails.rawUpdateBytesChan)
 			}
@@ -91,7 +91,7 @@ func newBGPConnection(conn net.Conn, asn uint32, updates chan *UserUpdate) {
 	}()
 
 	for i := 0; i < workerCount; i++ {
-		go rawUpdateMesageWorker(connDetails.rawUpdateBytesChan, updates)
+		go rawUpdateMessageWorker(connDetails.rawUpdateBytesChan, updates)
 	}
 
 	const BGPBuffSize = 10000 * 1000
@@ -126,18 +126,18 @@ func receiveHeadersWorker(connDetails *connectionState, ch chan []byte, asn uint
 			switch headers[i].msgType {
 			case byte(msgOpen):
 				debugPrintln("Received BGP OPEN Message. Replying with OPEN")
-				conn.Write(getOpen(asn))
+				_, _ = conn.Write(getOpen(asn))
 			case byte(msgKeepAlive):
 				debugPrintln("Received BGP KEEPALIVE Message")
-				conn.Write(addHeader(make([]byte, 0), msgKeepAlive))
+				_, _ = conn.Write(addHeader(make([]byte, 0), msgKeepAlive))
 			case byte(msgUpdate):
-				debugPrintln("received BGP UPDATE MESSAGE", len(headers[i].msg))
+				debugPrintln("Received BGP UPDATE MESSAGE", len(headers[i].msg))
 				debugPrintf("%x\n", headers[i].msg)
 				connDetails.rawUpdateBytesChan <- &headers[i].msg
 			default:
-				debugPrintln("Received BGP UNKNOWN Message. Closing connection")
+				debugPrintln("Received unknown BGP Message. Closing connection")
 				debugPrintln("BGP Error notification")
-				conn.Close()
+				_ = conn.Close()
 				return
 			}
 		}
@@ -153,14 +153,14 @@ type connectionState struct {
 func readHeaders(raw []byte, connDetails *connectionState) []*header {
 	defer func() {
 		if r := recover(); r != nil {
-			debugPrintln("Panic in readHeaders", r)
+			debugPrintln("Panic in readHeaders()", r)
 		}
 	}()
 
 	var marker = []byte{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}
-	//for next
+
 	if connDetails.nextBuffer != nil {
-		debugPrintln("nextBuf not nil")
+		debugPrintln("nextBuffer is not nil")
 		raw = append(connDetails.nextBuffer, raw...)
 		connDetails.nextBuffer = nil
 	}
@@ -171,9 +171,8 @@ func readHeaders(raw []byte, connDetails *connectionState) []*header {
 	debugPrintf("%x\n", raw)
 
 	for pos < cov {
-		//for next
 		if cov-pos < 19-1 {
-			debugPrintln("smaller than 19", cov, pos)
+			debugPrintln("cov-pos is smaller than 18", cov, pos)
 			connDetails.nextBuffer = raw[pos:]
 			return headers
 		}
@@ -183,19 +182,19 @@ func readHeaders(raw []byte, connDetails *connectionState) []*header {
 			debugPrintln("CAUTION: Trying to recover from NO BGP")
 			pos++
 			if pos+16 > cov {
-				debugPrintf("------------------- NO BGP FAILED RECOVERY ------------------------\n%x\n------------------- NO BGP FAILED RECOVERY ------------------------\n", raw[pos:])
+				debugPrintf("---> No BGP recovery", raw[pos:])
 				connDetails.nextBuffer = nil
 				return headers
 			}
 		}
 		pos += 16
 
-		nextLenght := make([]byte, 2)
-		nextLenght[0] = raw[pos]
+		nextLength := make([]byte, 2)
+		nextLength[0] = raw[pos]
 		pos++
-		nextLenght[1] = raw[pos]
+		nextLength[1] = raw[pos]
 		pos++
-		l := binary.BigEndian.Uint16(nextLenght)
+		l := binary.BigEndian.Uint16(nextLength)
 		debugPrintln("Total Length:", l)
 		newHeader.length = l
 
@@ -204,7 +203,6 @@ func readHeaders(raw []byte, connDetails *connectionState) []*header {
 
 		realLength := l - 19
 
-		//for next
 		if cov-pos < int(realLength)-1 {
 			debugPrintln("smaller than realLength", cov, pos, realLength)
 			connDetails.nextBuffer = raw[pos-19:]
@@ -221,18 +219,17 @@ func readHeaders(raw []byte, connDetails *connectionState) []*header {
 }
 
 func getOpen(asn uint32) []byte {
-
-	defaultOpenParamters := open{
+	defaultOpenParameters := open{
 		version:  0x4,
 		asn:      []byte{0x5b, 0xa0},
 		holdTime: 240,
 		routerID: 55,
 	}
 	var r []byte
-	if GlobalAddpath {
-		r = constructOpen(defaultOpenParamters, mpBGP4Cap, mpBGP6Cap, fourByteAsnCap(asn), addPathCap)
+	if GlobalAddPath {
+		r = constructOpen(defaultOpenParameters, mpBGP4Cap, mpBGP6Cap, fourByteAsnCap(asn), addPathCap)
 	} else {
-		r = constructOpen(defaultOpenParamters, mpBGP4Cap, mpBGP6Cap, fourByteAsnCap(asn))
+		r = constructOpen(defaultOpenParameters, mpBGP4Cap, mpBGP6Cap, fourByteAsnCap(asn))
 	}
 	result := addHeader(r, msgOpen)
 	return result
@@ -241,7 +238,7 @@ func getOpen(asn uint32) []byte {
 func addHeader(raw []byte, tp msgType) []byte {
 	var marker = []byte{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}
 	l := uint16(len(raw) + 16 + 2 + 1)
-	marker = append(marker, uint16tobyte(l)...)
+	marker = append(marker, uint16toByte(l)...)
 	marker = append(marker, byte(tp))
 	marker = append(marker, raw...)
 	return marker
@@ -251,8 +248,8 @@ func constructOpen(o open, capabilities ...[]byte) []byte {
 	result := make([]byte, 0)
 	result = append(result, o.version)
 	result = append(result, o.asn...)
-	result = append(result, uint16tobyte(o.holdTime)...)
-	result = append(result, uint32tobyte(o.routerID)...)
+	result = append(result, uint16toByte(o.holdTime)...)
+	result = append(result, uint32toByte(o.routerID)...)
 
 	tempH := make([]byte, 0)
 	temp := make([]byte, 0)
@@ -262,8 +259,8 @@ func constructOpen(o open, capabilities ...[]byte) []byte {
 	for _, c := range capabilities {
 		temp = append(temp, c...)
 	}
-	tlen := uint8(len(temp))
-	tempH = append(tempH, tlen) // capabilities length
+	tLen := uint8(len(temp))
+	tempH = append(tempH, tLen) // capabilities length
 
 	tempH = append(tempH, temp...)
 
@@ -272,13 +269,13 @@ func constructOpen(o open, capabilities ...[]byte) []byte {
 	return result
 }
 
-func uint16tobyte(i uint16) []byte {
+func uint16toByte(i uint16) []byte {
 	b := make([]byte, 2)
 	binary.BigEndian.PutUint16(b, i)
 	return b
 }
 
-func uint32tobyte(i uint32) []byte {
+func uint32toByte(i uint32) []byte {
 	b := make([]byte, 4)
 	binary.BigEndian.PutUint32(b, i)
 	return b

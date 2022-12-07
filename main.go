@@ -13,7 +13,7 @@ import (
 var Version = "3.1"
 
 func main() {
-	fmt.Println("FlapAlertedPro", Version, "by Kioubit.dn42")
+	fmt.Println("FlapAlertedPro", Version)
 	monitor.SetVersion(Version)
 
 	var defaultPeriod = 30
@@ -62,10 +62,6 @@ func main() {
 			os.Exit(1)
 		}
 
-		if notifyOnce {
-			fmt.Println("Warning: You will only get one notification per event with this option. That way you will not know when the flap event has ended.")
-		}
-
 		if checkIsInputBool(os.Args[8]) {
 			doDebug = os.Args[8] == "true"
 		} else {
@@ -74,15 +70,13 @@ func main() {
 		}
 
 		if doDebug {
-			fmt.Println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-			fmt.Println("CAUTION: You have enabled debug mode. This will generate a _ton_ of debug messages.")
-			fmt.Println("Exit the program if this is a mistake. Waiting 10 seconds...")
-			fmt.Println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+			fmt.Println("CAUTION: You have enabled debug mode. This will generate a lot of debug messages and impact performance.")
+			fmt.Println("Waiting 10 seconds before continuing..")
 			time.Sleep(10 * time.Second)
 		}
 
 	} else {
-		fmt.Println("Required commandline args missing: routeChangeCounter, flapPeriod, asn, keepPathInfo, addPath, PerPeerState, notifyOnce, debug")
+		fmt.Println("Required commandline arguments missing: routeChangeCounter, flapPeriod, asn, keepPathInfo, addPath, PerPeerState, notifyOnce, debug")
 		fmt.Println("Refer to the documentation for more information.")
 		os.Exit(1)
 	}

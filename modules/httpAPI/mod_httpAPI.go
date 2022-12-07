@@ -40,7 +40,7 @@ func startComplete() {
 }
 
 func showCapabilities(w http.ResponseWriter, req *http.Request) {
-	caps := monitor.Getcapabilities()
+	caps := monitor.GetCapabilities()
 	b, err := json.Marshal(caps)
 	if err != nil {
 		w.WriteHeader(500)
