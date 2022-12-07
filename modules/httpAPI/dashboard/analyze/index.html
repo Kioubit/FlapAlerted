@@ -55,7 +55,7 @@
     })
 
     function display() {
-        fetch("../flaps/active").then(function (response) {
+        fetch("../../flaps/active").then(function (response) {
             return response.json();
         }).then(function (json) {
             let pJson;
@@ -66,7 +66,7 @@
             }
 
             for (var i = 0; i < json.length; i++) {
-                if (json[i].Prefix == prefix) {
+                if (json[i].Prefix === prefix) {
                     pJson = json[i].Paths
                     break;
                 }
