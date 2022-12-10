@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"time"
 )
 
 var Version = "3.2"
@@ -66,6 +67,12 @@ func main() {
 		fmt.Println("Error: No modules enabled during compilation!")
 		fmt.Printf("It is recommended to use the included Makefile")
 		os.Exit(1)
+	}
+
+	if conf.Debug {
+		fmt.Println("WARNING: Debug mode has been activated which will generate a lot of output")
+		fmt.Println("Waiting for 10 seconds...")
+		time.Sleep(10 * time.Second)
 	}
 
 	if conf.NotifyOnce {

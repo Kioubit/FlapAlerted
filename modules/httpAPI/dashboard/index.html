@@ -54,7 +54,7 @@
 
 <body>
     <h2 style="margin-bottom:0.2em">FlapAlertedPro by Kioubit</h2>
-    <h3 style="margin-top:0">Live Data</h3>
+    <h3 id="dataInfo" style="margin-top:0">Live Data</h3>
     <div id="connectionLost" style="display: none;">
         <p style="text-align:center;color:red; font-size:2em">Connection lost</p>
     </div>
@@ -97,10 +97,16 @@
         versionBox.innerHTML += data.Version;
         if (!data.UserParameters.KeepPathInfo) {
             pathListLink.href = '';
-            pathListLink.innerText += " (Disabled by administrator)";
+            pathListLink.innerText += " (Disabled by the administrator)";
             pathListLink.classList.add("disabledLink");
         }
-        infoBox.innerText = "Current settings: Detecting a flap if a route changes at least " + data.UserParameters.NotifyTarget + " times in " +  data.UserParameters.FlapPeriod + " seconds.";
+        if (data.UserParameters.NotifyTarget === 0) {
+            infoBox.innerText = "Current settings: Displaying every BGP Update received (This does not indicate flapping). Removing old entries after "+ data.UserParameters.FlapPeriod + " seconds.";
+            document.getElementById("dataInfo").innerText = "Live Data -- All BGP Updates";
+        } else {
+            infoBox.innerText = "Current settings: Detecting a flap if a route changes at least " + data.UserParameters.NotifyTarget + " times in " + data.UserParameters.FlapPeriod + " seconds.";
+            document.getElementById("dataInfo").innerText = "Live Data";
+        }
     }).catch((err) => {
         versionBox.innerHTML += "N/A";
     });

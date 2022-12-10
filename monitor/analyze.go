@@ -139,8 +139,13 @@ func updateList(cidr string, asPath []bgp.AsPath) {
 		newFlap.LastPath[getFirstAsn(cleanPath)] = cleanPath
 		flapMap[cidr] = newFlap
 
+		// Notify for every Update
 		if NotifyTarget == 0 {
-			go mainNotify(obj)
+			newFlap.PathChangeCountTotal = 1
+			activeFlapListMu.Lock()
+			activeFlapList = append(activeFlapList, newFlap)
+			activeFlapListMu.Unlock()
+			go mainNotify(newFlap)
 		}
 		return
 	}
