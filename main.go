@@ -6,83 +6,59 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"reflect"
 	"strconv"
-	"time"
+	"strings"
 )
 
-var Version = "3.1"
+var Version = "3.2"
+
+type UserConfig struct {
+	RouteChangeCounter int
+	FlapPeriod         int
+	Asn                int
+	KeepPathInfo       bool
+	UseAddPath         bool
+	KeepPerPeerState   bool
+	NotifyOnce         bool
+	Debug              bool
+}
 
 func main() {
 	fmt.Println("FlapAlertedPro", Version)
 	monitor.SetVersion(Version)
+	conf := &UserConfig{}
 
-	var defaultPeriod = 30
-	var defaultCounter = 230
-	var defaultAsn = 0
-	var keepPathInfo = false
-	var doAddPath = false
-	var doPerPeerState = false
-	var doDebug = false
-	var notifyOnce = false
-
-	if len(os.Args) == 9 {
-		var err error
-		defaultCounter, err = strconv.Atoi(os.Args[1])
-		checkError(err)
-		defaultPeriod, err = strconv.Atoi(os.Args[2])
-		checkError(err)
-		defaultAsn, err = strconv.Atoi(os.Args[3])
-		checkError(err)
-
-		if checkIsInputBool(os.Args[4]) {
-			keepPathInfo = os.Args[4] == "true"
-		} else {
-			fmt.Println("keepPathInfo must be either 'true' or 'false'")
-			os.Exit(1)
+	v := reflect.Indirect(reflect.ValueOf(conf))
+	for i := 0; i < v.NumField(); i++ {
+		if len(os.Args) != v.NumField()+1 {
+			showUsage("invalid number of commandline arguments")
 		}
-
-		if checkIsInputBool(os.Args[5]) {
-			doAddPath = os.Args[5] == "true"
-		} else {
-			fmt.Println("addPath must be either 'true' or 'false'")
-			os.Exit(1)
+		field := v.Field(i)
+		fieldName := v.Type().Field(i).Name
+		switch field.Kind() {
+		case reflect.Int:
+			input, err := strconv.Atoi(os.Args[i+1])
+			if err != nil {
+				showUsage(fmt.Sprintf("The value entered for %s is not a number", fieldName))
+			}
+			if !field.OverflowInt(int64(input)) {
+				field.SetInt(int64(input))
+			} else {
+				showUsage(fmt.Sprintf("The value entered for %s is too high", fieldName))
+			}
+		case reflect.Bool:
+			if !checkIsInputBool(os.Args[i+1]) {
+				showUsage(fmt.Sprintf("The value entered for %s must be either 'true' or 'false'", fieldName))
+			}
+			input := os.Args[i+1] == "true"
+			field.SetBool(input)
 		}
-
-		if checkIsInputBool(os.Args[6]) {
-			doPerPeerState = os.Args[6] == "true"
-		} else {
-			fmt.Println("perPeerState must be either 'true' or 'false'")
-			os.Exit(1)
-		}
-
-		if checkIsInputBool(os.Args[7]) {
-			notifyOnce = os.Args[7] == "true"
-		} else {
-			fmt.Println("notifyOnce must be either 'true' or 'false'")
-			os.Exit(1)
-		}
-
-		if checkIsInputBool(os.Args[8]) {
-			doDebug = os.Args[8] == "true"
-		} else {
-			fmt.Println("doDebug must be either 'true' or 'false'")
-			os.Exit(1)
-		}
-
-		if doDebug {
-			fmt.Println("CAUTION: You have enabled debug mode. This will generate a lot of debug messages and impact performance.")
-			fmt.Println("Waiting 10 seconds before continuing..")
-			time.Sleep(10 * time.Second)
-		}
-
-	} else {
-		fmt.Println("Required commandline arguments missing: routeChangeCounter, flapPeriod, asn, keepPathInfo, addPath, PerPeerState, notifyOnce, debug")
-		fmt.Println("Refer to the documentation for more information.")
-		os.Exit(1)
 	}
 
 	empty := true
-	for _, m := range monitor.GetRegisteredModules() {
+	modules := monitor.GetRegisteredModules()
+	for _, m := range modules {
 		fmt.Println("Enabled module:", m.Name)
 		empty = false
 	}
@@ -92,12 +68,20 @@ func main() {
 		os.Exit(1)
 	}
 
+	if conf.NotifyOnce {
+		for _, m := range modules {
+			if m.Name == "mod_httpAPI" {
+				fmt.Println("WARNING: The option 'notifyOnce' has been set to true. This is not supported by the user dashboard provided by mod_httpAPI")
+			}
+		}
+	}
+
 	fmt.Println("Using the following parameters:")
-	fmt.Println("Detecting a flap if the route to a prefix changes within", defaultPeriod, "seconds at least", defaultCounter, "time(s)")
-	fmt.Println("ASN:", defaultAsn, "| Keep Path Info:", keepPathInfo, "| AddPath Capability:", doAddPath, "| Keep per-peer State:", doPerPeerState, "| Notify once:", notifyOnce, "| Debug:", doDebug)
+	fmt.Println("Detecting a flap if the route to a prefix changes within", conf.FlapPeriod, "seconds at least", conf.RouteChangeCounter, "time(s)")
+	fmt.Println("ASN:", conf.Asn, "| Keep Path Info:", conf.KeepPathInfo, "| AddPath Capability:", conf.UseAddPath, "| Keep per-peer State:", conf.KeepPerPeerState, "| Notify once:", conf.NotifyOnce, "| Debug:", conf.Debug)
 
 	log.Println("Started")
-	monitor.StartMonitoring(uint32(defaultAsn), int64(defaultPeriod), uint64(defaultCounter), doAddPath, doPerPeerState, doDebug, notifyOnce, keepPathInfo)
+	monitor.StartMonitoring(uint32(conf.Asn), int64(conf.FlapPeriod), uint64(conf.RouteChangeCounter), conf.UseAddPath, conf.KeepPerPeerState, conf.Debug, conf.NotifyOnce, conf.KeepPathInfo)
 }
 
 func checkIsInputBool(input string) bool {
@@ -107,9 +91,20 @@ func checkIsInputBool(input string) bool {
 	return false
 }
 
-func checkError(err error) {
-	if err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
+func getArguments() []string {
+	v := reflect.ValueOf(UserConfig{})
+	args := make([]string, v.NumField())
+	for i := 0; i < v.NumField(); i++ {
+		args[i] = v.Type().Field(i).Name
 	}
+	return args
+}
+
+func showUsage(reason string) {
+	if reason != "" {
+		fmt.Println("Error:", reason)
+	}
+	fmt.Println("Usage:", os.Args[0], "<"+strings.Join(getArguments(), `> <`)+`>`)
+	fmt.Println("Refer to the documentation for the meaning of those arguments")
+	os.Exit(1)
 }

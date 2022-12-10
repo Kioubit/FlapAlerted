@@ -1,5 +1,4 @@
 //go:build !core_doubleAddPath
-// +build !core_doubleAddPath
 
 package monitor
 
@@ -139,6 +138,10 @@ func updateList(cidr string, asPath []bgp.AsPath) {
 		}
 		newFlap.LastPath[getFirstAsn(cleanPath)] = cleanPath
 		flapMap[cidr] = newFlap
+
+		if NotifyTarget == 0 {
+			go mainNotify(obj)
+		}
 		return
 	}
 

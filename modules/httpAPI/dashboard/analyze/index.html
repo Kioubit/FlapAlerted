@@ -77,28 +77,32 @@
                 return;
             }
 
+            if (pJson.length === 0) {
+                alert("The analysis feature is not available as the instance has been configured not to keep path information")
+            }
+
             let obj = [];
             for (let i = 0; i < pJson.length; i++) {
-                let firstasn = pJson[i].Asn[0];
+                let firstAsn = pJson[i].Asn[0];
 
-                if (obj[firstasn] == null) {
-                    obj[firstasn] = [pJson[i].Asn];
+                if (obj[firstAsn] == null) {
+                    obj[firstAsn] = [pJson[i].Asn];
                 } else {
-                    obj[firstasn].push(pJson[i].Asn);
+                    obj[firstAsn].push(pJson[i].Asn);
                 }
             }
 
             let tableHtml = '';
 
             for (const key in obj) {
-                for (var c = 0; c < obj[key].length; c++) {
-                    for (var d = 0; d < obj[key][c].length; d++) {
+                for (let c = 0; c < obj[key].length; c++) {
+                    for (let d = 0; d < obj[key][c].length; d++) {
                         let sa = obj[key][c][d].toString();
-                        let salen = sa.length;
+                        let saLen = sa.length;
                         let gap = " ";
-                        while (salen < 10) {
+                        while (saLen < 10) {
                             gap = gap + "&nbsp;";
-                            salen++;
+                            saLen++;
                         }
                         let hexColor = stringToColor(sa);
                         let r = parseInt(hexColor.slice(1, 3), 16);
@@ -128,8 +132,8 @@
         let colour = '#';
         for (let i = 0; i < 3; i++) {
             let value = (hash >> (i * 8)) & 0xFF;
-            let rawcolour = '00' + value.toString(16);
-            colour += rawcolour.substring(rawcolour.length-2);
+            let rawColour = '00' + value.toString(16);
+            colour += rawColour.substring(rawColour.length-2);
         }
         return colour;
     }

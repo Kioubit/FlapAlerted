@@ -3,6 +3,7 @@ package bgp
 import (
 	"bytes"
 	"encoding/binary"
+	"io"
 	"log"
 	"net"
 )
@@ -49,7 +50,9 @@ func StartBGP(asn uint32, updates chan *UserUpdate) {
 		log.Fatal("[FATAL]", err.Error())
 	}
 	debugPrintln("Listening")
-	defer listener.Close()
+	defer func(listener net.Listener) {
+		_ = listener.Close()
+	}(listener)
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
@@ -99,7 +102,9 @@ func newBGPConnection(conn net.Conn, asn uint32, updates chan *UserUpdate) {
 	for {
 		n, err := conn.Read(buff)
 		if err != nil {
-			panic(err)
+			if err != io.EOF {
+				panic(err)
+			}
 		}
 		if n == 0 {
 			continue
@@ -107,7 +112,7 @@ func newBGPConnection(conn net.Conn, asn uint32, updates chan *UserUpdate) {
 
 		newBuff := make([]byte, n)
 		copy(newBuff, buff[:n])
-		debugPrintln("READ", n)
+		debugPrintln("Connection bytes read:", n)
 		rawChannel <- newBuff
 	}
 }
@@ -126,6 +131,7 @@ func receiveHeadersWorker(connDetails *connectionState, ch chan []byte, asn uint
 			switch headers[i].msgType {
 			case byte(msgOpen):
 				debugPrintln("Received BGP OPEN Message. Replying with OPEN")
+				log.Println("BGP Connection established with", conn.RemoteAddr().String())
 				_, _ = conn.Write(getOpen(asn))
 			case byte(msgKeepAlive):
 				debugPrintln("Received BGP KEEPALIVE Message")
@@ -137,6 +143,7 @@ func receiveHeadersWorker(connDetails *connectionState, ch chan []byte, asn uint
 			default:
 				debugPrintln("Received unknown BGP Message. Closing connection")
 				debugPrintln("BGP Error notification")
+				log.Println("BGP Connection lost with", conn.RemoteAddr().String())
 				_ = conn.Close()
 				return
 			}

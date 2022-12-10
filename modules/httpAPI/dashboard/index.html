@@ -46,6 +46,7 @@
             color: currentColor;
             cursor: not-allowed;
             opacity: 0.5;
+            pointer-events: none;
             text-decoration: none;
         }
     </style>
@@ -91,7 +92,7 @@
     const versionBox = document.getElementById("version");
     const infoBox = document.getElementById("info");
     const pathListLink = document.getElementById("PathListLink");
-    versionBox.innerHTML = "Version: Kioubit FlapAlertedPro ";
+    versionBox.innerHTML = "Version: FlapAlertedPro ";
     getCapabilitiesFunction().then((data) => {
         versionBox.innerHTML += data.Version;
         if (!data.UserParameters.KeepPathInfo) {
@@ -105,7 +106,7 @@
     });
 
 
-    var gauge = new JustGage({
+    let gauge = new JustGage({
         id: "justgage",
         value: 0,
         min: 0,
@@ -168,7 +169,7 @@
         }
     };
 
-    var dataFlapCount = {
+    let dataFlapCount = {
         labels: [],
         datasets: [
             {
@@ -196,7 +197,7 @@
     };
 
 
-    var dataRouteChangeCount = {
+    let dataRouteChangeCount = {
         labels: [],
         datasets: [
             {
@@ -224,7 +225,7 @@
     };
 
 
-    var dataRouteChange = {
+    let dataRouteChange = {
         labels: [],
         datasets: [
             {
@@ -253,19 +254,19 @@
 
 
 
-    var liveFlapChart = new Chart(ctxFlapCount, {
+    let liveFlapChart = new Chart(ctxFlapCount, {
         type: "line",
         data: dataFlapCount,
         plugins: [emptyChartPlugin],
     })
 
-    var liveRouteCountChart = new Chart(ctxRouteCount, {
+    let liveRouteCountChart = new Chart(ctxRouteCount, {
         type: "line",
         data: dataRouteChangeCount,
         plugins: [emptyChartPlugin],
     })
 
-    var liveRouteChart = new Chart(ctxRoute, {
+    let liveRouteChart = new Chart(ctxRoute, {
         type: "line",
         data: dataRouteChange,
         plugins: [emptyChartPlugin],
@@ -287,10 +288,10 @@
     }
 
 
-    var flapList = [];
-    var avgDerivArr = [];
-    var newCount = 0;
-    var oldCount = 0;
+    let flapList = [];
+    let avgDerivArr = [];
+    let newCount = 0;
+    let oldCount = 0;
     updateInfo();
     setInterval(updateInfo, 5000);
     function updateInfo() {
@@ -351,7 +352,7 @@
             if (avgDerivArr.length > 50) {
                 avgDerivArr.splice(0, 1);
             }
-            var avgDeriv = 0
+            let avgDeriv = 0
             for (let i = 0; i < avgDerivArr.length; i++) {
                 avgDeriv = avgDeriv + avgDerivArr[i];
             }
@@ -370,11 +371,11 @@
                 }
             });
 
-            var prefixTableHtml = '<table id="prefixTable"><tr><th>Prefix</th><th>Seconds</th><th>Route Changes</th></tr>';
-            for (var i = 0; i < flapList.length; i++) {
+            let prefixTableHtml = '<table id="prefixTable"><tr><th>Prefix</th><th>Seconds</th><th>Route Changes</th></tr>';
+            for (let i = 0; i < flapList.length; i++) {
                 let duration = flapList[i].LastSeen - flapList[i].FirstSeen;
                 prefixTableHtml += "<tr>";
-                prefixTableHtml += "<td><a href='analyze/?prefix=" + encodeURIComponent(flapList[i].Prefix) +"'>" + flapList[i].Prefix + "</a></td>";
+                prefixTableHtml += "<td><a target=\"_blank\" href='analyze/?prefix=" + encodeURIComponent(flapList[i].Prefix) +"'>" + flapList[i].Prefix + "</a></td>";
                 prefixTableHtml += "<td>" + duration + "</td>";
                 prefixTableHtml += "<td>" + flapList[i].TotalCount + "</td>";
                 prefixTableHtml += "</tr>";

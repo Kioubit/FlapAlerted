@@ -250,22 +250,22 @@ func parsev4Nlri(a []byte, upd *UserUpdate) {
 	e := 0
 	for e < len(a)-1 {
 		if GlobalAddPath {
-			e = e + 4 //skip pathid
+			e = e + 4 //skip pathId
 		}
 
-		prefixlenBits := int(uint8(a[e]))
+		prefixLenBits := int(uint8(a[e]))
 		e++
 
-		actualLen := prefixlenBits
+		actualLen := prefixLenBits
 		for actualLen%8 != 0 {
 			actualLen++
 		}
 		actualLen = actualLen / 8
-		prefixv4 := make([]byte, actualLen)
-		copy(prefixv4, a[e:e+actualLen])
+		prefixV4 := make([]byte, actualLen)
+		copy(prefixV4, a[e:e+actualLen])
 		e = e + actualLen
-		debugPrintf("--> Found new prefix (v4): %x\n", prefixv4)
-		upd.rawPrefix = append(upd.rawPrefix, rawPrefix{Prefix4: prefixv4, PrefixLenBits: prefixlenBits})
+		debugPrintf("--> Found new prefix (v4): %x\n", prefixV4)
+		upd.rawPrefix = append(upd.rawPrefix, rawPrefix{Prefix4: prefixV4, PrefixLenBits: prefixLenBits})
 	}
 }
 

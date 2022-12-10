@@ -26,24 +26,32 @@ var (
 	connListMu sync.Mutex
 )
 
+const connListMaxSize = 20
+
 func startTcpServer() {
-	listener, err := net.Listen("tcp", ":8700")
+	listener, err := net.ListenTCP("tcp", ":8700")
 	if err != nil {
 		log.Fatal("["+moduleName+"]", err.Error())
 	}
 	defer listener.Close()
 	for {
-		conn, err := listener.Accept()
+		conn, err := listener.AcceptTCP()
 		if err != nil {
 			continue
 		}
+		_ = conn.SetKeepAlive(true)
+		_ = conn.SetKeepAlivePeriod(30 * time.Second)
+
 		connListMu.Lock()
+		if len(connList) > connListMaxSize {
+			removeFromConnList(0)
+		}
 		connList = append(connList, conn)
 		connListMu.Unlock()
 	}
 }
 
-func removeFromConnlist(i int) {
+func removeFromConnList(i int) {
 	if connList[i] != nil {
 		_ = connList[i].Close()
 	}
@@ -62,7 +70,7 @@ func notify(f *monitor.Flap) {
 	for k := 0; k < len(connList); k++ {
 		_, err := connList[k].Write(js)
 		if err != nil {
-			removeFromConnlist(k)
+			removeFromConnList(k)
 			k--
 		}
 	}
