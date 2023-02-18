@@ -2,107 +2,8 @@
 <html lang="en">
 <head>
     <title>FlapAlertedPro</title>
-    <style>
-        #prefixTable {
-            width: 100%;
-            font-family: Arial, Helvetica, sans-serif;
-            border-collapse: collapse;
-        }
-
-        #prefixTable td,
-        #prefixTable th {
-            border: 1px solid #ddd;
-            padding: 8px;
-        }
-
-        #prefixTable tr:nth-child(even) {
-            background-color: #f2f2f2;
-        }
-
-        #prefixTable tr:hover {
-            background-color: #ddd;
-        }
-
-        #prefixTable th {
-            padding-top: 12px;
-            padding-bottom: 12px;
-            text-align: left;
-            background-color: #c04c09;
-            color: white;
-        }
-
-        .headerDiv {
-            height: 16em !important;
-            display: inline-block;
-            width: 50%;
-            box-sizing: border-box;
-        }
-
-        #wrapper {
-            box-sizing: border-box;
-            height: 16em;
-            padding-bottom: 16em;
-        }
-
-        .disabledLink {
-            color: currentColor;
-            cursor: not-allowed;
-            opacity: 0.5;
-            pointer-events: none;
-            text-decoration: none;
-        }
-        
-        #chartFlapCount {
-            width: 10em;
-            height: 1.7em;
-        }
-        
-        #chartRouteCount, #chartRoute {
-            width: 10em;
-            height: 2em;
-        }
-        
-        #connectionLostArea {
-            display: none;
-        }
-        
-        #connectLost {
-            text-align: center;
-            color:red;
-            font-size: 2em;
-        }
-        
-        #mainHeading {
-            margin-bottom: 0.2em;
-        }
-        
-        #justgage {
-            height: 16em;
-            overflow: hidden;
-        }
-        
-        #prefixTableBox {
-            height: 16em;
-            overflow: auto;
-        }
-        
-        .floatRight {
-            float: right;
-        }
-        
-        #dataInfo {
-            margin-top: none;
-        }
-        
-        #padding {
-            clear: both;
-            padding-bottom: 1em;
-        }
-        
-        .centerText {
-            text-align: center;
-        }
-    </style>
+    
+    <link rel="stylesheet" href="assets/css/style.css" integrity="sha384-M7r2/qL5kDteUHazfjvlljZg5t9R8ISiH1wlTsIp/vkHkSTQnLyDqAj0RIYeDcUQ">
 </head>
 
 <body>
@@ -132,9 +33,9 @@
         </div>
     </div>
 
-<script src="assets/chart.js"></script>
-<script src="assets/raphael-2.1.4.min.js"></script>
-<script src="assets/justgage-1.5.1.min.js"></script>
+<script src="assets/js/chart.js"></script>
+<script src="assets/js/raphael-2.1.4.min.js"></script>
+<script src="assets/js/justgage-1.5.1.min.js"></script>
 <script>
     let getCapabilitiesFunction = async () => {
         const response = await fetch("../capabilities");
