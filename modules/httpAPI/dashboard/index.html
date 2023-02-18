@@ -40,6 +40,8 @@
 
         #wrapper {
             box-sizing: border-box;
+            height: 16em;
+            padding-bottom: 16em;
         }
 
         .disabledLink {
@@ -49,29 +51,80 @@
             pointer-events: none;
             text-decoration: none;
         }
+        
+        #chartFlapCount {
+            width: 10em;
+            height: 1.7em;
+        }
+        
+        #chartRouteCount, #chartRoute {
+            width: 10em;
+            height: 2em;
+        }
+        
+        #connectionLostArea {
+            display: none;
+        }
+        
+        #connectLost {
+            text-align: center;
+            color:red;
+            font-size: 2em;
+        }
+        
+        #mainHeading {
+            margin-bottom: 0.2em;
+        }
+        
+        #justgage {
+            height: 16em;
+            overflow: hidden;
+        }
+        
+        #prefixTableBox {
+            height: 16em;
+            overflow: auto;
+        }
+        
+        .floatRight {
+            float: right;
+        }
+        
+        #dataInfo {
+            margin-top: none;
+        }
+        
+        #padding {
+            clear: both;
+            padding-bottom: 1em;
+        }
+        
+        .centerText {
+            text-align: center;
+        }
     </style>
 </head>
 
 <body>
-    <h2 style="margin-bottom:0.2em">FlapAlertedPro by Kioubit</h2>
-    <h3 id="dataInfo" style="margin-top:0">Live Data</h3>
-    <div id="connectionLost" style="display: none;">
-        <p style="text-align:center;color:red; font-size:2em">Connection lost</p>
+    <h2 id="mainHeading">FlapAlertedPro by Kioubit</h2>
+    <h3 id="dataInfo">Live Data</h3>
+    <div id="connectionLost" id="connectionLostArea">
+        <p id="connectLost">Connection lost</p>
     </div>
     <div>
-        <div style="height: 16em; padding-bottom: 16em;" id="wrapper">
+        <div id="wrapper">
             <div class="headerDiv">
-                <div style="height: 16em; overflow: hidden;" id="justgage"></div>
+                <div id="justgage"></div>
             </div>
-            <div style="float: right;" class="headerDiv">
-                <div style="height: 16em; overflow: auto;" id="prefixTableBox"></div>
+            <div class="headerDiv floatRight">
+                <div id="prefixTableBox"></div>
             </div>
         </div>
-        <div style="clear: both; padding-bottom: 1em;"></div>
+        <div></div>
         <div>
-            <canvas id="chartFlapCount" width="10em" height="1.7em"></canvas>
-            <canvas id="chartRouteCount" width="10em" height="2em"></canvas>
-            <canvas id="chartRoute" width="10em" height="2em"></canvas>
+            <canvas id="chartFlapCount"></canvas>
+            <canvas id="chartRouteCount"></canvas>
+            <canvas id="chartRoute"></canvas>
             <br><br>
             <a id="PathListLink" href="../flaps/active" target="_blank">List of all paths for the flapping prefixes</a>
             <div id="info"></div>
@@ -79,8 +132,6 @@
         </div>
     </div>
 
-
-</body>
 <script src="assets/chart.js"></script>
 <script src="assets/raphael-2.1.4.min.js"></script>
 <script src="assets/justgage-1.5.1.min.js"></script>
@@ -387,7 +438,7 @@
                 prefixTableHtml += "</tr>";
             }
             if (flapList.length === 0) {
-                prefixTableHtml += '<tr><td colspan="3"  style="text-align:center;">Waiting for BGP flapping...</td></tr>';
+                prefixTableHtml += '<tr><td colspan="3" class="centerText">Waiting for BGP flapping...</td></tr>';
             }
             prefixTableHtml += "</table>";
             document.getElementById("prefixTableBox").innerHTML = prefixTableHtml;
@@ -399,5 +450,5 @@
 
     }
 </script>
-
+</body>
 </html>
