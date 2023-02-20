@@ -63,7 +63,7 @@
     display: none;
 }
 
-#connectLost {
+#connectionLost {
     text-align: center;
     color:red;
     font-size: 2em;
