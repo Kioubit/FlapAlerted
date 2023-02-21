@@ -1,6 +1,6 @@
-    window.addEventListener('load', function () {
+window.addEventListener('load', function () {
     display();
-})
+});
 
 function display() {
     fetch("../../flaps/active").then(function (response) {
@@ -40,7 +40,7 @@ function display() {
             }
         }
 
-        let tableHtml = '';
+        let tableHtml = document.createElement("span");
 
         for (const key in obj) {
             for (let c = 0; c < obj[key].length; c++) {
@@ -56,13 +56,16 @@ function display() {
                     let r = parseInt(hexColor.slice(1, 3), 16);
                     let g = parseInt(hexColor.slice(3, 5), 16);
                     let b = parseInt(hexColor.slice(5, 7), 16);
-                    tableHtml += "<span style='background-color: rgba(" + r + "," + g + "," + b + "," + "0.3');>" + gap + sa + "</span>";
+                    let span = document.createElement("span");
+                    span.style.backgroundColor = "rgba(" + r + "," + g + "," + b + "," + "0.3')";
+                    span.innerHTML = gap + sa;
+                    tableHtml.appendChild(span);
                 }
-                tableHtml += "<br>";
+                tableHtml.appendChild(document.createElement("br"));
             }
-            tableHtml += "<br>"
+            tableHtml.appendChild(document.createElement("br"));
         }
-        document.getElementById("pathTable").innerHTML = tableHtml;
+        document.getElementById("pathTable").replaceChildren(tableHtml);
         document.getElementById("prefixTitle").innerHTML = "Flap analysis for " + prefix;
         document.getElementById("loader").style.display = "none";
         document.getElementById("loaderText").style.display = "none";
