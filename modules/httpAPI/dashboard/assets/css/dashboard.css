@@ -49,15 +49,26 @@
     text-decoration: none;
 }
 
-#chartFlapCount {
-    width: 10em;
-    height: 1.7em;
+#chartFlapCount-container {
+    position: relative;
+    height: 20vh;
+    width: 100vw;
 }
 
-#chartRouteCount, #chartRoute {
-    width: 10em;
-    height: 2em;
+#chartRoute-container {
+    position: relative;
+    height: 50vh;
+    width: 100vw;
 }
+
+#chartRouteCount-container {
+    position: relative;
+    height: 20vh;
+    width: 100vw;
+}
+
+
+
 
 #connectionLostArea {
     display: none;
@@ -67,6 +78,7 @@
     text-align: center;
     color:red;
     font-size: 2em;
+    display: none;
 }
 
 #mainHeading {
@@ -88,10 +100,10 @@
 }
 
 #dataInfo {
-    margin-top: none;
+    margin-top: 0;
 }
 
-#padding {
+.padding {
     clear: both;
     padding-bottom: 1em;
 }

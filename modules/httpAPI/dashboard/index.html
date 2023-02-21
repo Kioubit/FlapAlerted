@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <title>FlapAlertedPro</title>
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; style-src 'self'; style-src-elem 'self'; script-src 'self'; connect-src 'self';">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; form-action 'none'; style-src 'self'; style-src-elem 'self'; script-src 'self'; connect-src 'self';">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="assets/css/dashboard.css">
 </head>
 
@@ -22,11 +23,17 @@
                 <div id="prefixTableBox"></div>
             </div>
         </div>
-        <div id="padding"></div>
+        <div class="padding"></div>
         <div>
-            <canvas id="chartFlapCount"></canvas>
-            <canvas id="chartRouteCount"></canvas>
-            <canvas id="chartRoute"></canvas>
+            <div class="chartFlapCount-container">
+                <canvas id="chartFlapCount"></canvas>
+            </div>
+            <div class="chartRoute-container">
+                <canvas id="chartRoute"></canvas>
+            </div>
+            <div class="chartRouteCount-container">
+                <canvas id="chartRouteCount"></canvas>
+            </div>
             <br><br>
             <a id="PathListLink" href="../flaps/active" target="_blank">List of all paths for the flapping prefixes</a>
             <div id="info"></div>

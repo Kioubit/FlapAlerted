@@ -14,7 +14,7 @@ getCapabilitiesFunction().then((data) => {
         pathListLink.classList.add("disabledLink");
     }
     if (data.UserParameters.NotifyTarget === 0) {
-        infoBox.innerText = "Current settings: Displaying every BGP Update received (This does not indicate flapping). Removing old entries after "+ data.UserParameters.FlapPeriod + " seconds.";
+        infoBox.innerText = "Current settings: Displaying every BGP Update received (This does not indicate flapping). Removing entries after "+ data.UserParameters.FlapPeriod + " seconds of inactivity.";
         document.getElementById("dataInfo").innerText = "Live Data -- All BGP Updates";
     } else {
         infoBox.innerText = "Current settings: Detecting a flap if a route changes at least " + data.UserParameters.NotifyTarget + " times in " + data.UserParameters.FlapPeriod + " seconds.";
@@ -177,18 +177,27 @@ let liveFlapChart = new Chart(ctxFlapCount, {
     type: "line",
     data: dataFlapCount,
     plugins: [emptyChartPlugin],
+    options: {
+        maintainAspectRatio: false
+    },
 })
 
 let liveRouteCountChart = new Chart(ctxRouteCount, {
     type: "line",
     data: dataRouteChangeCount,
     plugins: [emptyChartPlugin],
+    options: {
+        maintainAspectRatio: false
+    },
 })
 
 let liveRouteChart = new Chart(ctxRoute, {
     type: "line",
     data: dataRouteChange,
     plugins: [emptyChartPlugin],
+    options: {
+        maintainAspectRatio: false
+    },
 })
 
 function addToChart(liveChart, point) {
@@ -213,6 +222,7 @@ let newCount = 0;
 let oldCount = 0;
 updateInfo();
 setInterval(updateInfo, 5000);
+let firstPass = true;
 function updateInfo() {
     fetch("../flaps/active/compact").then(function (response) {
         return response.json();
@@ -266,6 +276,10 @@ function updateInfo() {
         oldCount = newCount;
         newCount = 0;
 
+        if (firstPass) {
+            firstPass = false;
+            difference = 0;
+        }
 
         avgDerivArr.push(difference);
         if (avgDerivArr.length > 50) {
@@ -306,7 +320,8 @@ function updateInfo() {
         document.getElementById("prefixTableBox").innerHTML = prefixTableHtml;
 
     }).catch(function (error) {
-        document.getElementById('connectionLost').style.display = '';
+        firstPass = true;
+        document.getElementById('connectionLost').style.display = 'block';
         console.log(error);
     });
 
