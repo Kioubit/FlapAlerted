@@ -31,6 +31,10 @@
     white-space: pre;
 }
 
+#informationText {
+    display: none;
+}
+
 @-webkit-keyframes spin {
     0% {
         -webkit-transform: rotate(0deg);
@@ -48,5 +52,13 @@
 
     100% {
         transform: rotate(360deg);
+    }
+}
+
+@media print
+{
+    .no-print, .no-print *
+    {
+        display: none !important;
     }
 }

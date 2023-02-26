@@ -4,14 +4,18 @@
     <meta charset="UTF-8">
     <title>Flap analysis</title>
     <meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; form-action 'none'; style-src 'self' 'unsafe-inline'; style-src-elem 'self'; script-src 'self'; connect-src 'self';">
-    <link rel="stylesheet" href="../assets/css/analysis.css">
+    <link rel="stylesheet" href="../assets/css/analyze.css">
 </head>
 <body>
     <div id="loaderText">Please wait... This may take a while.</div>
     <div id="loader" class="loader"></div>
     <div id="prefixTitle"></div>
+    <div id="informationText">
+        <span>AS paths sorted by amount of changes (represented by the numbers before each path). Grouped by the first ASN and colorized.</span><br>
+        <button id="printButton" class="no-print">Print</button>
+    </div>
     <div id="pathTable"></div>
 
-    <script src="../assets/js/analysis.js"></script>
+    <script src="../assets/js/analyze-flap.js"></script>
 </body>
 </html>

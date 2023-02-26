@@ -1,14 +1,14 @@
-//go:build mod_httpAPI
-// +build mod_httpAPI
+////go:build mod_httpAPI
+//// +build mod_httpAPI
 
 package httpAPI
 
 import (
-	"FlapAlertedPro/bgp"
 	"FlapAlertedPro/monitor"
 	"embed"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"log"
 	"net/http"
 )
@@ -27,9 +27,9 @@ func init() {
 
 func startComplete() {
 	http.HandleFunc("/capabilities", showCapabilities)
-	http.Handle("/dashboard/", http.FileServer(http.FS(dashboardContent)))
-
-	http.HandleFunc("/flaps/active", activeFlaps)
+	//http.Handle("/", http.FileServer(http.FS(dashboardContent)))
+	http.Handle("/", dashBoardHandler())
+	http.HandleFunc("/flaps/active", getActiveFlaps)
 	http.HandleFunc("/flaps/active/compact", activeFlapsCompact)
 	http.HandleFunc("/flaps/metrics", metrics)
 	http.HandleFunc("/flaps/metrics/prometheus", prometheus)
@@ -37,6 +37,12 @@ func startComplete() {
 	if err != nil {
 		log.Println("["+moduleName+"] Error starting HTTP api server", err.Error())
 	}
+}
+
+func dashBoardHandler() http.Handler {
+	fSys := fs.FS(dashboardContent)
+	html, _ := fs.Sub(fSys, "dashboard")
+	return http.FileServer(http.FS(html))
 }
 
 func showCapabilities(w http.ResponseWriter, req *http.Request) {
@@ -49,25 +55,30 @@ func showCapabilities(w http.ResponseWriter, req *http.Request) {
 	_, _ = w.Write(b)
 }
 
-func activeFlaps(w http.ResponseWriter, req *http.Request) {
+func getActiveFlaps(w http.ResponseWriter, req *http.Request) {
 
-	type activeFlap struct {
+	type jsFlap struct {
 		Prefix     string
-		Paths      []bgp.AsPath
+		Paths      []monitor.PathInfo
 		FirstSeen  int64
 		LastSeen   int64
 		TotalCount uint64
 	}
 
-	var jsonFlapList = make([]activeFlap, 0)
+	var jsonFlapList = make([]jsFlap, 0)
 	activeFlaps := monitor.GetActiveFlaps()
 	for i := range activeFlaps {
-		jsFlap := activeFlap{
+		pathList := make([]monitor.PathInfo, 0, len(activeFlaps[i].Paths))
+		for n := range activeFlaps[i].Paths {
+			pathList = append(pathList, *activeFlaps[i].Paths[n])
+		}
+
+		jsFlap := jsFlap{
 			Prefix:     activeFlaps[i].Cidr,
 			FirstSeen:  activeFlaps[i].FirstSeen,
 			LastSeen:   activeFlaps[i].LastSeen,
 			TotalCount: activeFlaps[i].PathChangeCountTotal,
-			Paths:      activeFlaps[i].Paths,
+			Paths:      pathList,
 		}
 		jsonFlapList = append(jsonFlapList, jsFlap)
 	}

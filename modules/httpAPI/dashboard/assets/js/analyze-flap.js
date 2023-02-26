@@ -3,7 +3,7 @@ window.addEventListener('load', function () {
 });
 
 function display() {
-    fetch("../../flaps/active").then(function (response) {
+    fetch("../flaps/active").then(function (response) {
         return response.json();
     }).then(function (json) {
         let pJson;
@@ -31,21 +31,25 @@ function display() {
 
         let obj = [];
         for (let i = 0; i < pJson.length; i++) {
-            let firstAsn = pJson[i].Asn[0];
-
+            let firstAsn = pJson[i].Path.Asn[0];
             if (obj[firstAsn] == null) {
-                obj[firstAsn] = [pJson[i].Asn];
+                obj[firstAsn] = [pJson[i]];
             } else {
-                obj[firstAsn].push(pJson[i].Asn);
+                obj[firstAsn].push(pJson[i]);
             }
         }
 
-        let tableHtml = '';
+        let htmlBundles = [];
 
         for (const key in obj) {
+            let elementHTML = "";
+            let totalCount = 0;
             for (let c = 0; c < obj[key].length; c++) {
-                for (let d = 0; d < obj[key][c].length; d++) {
-                    let sa = obj[key][c][d].toString();
+                let count = obj[key][c].Count;
+                totalCount += count;
+                elementHTML += count + "&nbsp;&nbsp;";
+                for (let d = 0; d < obj[key][c].Path.Asn.length; d++) {
+                    let sa = obj[key][c].Path.Asn[d].toString();
                     let saLen = sa.length;
                     let gap = " ";
                     while (saLen < 10) {
@@ -56,12 +60,27 @@ function display() {
                     let r = parseInt(hexColor.slice(1, 3), 16);
                     let g = parseInt(hexColor.slice(3, 5), 16);
                     let b = parseInt(hexColor.slice(5, 7), 16);
-                    tableHtml += "<span style='background-color: rgba(" + r + "," + g + "," + b + "," + "0.3');>" + gap + sa + "</span>";
+                    elementHTML += "<span style='background-color: rgba(" + r + "," + g + "," + b + "," + "0.3');>" + gap + sa + "</span>";
                 }
-                tableHtml += "<br>";
+                elementHTML += "<br>";
             }
-            tableHtml += "<br>";
+            elementHTML += "<br>";
+            let htmlBundle = {html: elementHTML, count: totalCount};
+            htmlBundles.push(htmlBundle);
         }
+        htmlBundles.sort((a,b)=> {
+            if (a.count < b.count) {
+                return 1;
+            }  else if (a.count > b.count) {
+                return -1;
+            }
+            return 0;
+        });
+        let tableHtml = '';
+        htmlBundles.forEach((bundle) => {
+            tableHtml += bundle.html;
+        })
+
         document.getElementById("pathTable").innerHTML = tableHtml;
         document.getElementById("prefixTitle").innerHTML = "Flap analysis for " + prefix;
         document.getElementById("loader").style.display = "none";
@@ -70,6 +89,11 @@ function display() {
         alert("Network error");
         console.log(error);
     });
+
+    document.getElementById("informationText").style.display = "block";
+    document.getElementById("printButton").onclick = function () {
+        window.print();
+    }
 }
 
 

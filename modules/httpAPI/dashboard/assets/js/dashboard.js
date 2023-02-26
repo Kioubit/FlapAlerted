@@ -1,5 +1,5 @@
 let getCapabilitiesFunction = async () => {
-    const response = await fetch("../capabilities");
+    const response = await fetch("capabilities");
     return await response.json();
 }
 const versionBox = document.getElementById("version");
@@ -224,7 +224,7 @@ updateInfo();
 setInterval(updateInfo, 5000);
 let firstPass = true;
 function updateInfo() {
-    fetch("../flaps/active/compact").then(function (response) {
+    fetch("flaps/active/compact").then(function (response) {
         return response.json();
     }).then(function (json) {
         document.getElementById('connectionLost').style.display = 'none';

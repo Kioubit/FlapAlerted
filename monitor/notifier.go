@@ -1,7 +1,7 @@
 package monitor
 
 import (
-	"FlapAlertedPro/bgp"
+	"FlapAlertedPro/config"
 	"math"
 	"sync"
 )
@@ -76,22 +76,22 @@ type Capabilities struct {
 }
 
 type UserParameters struct {
-	FlapPeriod   int64
-	NotifyTarget uint64
-	KeepPathInfo bool
-	AddPath      bool
-	PerPeerState bool
-	NotifyOnce   bool
+	FlapPeriod          int64
+	NotifyTarget        int64
+	KeepPathInfo        bool
+	AddPath             bool
+	RelevantAsnPosition int64
+	NotifyOnce          bool
 }
 
 func GetCapabilities() Capabilities {
 	uParams := UserParameters{
-		FlapPeriod:   FlapPeriod,
-		NotifyTarget: NotifyTarget,
-		KeepPathInfo: GlobalKeepPathInfo,
-		AddPath:      bgp.GlobalAddPath,
-		PerPeerState: GlobalPerPeerState,
-		NotifyOnce:   GlobalNotifyOnce,
+		FlapPeriod:          config.GlobalConf.FlapPeriod,
+		NotifyTarget:        config.GlobalConf.RouteChangeCounter,
+		KeepPathInfo:        config.GlobalConf.KeepPathInfo,
+		AddPath:             config.GlobalConf.KeepPathInfo,
+		RelevantAsnPosition: config.GlobalConf.RelevantAsnPosition,
+		NotifyOnce:          config.GlobalConf.NotifyOnce,
 	}
 	return Capabilities{
 		Version:        version,

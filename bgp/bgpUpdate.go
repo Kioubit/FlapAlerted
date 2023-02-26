@@ -1,6 +1,7 @@
 package bgp
 
 import (
+	"FlapAlertedPro/config"
 	"encoding/binary"
 	"log"
 	"net"
@@ -155,7 +156,7 @@ func parseAttr(a []byte, upd *UserUpdate) {
 			pos++
 			attrLen = int(toUint16(attrLenR))
 		} else {
-			attrLen = int(uint8(a[pos]))
+			attrLen = int(a[pos])
 			pos++
 		}
 
@@ -172,7 +173,7 @@ func parseAttr(a []byte, upd *UserUpdate) {
 					break
 				}
 
-				segLen := int(uint8(a[pos+e]))
+				segLen := int(a[pos+e])
 				debugPrintln("Number of ASNs in the path", segLen)
 				e++
 
@@ -204,7 +205,7 @@ func parseAttr(a []byte, upd *UserUpdate) {
 			}
 			e++ //skip SAFI
 
-			lenNextHop := int(uint8(a[pos+e]))
+			lenNextHop := int(a[pos+e])
 			e++
 
 			e = e + lenNextHop // skip next hop
@@ -212,11 +213,11 @@ func parseAttr(a []byte, upd *UserUpdate) {
 			//BEGIN NLRA
 			for e < attrLen {
 
-				if GlobalAddPath {
+				if config.GlobalConf.UseAddPath {
 					e = e + 4 //skip pathid
 				}
 
-				prefixlenBits := int(uint8(a[pos+e]))
+				prefixlenBits := int(a[pos+e])
 				e++
 
 				actualLen := prefixlenBits
@@ -249,11 +250,11 @@ func parseAttr(a []byte, upd *UserUpdate) {
 func parsev4Nlri(a []byte, upd *UserUpdate) {
 	e := 0
 	for e < len(a)-1 {
-		if GlobalAddPath {
+		if config.GlobalConf.UseAddPath {
 			e = e + 4 //skip pathId
 		}
 
-		prefixLenBits := int(uint8(a[e]))
+		prefixLenBits := int(a[e])
 		e++
 
 		actualLen := prefixLenBits

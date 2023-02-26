@@ -1,6 +1,7 @@
 package main
 
 import (
+	"FlapAlertedPro/config"
 	_ "FlapAlertedPro/modules"
 	"FlapAlertedPro/monitor"
 	"fmt"
@@ -12,23 +13,12 @@ import (
 	"time"
 )
 
-var Version = "3.2"
-
-type UserConfig struct {
-	RouteChangeCounter int
-	FlapPeriod         int
-	Asn                int
-	KeepPathInfo       bool
-	UseAddPath         bool
-	KeepPerPeerState   bool
-	NotifyOnce         bool
-	Debug              bool
-}
+var Version = "3.3"
 
 func main() {
 	fmt.Println("FlapAlertedPro", Version)
 	monitor.SetVersion(Version)
-	conf := &UserConfig{}
+	conf := &config.UserConfig{}
 
 	v := reflect.Indirect(reflect.ValueOf(conf))
 	for i := 0; i < v.NumField(); i++ {
@@ -38,7 +28,7 @@ func main() {
 		field := v.Field(i)
 		fieldName := v.Type().Field(i).Name
 		switch field.Kind() {
-		case reflect.Int:
+		case reflect.Int64:
 			input, err := strconv.Atoi(os.Args[i+1])
 			if err != nil {
 				showUsage(fmt.Sprintf("The value entered for %s is not a number", fieldName))
@@ -85,10 +75,10 @@ func main() {
 
 	fmt.Println("Using the following parameters:")
 	fmt.Println("Detecting a flap if the route to a prefix changes within", conf.FlapPeriod, "seconds at least", conf.RouteChangeCounter, "time(s)")
-	fmt.Println("ASN:", conf.Asn, "| Keep Path Info:", conf.KeepPathInfo, "| AddPath Capability:", conf.UseAddPath, "| Keep per-peer State:", conf.KeepPerPeerState, "| Notify once:", conf.NotifyOnce, "| Debug:", conf.Debug)
+	fmt.Println("ASN:", conf.Asn, "| Keep Path Info:", conf.KeepPathInfo, "| AddPath Capability:", conf.UseAddPath, "| Relevant ASN Position:", conf.RelevantAsnPosition, "| Notify once:", conf.NotifyOnce, "| Debug:", conf.Debug)
 
 	log.Println("Started")
-	monitor.StartMonitoring(uint32(conf.Asn), int64(conf.FlapPeriod), uint64(conf.RouteChangeCounter), conf.UseAddPath, conf.KeepPerPeerState, conf.Debug, conf.NotifyOnce, conf.KeepPathInfo)
+	monitor.StartMonitoring(*conf)
 }
 
 func checkIsInputBool(input string) bool {
@@ -99,7 +89,7 @@ func checkIsInputBool(input string) bool {
 }
 
 func getArguments() []string {
-	v := reflect.ValueOf(UserConfig{})
+	v := reflect.ValueOf(config.UserConfig{})
 	args := make([]string, v.NumField())
 	for i := 0; i < v.NumField(); i++ {
 		args[i] = v.Type().Field(i).Name

@@ -9,6 +9,7 @@ import (
 	"log"
 	"net"
 	"sync"
+	"time"
 )
 
 var moduleName = "mod_tcpNotify"
@@ -29,11 +30,20 @@ var (
 const connListMaxSize = 20
 
 func startTcpServer() {
-	listener, err := net.ListenTCP("tcp", ":8700")
+	addr, err := net.ResolveTCPAddr("tcp", ":8000")
 	if err != nil {
 		log.Fatal("["+moduleName+"]", err.Error())
 	}
-	defer listener.Close()
+	listener, err := net.ListenTCP("tcp", addr)
+	if err != nil {
+		log.Fatal("["+moduleName+"]", err.Error())
+	}
+	defer func(listener *net.TCPListener) {
+		err := listener.Close()
+		if err != nil {
+			log.Fatal("["+moduleName+"]", err.Error())
+		}
+	}(listener)
 	for {
 		conn, err := listener.AcceptTCP()
 		if err != nil {
