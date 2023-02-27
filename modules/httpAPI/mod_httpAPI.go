@@ -4,6 +4,7 @@
 package httpAPI
 
 import (
+	"FlapAlertedPro/config"
 	"FlapAlertedPro/monitor"
 	"embed"
 	"encoding/json"
@@ -11,6 +12,8 @@ import (
 	"io/fs"
 	"log"
 	"net/http"
+	"sync"
+	"time"
 )
 
 var moduleName = "mod_httpAPI"
@@ -25,18 +28,83 @@ func init() {
 	})
 }
 
+var FlapHistoryMap = make(map[string][]uint64)
+var FlapHistoryMapMu sync.RWMutex
+
+func monitorFlap() {
+	for {
+		select {
+		case <-time.After(10 * time.Second):
+		}
+		FlapHistoryMapMu.Lock()
+		f := monitor.GetActiveFlaps()
+		for i := range f {
+			obj := FlapHistoryMap[f[i].Cidr]
+			if obj == nil {
+				FlapHistoryMap[f[i].Cidr] = []uint64{f[i].PathChangeCountTotal}
+			} else {
+				FlapHistoryMap[f[i].Cidr] = append(FlapHistoryMap[f[i].Cidr], f[i].PathChangeCountTotal)
+			}
+		}
+		FlapHistoryMapMu.Unlock()
+	}
+}
+
+func cleanupHistory() {
+	for {
+		select {
+		case <-time.After(1 * time.Duration(config.GlobalConf.FlapPeriod+5) * time.Second):
+		}
+		FlapHistoryMapMu.Lock()
+		newFlapHistoryMap := make(map[string][]uint64)
+		f := monitor.GetActiveFlaps()
+		for i := range f {
+			obj := FlapHistoryMap[f[i].Cidr]
+			if obj != nil {
+				newFlapHistoryMap[f[i].Cidr] = obj
+			}
+		}
+		FlapHistoryMap = newFlapHistoryMap
+		FlapHistoryMapMu.Unlock()
+	}
+}
+
 func startComplete() {
+	go monitorFlap()
+	go cleanupHistory()
+
 	http.HandleFunc("/capabilities", showCapabilities)
-	//http.Handle("/", http.FileServer(http.FS(dashboardContent)))
 	http.Handle("/", dashBoardHandler())
 	http.HandleFunc("/flaps/active", getActiveFlaps)
 	http.HandleFunc("/flaps/active/compact", activeFlapsCompact)
+	http.HandleFunc("/flaps/active/history", getFlapHistory)
 	http.HandleFunc("/flaps/metrics", metrics)
 	http.HandleFunc("/flaps/metrics/prometheus", prometheus)
 	err := http.ListenAndServe(":8699", nil)
 	if err != nil {
 		log.Println("["+moduleName+"] Error starting HTTP api server", err.Error())
 	}
+}
+
+func getFlapHistory(w http.ResponseWriter, req *http.Request) {
+	cidr := req.URL.Query().Get("cidr")
+	if cidr == "" {
+		_, _ = w.Write([]byte("GET request: cidr value missing"))
+	}
+
+	FlapHistoryMapMu.RLock()
+	result := FlapHistoryMap[cidr]
+	if result == nil {
+		result = make([]uint64, 0, 0)
+	}
+
+	marshaled, err := json.Marshal(result)
+	if err != nil {
+		w.WriteHeader(500)
+	} else {
+		_, _ = w.Write(marshaled)
+	}
+	FlapHistoryMapMu.RUnlock()
 }
 
 func dashBoardHandler() http.Handler {

@@ -10,12 +10,36 @@
     <div id="loaderText">Please wait... This may take a while.</div>
     <div id="loader" class="loader"></div>
     <div id="prefixTitle"></div>
-    <div id="informationText">
+    <div class="informationText" id="informationText1">
+        <table id="informationTable" >
+            <tr>
+                <td><b>Total path changes:</b></td>
+                <td><span id="pathChangeDisplay">0</span></td>
+            </tr>
+            <tr>
+                <td><b>First seen:</b></td>
+                <td><span id="fistSeenDisplay">0</span></td>
+            </tr>
+            <tr>
+                <td><b>Last seen:</b></td>
+                <td><span id="lastSeenDisplay">0</span></td>
+            </tr>
+            <tr>
+                <td><b>Duration:</b></td>
+                <td><span id="durationDisplay">0</span></td>
+            </tr>
+        </table>
+    </div>
+    <div class="chartRouteCount-container">
+        <canvas id="chartRouteCount"></canvas>
+    </div>
+    <div class="informationText" id="informationText2">
+        <br>
         <span>AS paths sorted by amount of changes (represented by the numbers before each path). Grouped by the first ASN and colorized.</span><br>
-        <button id="printButton" class="no-print">Print</button>
+        <button id="printButton" class="no-print">Print</button><br>
     </div>
     <div id="pathTable"></div>
-
+    <script src="../assets/js/chart.js"></script>
     <script src="../assets/js/analyze-flap.js"></script>
 </body>
 </html>

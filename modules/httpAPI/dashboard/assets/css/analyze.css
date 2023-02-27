@@ -31,8 +31,15 @@
     white-space: pre;
 }
 
-#informationText {
+.informationText {
     display: none;
+}
+
+#informationTable {
+    border: 1px solid black;
+    padding: 0.4em;
+    margin: 1em;
+    border-spacing: 0;
 }
 
 @-webkit-keyframes spin {
@@ -61,4 +68,10 @@
     {
         display: none !important;
     }
+}
+
+#chartRouteCount-container {
+    position: relative;
+    height: 20vh;
+    width: 100vw;
 }

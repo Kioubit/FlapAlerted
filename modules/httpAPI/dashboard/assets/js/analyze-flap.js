@@ -2,12 +2,43 @@ window.addEventListener('load', function () {
     display();
 });
 
+const ctxRouteCount = document.getElementById('chartRouteCount').getContext('2d');
+const dataRouteChangeCount = {
+    labels: [],
+    datasets: [
+        {
+            label: "Route Change count",
+            fill: false,
+            lineTension: 0.1,
+            backgroundColor: "rgba(75,192,192,0.4)",
+            borderColor: "rgba(75,192,192,1)",
+            borderCapStyle: 'butt',
+            borderDash: [],
+            borderDashOffset: 0.0,
+            borderJoinStyle: 'miter',
+            pointBorderColor: "rgba(75,192,192,1)",
+            pointBackgroundColor: "#fff",
+            pointBorderWidth: 1,
+            pointHoverRadius: 5,
+            pointHoverBackgroundColor: "rgba(75,192,192,1)",
+            pointHoverBorderColor: "rgba(220,220,220,1)",
+            pointHoverBorderWidth: 2,
+            pointRadius: 5,
+            pointHitRadius: 10,
+            data: [],
+        }
+    ]
+};
+
+
+
 function display() {
+    const prefix = new URL(location.href).searchParams.get("prefix");
+    let targetJson;
     fetch("../flaps/active").then(function (response) {
         return response.json();
     }).then(function (json) {
         let pJson;
-        let prefix = new URL(location.href).searchParams.get("prefix");
         if (prefix == null) {
             alert("Invalid link");
             return;
@@ -15,13 +46,16 @@ function display() {
 
         for (let i = 0; i < json.length; i++) {
             if (json[i].Prefix === prefix) {
-                pJson = json[i].Paths
+                targetJson = json[i];
+                pJson = json[i].Paths;
                 break;
             }
         }
 
         if (pJson == null) {
-            alert("Prefix not found");
+            document.getElementById("loader").style.display = "none";
+            document.getElementById("loaderText").innerText = "Prefix not found. The link may have expired";
+            //alert("Prefix not found");
             return;
         }
 
@@ -82,18 +116,59 @@ function display() {
         })
 
         document.getElementById("pathTable").innerHTML = tableHtml;
-        document.getElementById("prefixTitle").innerHTML = "Flap analysis for " + prefix;
+        document.getElementById("prefixTitle").innerHTML = "Flap report for " + prefix;
         document.getElementById("loader").style.display = "none";
         document.getElementById("loaderText").style.display = "none";
+
+
+        document.getElementById("pathChangeDisplay").innerText = targetJson.TotalCount;
+        document.getElementById("fistSeenDisplay").innerText = timeConverter(targetJson.FirstSeen);
+        document.getElementById("lastSeenDisplay").innerText = timeConverter(targetJson.LastSeen);
+        document.getElementById("durationDisplay").innerText = toTimeElapsed(targetJson.LastSeen - targetJson.FirstSeen);
+
+        document.getElementById("informationText1").style.display = "block";
+        document.getElementById("informationText2").style.display = "block";
+        document.getElementById("printButton").onclick = function () {
+            window.print();
+        }
     }).catch(function (error) {
         alert("Network error");
         console.log(error);
     });
 
-    document.getElementById("informationText").style.display = "block";
-    document.getElementById("printButton").onclick = function () {
-        window.print();
-    }
+
+    fetch("../flaps/active/history?cidr=" + prefix).then(function (response) {
+        return response.json();
+    }).then(function (json) {
+        if (json.length === 0) {
+            return;
+        }
+        const RouteCountChart = new Chart(ctxRouteCount, {
+            type: "line",
+            data: dataRouteChangeCount,
+            options: {
+                maintainAspectRatio: false
+            },
+        })
+
+        let labels = [];
+        for (let i = 0; i < json.length; i++) {
+            labels.push(i);
+        }
+        RouteCountChart.data.labels = labels;
+        RouteCountChart.data.datasets[0].data = json;
+        RouteCountChart.update();
+
+        window.addEventListener('beforeprint', (event) => {
+            RouteCountChart.resize();
+        });
+        window.addEventListener('afterprint', () => {
+            RouteCountChart.resize();
+        });
+    }).catch(function (error) {
+        alert("Network error");
+        console.log(error);
+    });
 }
 
 
@@ -109,4 +184,30 @@ function stringToColor(str) {
         colour += rawColour.substring(rawColour.length-2);
     }
     return colour;
+}
+
+function timeConverter(unixTimestamp){
+    const date = new Date(unixTimestamp * 1000);
+    const hours = date.getHours();
+    const minutes = date.getMinutes();
+    const seconds = date.getSeconds();
+    const time = `${padTo2Digits(hours)}:${padTo2Digits(minutes)}:${padTo2Digits(
+        seconds,
+    )}`;
+
+    const year = date.getFullYear();
+    const month = padTo2Digits(date.getMonth() + 1);
+    const day = padTo2Digits(date.getDate());
+
+    return `${year}-${month}-${day} ${time}`;
+}
+
+function padTo2Digits(num) {
+    return num.toString().padStart(2, '0');
+}
+
+function toTimeElapsed(seconds) {
+    let date = new Date(null);
+    date.setSeconds(seconds);
+    return date.toISOString().slice(11, 19);
 }
