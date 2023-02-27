@@ -9,6 +9,7 @@ import (
 type Module struct {
 	Name          string
 	Callback      func(*Flap)
+	CallbackOnce  func(*Flap)
 	StartComplete func()
 }
 
@@ -26,6 +27,12 @@ func mainNotify(f *Flap) {
 	for _, m := range moduleList {
 		if m.Callback != nil {
 			m.Callback(f)
+		}
+		if m.CallbackOnce != nil {
+			if f.PathChangeCountTotal > uint64(config.GlobalConf.RouteChangeCounter) {
+				return
+			}
+			m.CallbackOnce(f)
 		}
 	}
 }
@@ -91,7 +98,6 @@ func GetCapabilities() Capabilities {
 		KeepPathInfo:        config.GlobalConf.KeepPathInfo,
 		AddPath:             config.GlobalConf.KeepPathInfo,
 		RelevantAsnPosition: config.GlobalConf.RelevantAsnPosition,
-		NotifyOnce:          config.GlobalConf.NotifyOnce,
 	}
 	return Capabilities{
 		Version:        version,

@@ -13,10 +13,10 @@ import (
 	"time"
 )
 
-var Version = "3.3"
+var Version = "3.4"
 
 func main() {
-	fmt.Println("FlapAlertedPro", Version)
+	fmt.Println("Kioubit FlapAlertedPro", Version)
 	monitor.SetVersion(Version)
 	conf := &config.UserConfig{}
 
@@ -27,11 +27,20 @@ func main() {
 		}
 		field := v.Field(i)
 		fieldName := v.Type().Field(i).Name
+		fieldTag := v.Type().Field(i).Tag
+		overloadStringTag := fieldTag.Get("overloadString")
 		switch field.Kind() {
 		case reflect.Int64:
 			input, err := strconv.Atoi(os.Args[i+1])
 			if err != nil {
-				showUsage(fmt.Sprintf("The value entered for %s is not a number", fieldName))
+				if overloadStringTag == "true" {
+					if os.Args[i+1] != "auto" {
+						showUsage(fmt.Sprintf("The value entered for %s is not a number or 'auto'", fieldName))
+					}
+					input = -1
+				} else {
+					showUsage(fmt.Sprintf("The value entered for %s is not a number", fieldName))
+				}
 			}
 			if !field.OverflowInt(int64(input)) {
 				field.SetInt(int64(input))
@@ -44,6 +53,14 @@ func main() {
 			}
 			input := os.Args[i+1] == "true"
 			field.SetBool(input)
+		}
+	}
+
+	if conf.RelevantAsnPosition == -1 {
+		if conf.UseAddPath {
+			conf.RelevantAsnPosition = 1
+		} else {
+			conf.RelevantAsnPosition = 0
 		}
 	}
 
@@ -65,17 +82,9 @@ func main() {
 		time.Sleep(10 * time.Second)
 	}
 
-	if conf.NotifyOnce {
-		for _, m := range modules {
-			if m.Name == "mod_httpAPI" {
-				fmt.Println("WARNING: The option 'notifyOnce' has been set to true. This is not supported by the user dashboard provided by mod_httpAPI")
-			}
-		}
-	}
-
 	fmt.Println("Using the following parameters:")
 	fmt.Println("Detecting a flap if the route to a prefix changes within", conf.FlapPeriod, "seconds at least", conf.RouteChangeCounter, "time(s)")
-	fmt.Println("ASN:", conf.Asn, "| Keep Path Info:", conf.KeepPathInfo, "| AddPath Capability:", conf.UseAddPath, "| Relevant ASN Position:", conf.RelevantAsnPosition, "| Notify once:", conf.NotifyOnce, "| Debug:", conf.Debug)
+	fmt.Println("ASN:", conf.Asn, "| Keep Path Info:", conf.KeepPathInfo, "| AddPath Capability:", conf.UseAddPath, "| Relevant ASN Position:", conf.RelevantAsnPosition)
 
 	log.Println("Started")
 	monitor.StartMonitoring(*conf)

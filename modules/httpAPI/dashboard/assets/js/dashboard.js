@@ -5,7 +5,7 @@ let getCapabilitiesFunction = async () => {
 const versionBox = document.getElementById("version");
 const infoBox = document.getElementById("info");
 const pathListLink = document.getElementById("PathListLink");
-versionBox.innerHTML = "Version: FlapAlertedPro ";
+versionBox.innerHTML = "Version: Kioubit FlapAlertedPro ";
 getCapabilitiesFunction().then((data) => {
     versionBox.innerHTML += data.Version;
     if (!data.UserParameters.KeepPathInfo) {

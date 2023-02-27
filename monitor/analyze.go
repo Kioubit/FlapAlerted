@@ -168,11 +168,6 @@ func updateList(cidr string, asPath []bgp.AsPath) {
 				activeFlapListMu.Unlock()
 			}
 			obj.PathChangeCount = 0
-			if config.GlobalConf.NotifyOnce {
-				if obj.PathChangeCountTotal > uint64(config.GlobalConf.RouteChangeCounter) {
-					return
-				}
-			}
 			go mainNotify(obj)
 		}
 	}

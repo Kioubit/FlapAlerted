@@ -1,5 +1,5 @@
-////go:build mod_httpAPI
-//// +build mod_httpAPI
+//go:build mod_httpAPI
+// +build mod_httpAPI
 
 package httpAPI
 
@@ -78,7 +78,7 @@ func startComplete() {
 	http.HandleFunc("/flaps/active", getActiveFlaps)
 	http.HandleFunc("/flaps/active/compact", activeFlapsCompact)
 	http.HandleFunc("/flaps/active/history", getFlapHistory)
-	http.HandleFunc("/flaps/metrics", metrics)
+	http.HandleFunc("/flaps/metrics/json", metrics)
 	http.HandleFunc("/flaps/metrics/prometheus", prometheus)
 	err := http.ListenAndServe(":8699", nil)
 	if err != nil {

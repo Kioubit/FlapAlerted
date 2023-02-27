@@ -8,7 +8,6 @@ type UserConfig struct {
 	Asn                 int64
 	KeepPathInfo        bool
 	UseAddPath          bool
-	RelevantAsnPosition int64
-	NotifyOnce          bool
+	RelevantAsnPosition int64 `overloadString:"true"`
 	Debug               bool
 }
