@@ -1,29 +1,31 @@
-let getCapabilitiesFunction = async () => {
-    const response = await fetch("capabilities");
-    return await response.json();
+function updateCapabilities() {
+    let getCapabilitiesFunction = async () => {
+        const response = await fetch("capabilities");
+        return await response.json();
+    }
+    const versionBox = document.getElementById("version");
+    const infoBox = document.getElementById("info");
+    const pathListLink = document.getElementById("PathListLink");
+    versionBox.innerHTML = "Version: Kioubit FlapAlerted ";
+    getCapabilitiesFunction().then((data) => {
+        versionBox.innerHTML += data.Version;
+        if (!data.UserParameters.KeepPathInfo) {
+            pathListLink.href = '';
+            pathListLink.innerText += " (Disabled by the administrator)";
+            pathListLink.classList.add("disabledLink");
+        }
+        if (data.UserParameters.NotifyTarget === 0) {
+            infoBox.innerText = "Current settings: Displaying every BGP Update received (This does not indicate flapping). Removing entries after "+ data.UserParameters.FlapPeriod + " seconds of inactivity.";
+            document.getElementById("dataInfo").innerText = "Live Data -- All BGP Updates";
+        } else {
+            infoBox.innerText = "Current settings: Detecting a flap if a route changes at least " + data.UserParameters.NotifyTarget + " times in " + data.UserParameters.FlapPeriod + " seconds.";
+            document.getElementById("dataInfo").innerText = "Live Data";
+        }
+    }).catch((err) => {
+        versionBox.innerHTML += "N/A";
+        console.log(err);
+    });
 }
-const versionBox = document.getElementById("version");
-const infoBox = document.getElementById("info");
-const pathListLink = document.getElementById("PathListLink");
-versionBox.innerHTML = "Version: Kioubit FlapAlertedPro ";
-getCapabilitiesFunction().then((data) => {
-    versionBox.innerHTML += data.Version;
-    if (!data.UserParameters.KeepPathInfo) {
-        pathListLink.href = '';
-        pathListLink.innerText += " (Disabled by the administrator)";
-        pathListLink.classList.add("disabledLink");
-    }
-    if (data.UserParameters.NotifyTarget === 0) {
-        infoBox.innerText = "Current settings: Displaying every BGP Update received (This does not indicate flapping). Removing entries after "+ data.UserParameters.FlapPeriod + " seconds of inactivity.";
-        document.getElementById("dataInfo").innerText = "Live Data -- All BGP Updates";
-    } else {
-        infoBox.innerText = "Current settings: Detecting a flap if a route changes at least " + data.UserParameters.NotifyTarget + " times in " + data.UserParameters.FlapPeriod + " seconds.";
-        document.getElementById("dataInfo").innerText = "Live Data";
-    }
-}).catch((err) => {
-    versionBox.innerHTML += "N/A";
-});
-
 
 let gauge = new JustGage({
     id: "justgage",
@@ -222,6 +224,8 @@ let newCount = 0;
 let oldCount = 0;
 updateInfo();
 setInterval(updateInfo, 5000);
+updateCapabilities();
+document.getElementById("loadingScreen").style.display = 'none';
 let firstPass = true;
 function updateInfo() {
     fetch("flaps/active/compact").then(function (response) {
@@ -304,7 +308,7 @@ function updateInfo() {
             }
         });
 
-        let prefixTableHtml = '<table id="prefixTable"><tr><th>Prefix</th><th>Seconds</th><th>Route Changes</th></tr>';
+        let prefixTableHtml = '<table id="prefixTable"><thead><tr><th>Prefix</th><th>Seconds</th><th>Route Changes</th></tr></thead><tbody>';
         for (let i = 0; i < flapList.length; i++) {
             let duration = flapList[i].LastSeen - flapList[i].FirstSeen;
             prefixTableHtml += "<tr>";
@@ -316,7 +320,7 @@ function updateInfo() {
         if (flapList.length === 0) {
             prefixTableHtml += '<tr><td colspan="3" class="centerText">Waiting for BGP flapping...</td></tr>';
         }
-        prefixTableHtml += "</table>";
+        prefixTableHtml += "</tbody></table>";
         document.getElementById("prefixTableBox").innerHTML = prefixTableHtml;
 
     }).catch(function (error) {

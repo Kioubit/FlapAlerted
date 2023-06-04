@@ -1,13 +1,12 @@
 package monitor
 
 import (
-	"FlapAlertedPro/bgp"
-	"FlapAlertedPro/config"
+	"FlapAlerted/bgp"
+	"FlapAlerted/config"
 	"log"
 	"math"
 	"strconv"
 	"sync"
-	"sync/atomic"
 	"time"
 )
 
@@ -60,12 +59,6 @@ func processUpdates(updateChannel chan *bgp.UserUpdate) {
 			return
 		}
 
-		if len(updateChannel) > 10700 {
-			if atomic.CompareAndSwapInt32(&updateDropperRunning, int32(0), int32(1)) {
-				go updateDropper(updateChannel)
-			}
-		}
-
 		flapMapMu.Lock()
 		currentTime = time.Now().Unix()
 		for i := range update.Prefix {
@@ -77,9 +70,7 @@ func processUpdates(updateChannel chan *bgp.UserUpdate) {
 
 func cleanUpFlapList() {
 	for {
-		select {
-		case <-time.After(1 * time.Duration(config.GlobalConf.FlapPeriod) * time.Second):
-		}
+		time.Sleep(1 * time.Duration(config.GlobalConf.FlapPeriod) * time.Second)
 
 		flapMapMu.Lock()
 		activeFlapListMu.Lock()
@@ -213,17 +204,6 @@ func incrementUint64(n uint64) uint64 {
 		return n
 	}
 	return n + 1
-}
-
-var updateDropperRunning int32 = 0
-
-func updateDropper(updateChannel chan *bgp.UserUpdate) {
-	for len(updateChannel) > 10700 {
-		for i := 0; i < 50; i++ {
-			<-updateChannel
-		}
-	}
-	atomic.StoreInt32(&updateDropperRunning, int32(0))
 }
 
 func getActiveFlapList() []Flap {

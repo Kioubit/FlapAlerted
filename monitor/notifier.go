@@ -1,7 +1,7 @@
 package monitor
 
 import (
-	"FlapAlertedPro/config"
+	"FlapAlerted/config"
 	"math"
 	"sync"
 )

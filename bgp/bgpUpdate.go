@@ -1,7 +1,7 @@
 package bgp
 
 import (
-	"FlapAlertedPro/config"
+	"FlapAlerted/config"
 	"encoding/binary"
 	"log"
 	"net"
@@ -97,7 +97,10 @@ func parseUpdateMsgNew(raw []byte, updateChannel chan *UserUpdate) {
 	debugPrintln("Prefixes:", userUpdate.Prefix)
 	debugPrintln("Paths:", userUpdate.Path)
 	debugPrintln("#############################################################################")
-	updateChannel <- userUpdate
+	select {
+	case updateChannel <- userUpdate:
+	default:
+	}
 }
 
 func toNetCidr(prefix []byte, prefixlenBits int, isV6 bool) string {

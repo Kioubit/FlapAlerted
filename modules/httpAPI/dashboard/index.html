@@ -2,48 +2,48 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>FlapAlertedPro</title>
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; form-action 'none'; style-src 'self'; style-src-elem 'self'; script-src 'self'; connect-src 'self';">
+    <title>FlapAlerted</title>
+    <meta http-equiv="Content-Security-Policy"
+          content="default-src 'none'; base-uri 'none'; form-action 'none'; style-src 'self'; style-src-elem 'self'; script-src 'self'; connect-src 'self';">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="assets/css/dashboard.css">
 </head>
 
 <body>
-    <h2 id="mainHeading">FlapAlertedPro</h2>
-    <h3 id="dataInfo">Live Data</h3>
+<div id="loadingScreen">
+    <div class="loader"></div>
+</div>
+<h2 id="mainHeading">FlapAlerted</h2>
+<h3 id="dataInfo">Live Data</h3>
+<div id="mainContainer">
     <div id="connectionLost">
         <p id="connectLostText">Connection lost</p>
     </div>
-    <div>
-        <div id="wrapper">
-            <div class="headerDiv">
-                <div id="justgage"></div>
-            </div>
-            <div class="headerDiv floatRight">
-                <div id="prefixTableBox"></div>
-            </div>
+    <div id="grid-container-main">
+        <div id="justgage"></div>
+        <div id="prefixTableBox"></div>
+    </div>
+    <div id="grid-container-charts">
+        <div class="chartContainer">
+            <canvas id="chartFlapCount"></canvas>
         </div>
-        <div class="padding"></div>
-        <div>
-            <div class="chartFlapCount-container">
-                <canvas id="chartFlapCount"></canvas>
-            </div>
-            <div class="chartRoute-container">
-                <canvas id="chartRoute"></canvas>
-            </div>
-            <div class="chartRouteCount-container">
-                <canvas id="chartRouteCount"></canvas>
-            </div>
-            <br><br>
-            <a id="PathListLink" href="/flaps/active" target="_blank">List of all paths for the flapping prefixes (JSON)</a>
-            <div id="info"></div>
-            <div id="version"></div>
+        <div class="chartContainer">
+            <canvas id="chartRoute"></canvas>
+        </div>
+        <div class="chartContainer">
+            <canvas id="chartRouteCount"></canvas>
         </div>
     </div>
-
-<script src="assets/js/chart.js"></script>
-<script src="assets/js/raphael-2.1.4.min.js"></script>
-<script src="assets/js/justgage-1.5.1.min.js"></script>
+    <div class="footer">
+        <a id="PathListLink" href="/flaps/active" target="_blank">List of all paths for the flapping prefixes
+            (JSON)</a>
+        <div id="info"></div>
+        <div id="version"></div>
+    </div>
+</div>
+<script src="assets/js/chartjs/4.3.0/chart.js"></script>
+<script src="assets/js/justgage/1.6.1/raphael-2.1.4.min.js"></script>
+<script src="assets/js/justgage/1.6.1/justgage.min.js"></script>
 <script src="assets/js/dashboard.js"></script>
 </body>
 </html>

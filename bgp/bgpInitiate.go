@@ -1,7 +1,7 @@
 package bgp
 
 import (
-	"FlapAlertedPro/config"
+	"FlapAlerted/config"
 	"encoding/binary"
 )
 

@@ -4,7 +4,7 @@
 package tcpnotify
 
 import (
-	"FlapAlertedPro/monitor"
+	"FlapAlerted/monitor"
 	"encoding/json"
 	"log"
 	"net"

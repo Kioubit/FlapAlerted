@@ -1,7 +1,7 @@
 package modules
 
 import (
-	_ "FlapAlertedPro/modules/httpAPI"
-	_ "FlapAlertedPro/modules/log"
-	_ "FlapAlertedPro/modules/tcpNotify"
+	_ "FlapAlerted/modules/httpAPI"
+	_ "FlapAlerted/modules/log"
+	_ "FlapAlerted/modules/tcpNotify"
 )

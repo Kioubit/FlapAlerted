@@ -4,8 +4,8 @@
 package httpAPI
 
 import (
-	"FlapAlertedPro/config"
-	"FlapAlertedPro/monitor"
+	"FlapAlerted/config"
+	"FlapAlerted/monitor"
 	"embed"
 	"encoding/json"
 	"fmt"
@@ -52,9 +52,7 @@ func monitorFlap() {
 
 func cleanupHistory() {
 	for {
-		select {
-		case <-time.After(1 * time.Duration(config.GlobalConf.FlapPeriod+5) * time.Second):
-		}
+		time.Sleep(1 * time.Duration(config.GlobalConf.FlapPeriod+5) * time.Second)
 		FlapHistoryMapMu.Lock()
 		newFlapHistoryMap := make(map[string][]uint64)
 		f := monitor.GetActiveFlaps()
@@ -73,8 +71,8 @@ func startComplete() {
 	go monitorFlap()
 	go cleanupHistory()
 
-	http.HandleFunc("/capabilities", showCapabilities)
 	http.Handle("/", dashBoardHandler())
+	http.HandleFunc("/capabilities", showCapabilities)
 	http.HandleFunc("/flaps/active", getActiveFlaps)
 	http.HandleFunc("/flaps/active/compact", activeFlapsCompact)
 	http.HandleFunc("/flaps/active/history", getFlapHistory)

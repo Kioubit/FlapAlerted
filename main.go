@@ -1,9 +1,9 @@
 package main
 
 import (
-	"FlapAlertedPro/config"
-	_ "FlapAlertedPro/modules"
-	"FlapAlertedPro/monitor"
+	"FlapAlerted/config"
+	_ "FlapAlerted/modules"
+	"FlapAlerted/monitor"
 	"fmt"
 	"log"
 	"os"
@@ -13,10 +13,10 @@ import (
 	"time"
 )
 
-var Version = "3.4"
+var Version = "3.5"
 
 func main() {
-	fmt.Println("Kioubit FlapAlertedPro", Version)
+	fmt.Println("Kioubit FlapAlerted", Version)
 	monitor.SetVersion(Version)
 	conf := &config.UserConfig{}
 

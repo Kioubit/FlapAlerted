@@ -4,7 +4,7 @@
 package log
 
 import (
-	"FlapAlertedPro/monitor"
+	"FlapAlerted/monitor"
 	"fmt"
 	"log"
 )

@@ -55,7 +55,6 @@ function display() {
         if (pJson == null) {
             document.getElementById("loader").style.display = "none";
             document.getElementById("loaderText").innerText = "Prefix not found. The link may have expired";
-            //alert("Prefix not found");
             return;
         }
 
@@ -160,7 +159,7 @@ function display() {
         RouteCountChart.update();
 
         window.addEventListener('beforeprint', (event) => {
-            RouteCountChart.resize();
+            RouteCountChart.resize(600,150);
         });
         window.addEventListener('afterprint', () => {
             RouteCountChart.resize();
