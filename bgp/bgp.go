@@ -99,6 +99,10 @@ func rawUpdateMessageWorker(channel chan *[]byte, user chan *UserUpdate) {
 func receiveHeadersWorker(connDetails *connectionState, ch chan *[]byte, conn net.Conn) {
 	for {
 		newBuff := <-ch
+		if newBuff == nil {
+			return
+		}
+
 		if len(*newBuff) == 0 {
 			return
 		}
