@@ -2,6 +2,10 @@
 
 ## Receives BGP Update messages by peering with your BGP daemon. Detects path changes and BGP flapping events.
 
+<p align="center">
+<img src="https://github.com/user-attachments/assets/67f83d31-0abc-48cf-a35e-efe33fc808b9" height="400">
+</p>
+
 ### Setup notes
 
 The program will listen on port 1790 for incoming BGP sessions (passive mode - no outgoing connections).
