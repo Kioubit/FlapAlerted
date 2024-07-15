@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-var Version = "3.6"
+var Version = "3.7"
 
 func main() {
 	fmt.Println("Kioubit FlapAlerted", Version)
