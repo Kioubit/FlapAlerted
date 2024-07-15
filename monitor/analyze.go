@@ -2,9 +2,14 @@ package monitor
 
 import (
 	"FlapAlerted/bgp"
+	"FlapAlerted/bgp/update"
 	"FlapAlerted/config"
+	"encoding/json"
+	"fmt"
 	"log"
+	"log/slog"
 	"math"
+	"net/netip"
 	"strconv"
 	"sync"
 	"time"
@@ -14,7 +19,7 @@ const PathLimit = 1000
 
 type Flap struct {
 	Cidr                 string
-	LastPath             map[string]bgp.AsPath
+	LastPath             map[string]update.AsPathList
 	Paths                map[string]*PathInfo
 	PathChangeCount      uint64
 	PathChangeCountTotal uint64
@@ -23,7 +28,7 @@ type Flap struct {
 }
 
 type PathInfo struct {
-	Path  bgp.AsPath
+	Path  update.AsPathList
 	Count uint64
 }
 
@@ -33,14 +38,14 @@ func StartMonitoring(conf config.UserConfig) {
 		log.Fatal("Invalid RelevantAsnPosition value")
 	}
 
-	updateChannel := make(chan *bgp.UserUpdate, 11000)
+	updateChannel := make(chan update.Msg, 100)
 	// Initialize activeFlapList and flapMap
 	flapMap = make(map[string]*Flap)
 	activeFlapList = make([]*Flap, 0)
 
 	go processUpdates(updateChannel)
-	go moduleCallback()
 	go bgp.StartBGP(updateChannel)
+	go moduleCallback()
 	cleanUpFlapList()
 }
 
@@ -52,17 +57,49 @@ var (
 	currentTime      int64
 )
 
-func processUpdates(updateChannel chan *bgp.UserUpdate) {
+func processUpdates(updateChannel chan update.Msg) {
 	for {
-		update := <-updateChannel
-		if update == nil {
+		u, ok := <-updateChannel
+		if !ok {
 			return
+		}
+
+		if config.GlobalConf.Debug {
+			k, err := json.Marshal(u)
+			fmt.Println(string(k), err)
+		}
+
+		nlri, foundNlri, err := u.GetMpReachNLRI()
+		if err != nil {
+			slog.Warn("error getting MpReachNLRI", "error", err)
+			continue
+		}
+
+		asPath, err := u.GetAsPaths()
+		if err != nil {
+			slog.Warn("error getting ASPath", "error", err)
+			continue
+		}
+
+		if len(asPath) == 0 {
+			continue
 		}
 
 		flapMapMu.Lock()
 		currentTime = time.Now().Unix()
-		for i := range update.Prefix {
-			updateList(update.Prefix[i], update.Path)
+		if foundNlri {
+			for i := range nlri.NLRI {
+				if config.GlobalConf.Debug {
+					fmt.Println("UPDATE", nlri.NLRI[i].ToNetCidr().String(), asPath)
+				}
+				updateList(nlri.NLRI[i].ToNetCidr(), asPath)
+			}
+		}
+		for i := range u.NetworkLayerReachabilityInformation {
+			updateList(u.NetworkLayerReachabilityInformation[i].ToNetCidr(), asPath)
+			if config.GlobalConf.Debug {
+				fmt.Println("UPDATE", u.NetworkLayerReachabilityInformation[i].ToNetCidr().String(), asPath)
+			}
 		}
 		flapMapMu.Unlock()
 	}
@@ -91,7 +128,8 @@ func cleanUpFlapList() {
 	}
 }
 
-func updateList(cidr string, asPath []bgp.AsPath) {
+func updateList(prefix netip.Prefix, asPath []update.AsPathList) {
+	cidr := prefix.String()
 	if len(asPath) == 0 {
 		return
 	}
@@ -106,7 +144,7 @@ func updateList(cidr string, asPath []bgp.AsPath) {
 			FirstSeen:            currentTime,
 			PathChangeCount:      0,
 			PathChangeCountTotal: 0,
-			LastPath:             make(map[string]bgp.AsPath),
+			LastPath:             make(map[string]update.AsPathList),
 			Paths:                make(map[string]*PathInfo),
 		}
 		if config.GlobalConf.KeepPathInfo {
@@ -164,7 +202,7 @@ func updateList(cidr string, asPath []bgp.AsPath) {
 	}
 }
 
-func getRelevantASN(asPath bgp.AsPath) string {
+func getRelevantASN(asPath update.AsPathList) string {
 	pathLen := len(asPath.Asn)
 
 	if pathLen < int(config.GlobalConf.RelevantAsnPosition) || config.GlobalConf.RelevantAsnPosition == 0 {
@@ -178,7 +216,7 @@ func getRelevantASN(asPath bgp.AsPath) string {
 	return string(b)
 }
 
-func pathToString(asPath bgp.AsPath) string {
+func pathToString(asPath update.AsPathList) string {
 	b := make([]byte, 0, len(asPath.Asn)*11)
 	for i := range asPath.Asn {
 		b = strconv.AppendInt(b, int64(asPath.Asn[i]), 10)
@@ -187,7 +225,7 @@ func pathToString(asPath bgp.AsPath) string {
 	return string(b)
 }
 
-func pathsEqual(path1, path2 bgp.AsPath) bool {
+func pathsEqual(path1, path2 update.AsPathList) bool {
 	if len(path1.Asn) != len(path2.Asn) {
 		return false
 	}

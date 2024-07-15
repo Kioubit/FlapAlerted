@@ -1,209 +1,222 @@
 package bgp
 
 import (
-	"bytes"
-	"encoding/binary"
+	"FlapAlerted/bgp/common"
+	"FlapAlerted/bgp/open"
+	"FlapAlerted/bgp/update"
+	"errors"
+	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"net"
+	"net/netip"
+	"time"
 )
 
-type msgType byte
+func newBGPConnection(logger *slog.Logger, conn net.Conn, defaultAFI update.AFI, addPathEnabled bool, routerID netip.Addr, updateChannel chan update.Msg) error {
+	const ownHoldTime = 240
 
-const (
-	msgOpen         msgType = 0x01
-	msgUpdate       msgType = 0x02
-	msgNotification msgType = 0x03
-	msgKeepAlive    msgType = 0x04
-)
-
-type header struct {
-	marker  [16]byte
-	length  uint16
-	msgType byte
-	msg     []byte
-}
-
-func StartBGP(updates chan *UserUpdate) {
-
-	listener, err := net.Listen("tcp", ":1790")
+	openMessage, err := open.GetOpen(ownHoldTime, routerID,
+		open.CapabilityOptionalParameter{
+			CapabilityCode:  open.CapabilityCodeFourByteASN,
+			CapabilityValue: open.FourByteASNCapability{ASN: 4242423914},
+		},
+		open.CapabilityOptionalParameter{
+			CapabilityCode: open.CapabilityCodeMultiProtocol,
+			CapabilityValue: open.MultiProtocolCapability{
+				AFI:      update.AFI4,
+				Reserved: 0,
+				SAFI:     update.UNICAST,
+			},
+		},
+		open.CapabilityOptionalParameter{
+			CapabilityCode: open.CapabilityCodeMultiProtocol,
+			CapabilityValue: open.MultiProtocolCapability{
+				AFI:      update.AFI6,
+				Reserved: 0,
+				SAFI:     update.UNICAST,
+			},
+		},
+		open.CapabilityOptionalParameter{
+			CapabilityCode: open.CapabilityCodeAddPath,
+			CapabilityValue: open.AddPathCapabilityList{
+				open.AddPathCapability{
+					AFI:  update.AFI4,
+					SAFI: update.UNICAST,
+					TXRX: open.ReceiveOnly,
+				},
+				open.AddPathCapability{
+					AFI:  update.AFI6,
+					SAFI: update.UNICAST,
+					TXRX: open.ReceiveOnly,
+				},
+			},
+		},
+	)
 	if err != nil {
-		log.Fatal("[FATAL]", err.Error())
+		return fmt.Errorf("error marshalling OPEN message %w", err)
 	}
-	debugPrintln("Listening on port 1790")
-	defer func(listener net.Listener) {
-		_ = listener.Close()
-	}(listener)
-	for {
-		conn, err := listener.Accept()
-		if err != nil {
-			debugPrintln("Error accepting tcp connection", err.Error())
-			continue
-		}
-		debugPrintln("New connection")
-		go newBGPConnection(conn, updates)
+	_, err = conn.Write(openMessage)
+	if err != nil {
+		return fmt.Errorf("error writing OPEN message %w", err)
 	}
-}
 
-func newBGPConnection(conn net.Conn, updates chan *UserUpdate) {
-	var workerCount = 4
-	connDetails := &connectionState{}
-	connDetails.rawUpdateBytesChan = make(chan *[]byte, 5000)
+	// Read peer OPEN message
+	msg, r, err := common.ReadMessage(conn)
+	if err != nil {
+		return fmt.Errorf("error reading OPEN message from peer %w", err)
+	}
+	if msg.Header.BgpType != common.MsgOpen {
+		return fmt.Errorf("unexpected message of type '%d', expected open", msg.Header.BgpType)
+	}
 
-	var rawChannel = make(chan *[]byte, 25)
-	go receiveHeadersWorker(connDetails, rawChannel, conn)
+	msg.Body, err = open.ParseMsgOpen(r)
+	if err != nil {
+		return fmt.Errorf("error parsing peer OPEN message %w", err)
+	}
 
-	defer func() {
-		if r := recover(); r != nil {
-			debugPrintln("Panic", r)
-			if conn != nil {
-				_ = conn.Close()
-				close(rawChannel)
-				close(connDetails.rawUpdateBytesChan)
+	hasMultiProtocolIPv4 := false
+	hasMultiProtocolIPv6 := false
+	hasAddPathIPv4 := false
+	hasAddPathIPv6 := false
+	hasFourByteAsn := false
+	for _, p := range msg.Body.(open.Msg).OptionalParameters {
+		for _, t := range p.ParameterValue.(open.CapabilityList).List {
+			switch v := t.CapabilityValue.(type) {
+			case open.FourByteASNCapability:
+				hasFourByteAsn = true
+			case open.AddPathCapabilityList:
+				for _, ac := range v {
+					if ac.AFI == update.AFI4 {
+						if ac.TXRX != open.ReceiveOnly {
+							hasAddPathIPv4 = true
+						}
+					} else if ac.AFI == update.AFI6 {
+						if ac.TXRX != open.ReceiveOnly {
+							hasAddPathIPv6 = true
+						}
+					}
+				}
+			case open.MultiProtocolCapability:
+				if v.SAFI != update.UNICAST {
+					continue
+				}
+				if v.AFI == update.AFI4 {
+					hasMultiProtocolIPv4 = true
+				} else if v.AFI == update.AFI6 {
+					hasMultiProtocolIPv6 = true
+				}
 			}
 		}
-	}()
-
-	for i := 0; i < workerCount; i++ {
-		go rawUpdateMessageWorker(connDetails.rawUpdateBytesChan, updates)
 	}
 
-	const BGPBuffSize = 10000 * 1000
-	buff := make([]byte, BGPBuffSize) //Reused
-	for {
-		n, err := conn.Read(buff)
-		if err != nil {
-			if err != io.EOF {
-				panic(err)
-			}
-		}
-		if n == 0 {
-			continue
-		}
-
-		newBuff := make([]byte, n)
-		copy(newBuff, buff[:n])
-		debugPrintln("Connection bytes read:", n)
-		rawChannel <- &newBuff
+	peerHoldTime := msg.Body.(open.Msg).HoldTime.GetApplicableSeconds()
+	applicableHoldTime := ownHoldTime
+	if peerHoldTime < ownHoldTime {
+		applicableHoldTime = peerHoldTime
 	}
+	applicableHoldTime = min(applicableHoldTime, 300)
+
+	remoteRouterID := msg.Body.(open.Msg).RouterID
+
+	if !hasFourByteAsn {
+		return fmt.Errorf("four byte ASNs not supported by peer")
+	}
+	if !hasMultiProtocolIPv4 && !hasMultiProtocolIPv6 {
+		return fmt.Errorf("multiprotocol capbility is not supported by peer")
+	}
+
+	if addPathEnabled && (!hasAddPathIPv6 || !hasAddPathIPv4) {
+		return fmt.Errorf("addPath is not supported by peer")
+	}
+
+	keepAliveBytes, _ := GetKeepAlive()
+	_, err = conn.Write(keepAliveBytes)
+	if err != nil {
+		return fmt.Errorf("error writing keep alive message %w", err)
+	}
+
+	msg, _, err = common.ReadMessage(conn)
+	if err != nil {
+		return fmt.Errorf("error reading KEEPALIVE message from peer %w", err)
+	}
+	if msg.Header.BgpType != common.MsgKeepAlive {
+		return fmt.Errorf("unexpected message of type '%d', expected keepalive", msg.Header.BgpType)
+	}
+
+	logger.Info("BGP session established", "routerID", remoteRouterID)
+
+	keepAliveChan := make(chan bool, 1)
+	defer close(keepAliveChan)
+	keepAliveHandler(logger, keepAliveChan, conn, applicableHoldTime)
+
+	err = handleIncoming(logger, conn, defaultAFI, addPathEnabled, updateChannel, keepAliveChan)
+	if err != nil {
+		return err
+	}
+	return nil
 }
-func rawUpdateMessageWorker(channel chan *[]byte, user chan *UserUpdate) {
-	for {
-		u := <-channel
-		if u == nil {
-			break
-		}
-		parseUpdateMsgNew(*u, user)
-	}
-}
-func receiveHeadersWorker(connDetails *connectionState, ch chan *[]byte, conn net.Conn) {
-	for {
-		newBuff := <-ch
-		if newBuff == nil {
-			return
-		}
 
-		if len(*newBuff) == 0 {
-			return
-		}
-		headers := readHeaders(newBuff, connDetails)
-		if headers == nil {
-			continue
-		}
-		for i := range headers {
-			switch headers[i].msgType {
-			case byte(msgOpen):
-				debugPrintln("Received BGP OPEN Message. Replying with OPEN")
-				log.Println("BGP Connection established with", conn.RemoteAddr().String())
-				_, _ = conn.Write(getOpen())
-			case byte(msgKeepAlive):
-				debugPrintln("Received BGP KEEPALIVE Message")
-				_, _ = conn.Write(addHeader(make([]byte, 0), msgKeepAlive))
-			case byte(msgUpdate):
-				debugPrintln("Received BGP UPDATE MESSAGE", len(headers[i].msg))
-				debugPrintf("%x\n", headers[i].msg)
-				connDetails.rawUpdateBytesChan <- &headers[i].msg
-			default:
-				debugPrintln("Received unknown BGP Message. Closing connection")
-				debugPrintln("BGP Error notification")
-				log.Println("BGP Connection lost with", conn.RemoteAddr().String())
-				_ = conn.Close()
+func keepAliveHandler(logger *slog.Logger, in chan bool, conn net.Conn, holdTime int) {
+	if holdTime == 0 {
+		return
+	}
+	go func() {
+		for {
+			time.Sleep(time.Duration(holdTime/4) * time.Second)
+			keepAliveBytes, _ := GetKeepAlive()
+			_, err := conn.Write(keepAliveBytes)
+			if err != nil {
+				logger.Debug("Error sending keepalive", "error", err)
 				return
 			}
 		}
-	}
-
-}
-
-type connectionState struct {
-	nextBuffer         []byte
-	rawUpdateBytesChan chan *[]byte
-}
-
-func readHeaders(raw *[]byte, connDetails *connectionState) []*header {
-	defer func() {
-		if r := recover(); r != nil {
-			debugPrintln("Panic in readHeaders()", r)
-		}
 	}()
+	go func() {
+		for {
+			select {
+			case <-time.After(time.Duration(holdTime) * time.Second):
+				logger.Warn("hold time expired")
+				_ = conn.Close()
+				return
+			case <-in:
 
-	var marker = []byte{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}
-
-	if connDetails.nextBuffer != nil {
-		debugPrintln("nextBuffer is not nil")
-		*raw = append(connDetails.nextBuffer, *raw...)
-		connDetails.nextBuffer = nil
-	}
-
-	headers := make([]*header, 0)
-	cov := len(*raw) - 1
-	pos := 0
-	debugPrintf("%x\n", raw)
-
-	for pos < cov {
-		if cov-pos < 19-1 {
-			debugPrintln("cov-pos is smaller than 18", cov, pos)
-			connDetails.nextBuffer = (*raw)[pos:]
-			return headers
-		}
-
-		newHeader := &header{}
-		for !bytes.Equal((*raw)[pos:pos+16], marker) {
-			debugPrintln("CAUTION: Trying to recover from NO BGP")
-			pos++
-			if pos+16 > cov {
-				debugPrintf("---> No BGP recovery", (*raw)[pos:])
-				connDetails.nextBuffer = nil
-				return headers
 			}
 		}
-		pos += 16
+	}()
+}
 
-		nextLength := make([]byte, 2)
-		nextLength[0] = (*raw)[pos]
-		pos++
-		nextLength[1] = (*raw)[pos]
-		pos++
-		l := binary.BigEndian.Uint16(nextLength)
-		debugPrintln("Total Length:", l)
-		newHeader.length = l
+func handleIncoming(logger *slog.Logger, conn io.Reader, defaultAFI update.AFI, addPathEnabled bool, updateChannel chan update.Msg, keepAliveChan chan bool) error {
+	for {
+		msg, r, err := common.ReadMessage(conn)
+		if err != nil {
+			return err
+		}
+		switch msg.Header.BgpType {
+		case common.MsgNotification:
+			return errors.New("bgp notification")
+		case common.MsgKeepAlive:
+			logger.Debug("Received keepalive message")
+			keepAliveChan <- true
+		case common.MsgOpen:
+			return errors.New("invalid state. Got OPEN message while the session was already established")
+		case common.MsgUpdate:
+			msg.Body, err = update.ParseMsgUpdate(r, defaultAFI, addPathEnabled)
+			if err != nil {
+				return fmt.Errorf("failed parsing UPDATE message %w", err)
+			}
+			select {
+			case updateChannel <- msg.Body.(update.Msg):
+			default:
+				// Cannot keep up
+			}
 
-		newHeader.msgType = (*raw)[pos]
-		pos++
-
-		realLength := l - 19
-
-		if cov-pos < int(realLength)-1 {
-			debugPrintln("smaller than realLength", cov, pos, realLength)
-			connDetails.nextBuffer = (*raw)[pos-19:]
-			return headers
 		}
 
-		newHeader.msg = (*raw)[pos : pos+int(realLength)]
-		pos += int(realLength)
-
-		headers = append(headers, newHeader)
+		// Discard any unread bytes
+		_, err = io.Copy(io.Discard, r)
+		if err != nil {
+			return err
+		}
 	}
-
-	return headers
 }

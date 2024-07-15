@@ -5,8 +5,7 @@
 ### Setup notes
 
 The program will listen on port 1790 for incoming BGP sessions (passive mode - no outgoing connections).
-Peering multiple nodes with a single instance of the program is also possible. The 'multihop' mode in your BGP daemon (for example BIRD) should be enabled to allow for running this program on the same host. Note that with BIRD there is a bug that requires using another IP address that belongs to the host (for example an IP from a dummy interface) for it to correctly send bgp information to a local instance of the program.
-
+Peering multiple nodes with a single instance of the program is also possible.
 
 ### Commandline arguments
 The following commandline arguments are required:
@@ -23,6 +22,27 @@ Explanation:
 5. Recommended: `false`. Whether BGP AddPath support should be used. It must be set on the BGP daemon as well.
 6. Recommended: `auto`. The position of the last static ASN (and for which to keep separate state for) in each path starting from 1. If AddPath support has been enabled that value is '1', otherwise it is '0'. For special cases like route collectors the value may differ.
 7. Recommended: `false`. Enable or disable debug output. This option produces a lot of output.
+
+### Example BIRD bgp daemon configuration
+```
+protocol bgp FLAPALERTED {
+    local fdcf:8538:9ad5:1111::3 as 4242423914; # This address cannot be ::1, it must be another address assigned to the host
+    neighbor ::1 as 4242423914 port 1790;
+
+    ipv4 {
+        add paths on;
+        export all;
+        import none;
+    };
+
+    ipv6 {
+        add paths on;
+        export all;
+        import none;
+    };
+}
+```
+
 
 ### Special mode: All BGP updates
 Use the value `0` for the RouteChangeCounter [2] if all BGP updates should cause a notification from the program. 
