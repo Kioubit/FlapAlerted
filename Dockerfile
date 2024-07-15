@@ -1,13 +1,13 @@
-FROM golang:1.20-bullseye AS build
+FROM golang:1.22.5-bookworm AS build
 
 WORKDIR /go/src/project/
 COPY . /go/src/project/
 
-RUN CGO_ENABLED=0 go build -tags=mod_httpAPI -trimpath -o /bin/FlapAlerted
+RUN make release
 
 FROM scratch
 WORKDIR /
-COPY --from=build /bin/FlapAlerted /bin/FlapAlerted
+COPY --from=build /go/src/project/bin/FlapAlerted /bin/FlapAlerted
 
 EXPOSE 1790:1790
 EXPOSE 8699:8699
