@@ -15,6 +15,10 @@ import (
 
 func newBGPConnection(logger *slog.Logger, conn net.Conn, defaultAFI update.AFI, addPathEnabled bool, routerID netip.Addr, updateChannel chan update.Msg) error {
 	const ownHoldTime = 240
+	err := conn.SetDeadline(time.Now().Add(ownHoldTime))
+	if err != nil {
+		logger.Warn("Failed to set connection deadline", "error", err)
+	}
 
 	openMessage, err := open.GetOpen(ownHoldTime, routerID,
 		open.CapabilityOptionalParameter{
@@ -145,6 +149,12 @@ func newBGPConnection(logger *slog.Logger, conn net.Conn, defaultAFI update.AFI,
 	}
 
 	logger.Info("BGP session established", "routerID", remoteRouterID)
+
+	// From this point on the hold timer will manage the connection deadline
+	err = conn.SetDeadline(time.Time{})
+	if err != nil {
+		logger.Warn("failed to reset connection deadline", "error", err)
+	}
 
 	keepAliveChan := make(chan bool, 1)
 	defer close(keepAliveChan)
