@@ -1,4 +1,4 @@
-//go:build mod_httpAPI
+//go:build !no_httpAPI
 
 package httpAPI
 

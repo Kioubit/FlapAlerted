@@ -2,6 +2,7 @@ package monitor
 
 import (
 	"FlapAlerted/bgp"
+	"FlapAlerted/bgp/common"
 	"FlapAlerted/bgp/update"
 	"FlapAlerted/config"
 	"encoding/json"
@@ -21,7 +22,7 @@ const PathLimit = 1000
 type Flap struct {
 	sync.RWMutex
 	Cidr                 string
-	LastPath             map[string]update.AsPathList
+	LastPath             map[string]common.AsPathList
 	Paths                map[string]*PathInfo
 	PathChangeCount      uint64
 	PathChangeCountTotal uint64
@@ -30,7 +31,7 @@ type Flap struct {
 }
 
 type PathInfo struct {
-	Path  update.AsPathList
+	Path  common.AsPathList
 	Count uint64
 }
 
@@ -133,7 +134,7 @@ func cleanUpFlapList() {
 	}
 }
 
-func updateList(prefix netip.Prefix, asPath []update.AsPathList) {
+func updateList(prefix netip.Prefix, asPath []common.AsPathList) {
 	cidr := prefix.String()
 	if len(asPath) == 0 {
 		return
@@ -149,7 +150,7 @@ func updateList(prefix netip.Prefix, asPath []update.AsPathList) {
 			FirstSeen:            currentTime,
 			PathChangeCount:      0,
 			PathChangeCountTotal: 0,
-			LastPath:             make(map[string]update.AsPathList),
+			LastPath:             make(map[string]common.AsPathList),
 			Paths:                make(map[string]*PathInfo),
 		}
 		if config.GlobalConf.KeepPathInfo {
@@ -215,7 +216,7 @@ func updateList(prefix netip.Prefix, asPath []update.AsPathList) {
 	}
 }
 
-func getRelevantASN(asPath update.AsPathList) string {
+func getRelevantASN(asPath common.AsPathList) string {
 	pathLen := len(asPath.Asn)
 
 	if pathLen < int(config.GlobalConf.RelevantAsnPosition) || config.GlobalConf.RelevantAsnPosition == 0 {
@@ -229,7 +230,7 @@ func getRelevantASN(asPath update.AsPathList) string {
 	return string(b)
 }
 
-func pathToString(asPath update.AsPathList) string {
+func pathToString(asPath common.AsPathList) string {
 	b := make([]byte, 0, len(asPath.Asn)*11)
 	for i := range asPath.Asn {
 		b = strconv.AppendInt(b, int64(asPath.Asn[i]), 10)
@@ -238,7 +239,7 @@ func pathToString(asPath update.AsPathList) string {
 	return string(b)
 }
 
-func pathsEqual(path1, path2 update.AsPathList) bool {
+func pathsEqual(path1, path2 common.AsPathList) bool {
 	if len(path1.Asn) != len(path2.Asn) {
 		return false
 	}

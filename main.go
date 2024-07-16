@@ -4,58 +4,37 @@ import (
 	"FlapAlerted/config"
 	_ "FlapAlerted/modules"
 	"FlapAlerted/monitor"
+	"flag"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
-	"reflect"
-	"strconv"
-	"strings"
 	"time"
 )
 
 var Version = "3.8"
 
 func main() {
-	fmt.Println("Version", Version)
+	fmt.Println("FlapAlerted version", Version)
 	monitor.SetVersion(Version)
-	conf := &config.UserConfig{}
 
-	v := reflect.Indirect(reflect.ValueOf(conf))
-	for i := 0; i < v.NumField(); i++ {
-		if len(os.Args) != v.NumField()+1 {
-			showUsage("invalid number of commandline arguments")
-		}
-		field := v.Field(i)
-		fieldName := v.Type().Field(i).Name
-		fieldTag := v.Type().Field(i).Tag
-		overloadStringTag := fieldTag.Get("overloadString")
-		switch field.Kind() {
-		case reflect.Int64:
-			input, err := strconv.Atoi(os.Args[i+1])
-			if err != nil {
-				if overloadStringTag == "true" {
-					if os.Args[i+1] != "auto" {
-						showUsage(fmt.Sprintf("The value entered for %s is not a number or 'auto'", fieldName))
-					}
-					input = -1
-				} else {
-					showUsage(fmt.Sprintf("The value entered for %s is not a number", fieldName))
-				}
-			}
-			if !field.OverflowInt(int64(input)) {
-				field.SetInt(int64(input))
-			} else {
-				showUsage(fmt.Sprintf("The value entered for %s is too high", fieldName))
-			}
-		case reflect.Bool:
-			if !checkIsInputBool(os.Args[i+1]) {
-				showUsage(fmt.Sprintf("The value entered for %s must be either 'true' or 'false'", fieldName))
-			}
-			input := os.Args[i+1] == "true"
-			field.SetBool(input)
-		}
-	}
+	routeChangeCounter := flag.Int("routeChangeCounter", 0, "Number of times a route path needs to change to list a prefix")
+	flapPeriod := flag.Int("period", 60, "Interval in seconds within which the routeChangeCounter value is evaluated")
+	asn := flag.Int("asn", 0, "Your ASN number")
+	noPathInfo := flag.Bool("noPathInfo", false, "Disable keeping path information. (Only disable if performance is a concern)")
+	disableAddPath := flag.Bool("disableAddPath", false, "Disable BGP AddPath support. (Setting must be replicated in BGP daemon)")
+	relevantAsnPosition := flag.Int("", -1, "The position of the last static ASN (and for which to keep separate state for)"+
+		" in each path. If AddPath support has been enabled this value is '1', otherwise it is '0'. For special cases like route collectors the value may differ.")
+	enableDebug := flag.Bool("debug", false, "Enable debug mode (produces a lot of output)")
 
+	flag.Parse()
+
+	conf := config.UserConfig{}
+	conf.RouteChangeCounter = int64(*routeChangeCounter)
+	conf.FlapPeriod = int64(*flapPeriod)
+	conf.Asn = int64(*asn)
+	conf.KeepPathInfo = !*noPathInfo
+	conf.UseAddPath = !*disableAddPath
+	conf.RelevantAsnPosition = int64(*relevantAsnPosition)
 	if conf.RelevantAsnPosition == -1 {
 		if conf.UseAddPath {
 			conf.RelevantAsnPosition = 1
@@ -63,54 +42,31 @@ func main() {
 			conf.RelevantAsnPosition = 0
 		}
 	}
+	conf.Debug = *enableDebug
 
-	empty := true
-	modules := monitor.GetRegisteredModules()
-	for _, m := range modules {
-		fmt.Println("Enabled module:", m.Name)
-		empty = false
-	}
-	if empty {
-		fmt.Println("Error: No modules enabled during compilation!")
-		fmt.Printf("It is recommended to use the included Makefile")
+	if conf.Asn == 0 {
+		fmt.Println("ASN value not specified")
 		os.Exit(1)
 	}
 
+	modules := monitor.GetRegisteredModules()
+	for _, m := range modules {
+		fmt.Println("Enabled module:", m.Name)
+	}
+
 	if conf.Debug {
-		fmt.Println("WARNING: Debug mode has been activated which will generate a lot of output")
-		fmt.Println("Waiting for 10 seconds...")
-		time.Sleep(10 * time.Second)
+		fmt.Println("Debug mode has been activated which will generate a lot of output")
+		fmt.Println("Waiting for 4 seconds...")
+		time.Sleep(4 * time.Second)
+		slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug, AddSource: true})))
+	} else {
+		slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{})))
 	}
 
 	fmt.Println("Using the following parameters:")
 	fmt.Println("Detecting a flap if the route to a prefix changes within", conf.FlapPeriod, "seconds at least", conf.RouteChangeCounter, "time(s)")
 	fmt.Println("ASN:", conf.Asn, "| Keep Path Info:", conf.KeepPathInfo, "| AddPath Capability:", conf.UseAddPath, "| Relevant ASN Position:", conf.RelevantAsnPosition)
 
-	log.Println("Started")
-	monitor.StartMonitoring(*conf)
-}
-
-func checkIsInputBool(input string) bool {
-	if input == "true" || input == "false" {
-		return true
-	}
-	return false
-}
-
-func getArguments() []string {
-	v := reflect.ValueOf(config.UserConfig{})
-	args := make([]string, v.NumField())
-	for i := 0; i < v.NumField(); i++ {
-		args[i] = v.Type().Field(i).Name
-	}
-	return args
-}
-
-func showUsage(reason string) {
-	if reason != "" {
-		fmt.Println("Error:", reason)
-	}
-	fmt.Println("Usage:", os.Args[0], "<"+strings.Join(getArguments(), `> <`)+`>`)
-	fmt.Println("Refer to the documentation for the meaning of those arguments")
-	os.Exit(1)
+	slog.Info("Started")
+	monitor.StartMonitoring(conf)
 }

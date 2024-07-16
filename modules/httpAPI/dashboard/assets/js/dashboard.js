@@ -141,16 +141,20 @@ function addToChart(liveChart, point, unixTime) {
 }
 
 
-updateInfo();
-setInterval(updateInfo, 5000);
-updateCapabilities();
-getStats();
-document.getElementById("loadingScreen").style.display = 'none';
+
+window.onload = () => {
+    updateCapabilities();
+    updateInfo();
+    setInterval(updateInfo, 5000);
+    getStats();
+    document.getElementById("loadingScreen").style.display = 'none';
+}
+
 function updateInfo() {
     fetch("flaps/active/compact").then(function (response) {
         return response.json();
     }).then(function (flapList) {
-        document.getElementById('connectionLost').style.display = 'none';
+        displayConnectionLost(false, "updateInfo");
         flapList.sort(function compareFn(a, b) {
             if (a.TotalCount > b.TotalCount) {
                 return -1;
@@ -175,7 +179,7 @@ function updateInfo() {
         document.getElementById("prefixTableBox").innerHTML = prefixTableHtml;
 
     }).catch(function (error) {
-        document.getElementById('connectionLost').style.display = 'block';
+        displayConnectionLost(true, "updateInfo");
         console.log(error);
     });
 }
@@ -185,7 +189,6 @@ function getStats() {
     const avgArray = [];
     evtSource.addEventListener("u", (event) => {
         try {
-            console.log(event.data)
             const js = JSON.parse(event.data)
 
             addToChart(liveRouteChart, js["Changes"], js["Time"]);
@@ -204,9 +207,11 @@ function getStats() {
         }
     });
     evtSource.onerror = (err) => {
+        displayConnectionLost(true, "getStats");
         console.log(err)
     };
     evtSource.onopen = () => {
+        displayConnectionLost(false, "getStats");
     };
 }
 
@@ -214,4 +219,19 @@ function toTimeElapsed(seconds) {
     let date = new Date(null);
     date.setSeconds(seconds);
     return date.toISOString().slice(11, 19);
+}
+
+let lostType = [];
+function displayConnectionLost(lost, type) {
+    if (lost) {
+        if (lostType.indexOf(type) === -1) {
+            lostType.push(type)
+        }
+        document.getElementById('connectionLost').style.display = 'block';
+    } else {
+        lostType = lostType.filter(e => e !== type);
+        if (lostType.length === 0) {
+            document.getElementById('connectionLost').style.display = 'none';
+        }
+    }
 }

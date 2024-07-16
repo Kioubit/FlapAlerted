@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"net"
 	"net/netip"
-	"os"
 )
 
 // RFCs implemented
@@ -29,12 +28,6 @@ func StartBGP(updateChannel chan update.Msg) {
 		conn, err := listener.Accept()
 		if err != nil {
 			slog.Error("Failed to accept TCP connection", "error", err.Error())
-		}
-
-		if config.GlobalConf.Debug {
-			slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug, AddSource: true})))
-		} else {
-			slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{})))
 		}
 
 		logger := slog.With("remote", conn.RemoteAddr())

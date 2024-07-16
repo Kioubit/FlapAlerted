@@ -1,6 +1,7 @@
 package update
 
 import (
+	"FlapAlerted/bgp/common"
 	"bytes"
 	"encoding/binary"
 	"errors"
@@ -282,12 +283,8 @@ func (u Msg) GetMpUnReachNLRI() (MPUnReachNLRI, bool, error) {
 	return MPUnReachNLRI{}, false, nil
 }
 
-type AsPathList struct {
-	Asn []uint32
-}
-
-func (u Msg) GetAsPaths() ([]AsPathList, error) {
-	paths := make([]AsPathList, 0)
+func (u Msg) GetAsPaths() ([]common.AsPathList, error) {
+	paths := make([]common.AsPathList, 0)
 	for _, a := range u.PathAttributes {
 		if a.TypeCode == AsPathAttr {
 			attribute, err := a.GetAttribute()
@@ -295,7 +292,7 @@ func (u Msg) GetAsPaths() ([]AsPathList, error) {
 				return nil, err
 			}
 			if attribute.(asPathAttribute).PathSegmentType == AsSequence {
-				paths = append(paths, AsPathList{attribute.(asPathAttribute).Value})
+				paths = append(paths, common.AsPathList{Asn: attribute.(asPathAttribute).Value})
 			}
 		}
 	}
