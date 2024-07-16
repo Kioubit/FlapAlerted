@@ -43,6 +43,9 @@ func monitorFlap() {
 			if obj == nil {
 				FlapHistoryMap[f[i].Cidr] = []uint64{f[i].PathChangeCountTotal}
 			} else {
+				if len(FlapHistoryMap[f[i].Cidr]) > 1000 {
+					FlapHistoryMap[f[i].Cidr] = FlapHistoryMap[f[i].Cidr][1:]
+				}
 				FlapHistoryMap[f[i].Cidr] = append(FlapHistoryMap[f[i].Cidr], f[i].PathChangeCountTotal)
 			}
 		}
@@ -93,7 +96,7 @@ func getFlapHistory(w http.ResponseWriter, req *http.Request) {
 	FlapHistoryMapMu.RLock()
 	result := FlapHistoryMap[cidr]
 	if result == nil {
-		result = make([]uint64, 0, 0)
+		result = make([]uint64, 0)
 	}
 
 	marshaled, err := json.Marshal(result)
