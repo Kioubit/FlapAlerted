@@ -25,7 +25,9 @@ func logFlap(f *monitor.Flap) {
 	if len(summary) > 1 {
 		var summaryText string
 		for i := range summary {
+			summary[i].RLock()
 			summaryText = summaryText + " " + summary[i].Cidr
+			summary[i].RUnlock()
 		}
 		log.Println("Summary of currently active flaps:", summaryText)
 	}

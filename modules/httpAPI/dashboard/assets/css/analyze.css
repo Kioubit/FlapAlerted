@@ -34,10 +34,12 @@
 }
 
 #pathTable {
-    width: auto;
+    width: fit-content;
     text-align: right;
     font-family: monospace;
     white-space: pre;
+    float: right;
+    overflow-x: auto;
 }
 
 .informationText {

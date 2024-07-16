@@ -13,10 +13,10 @@ import (
 	"time"
 )
 
-var Version = "3.7"
+var Version = "3.8"
 
 func main() {
-	fmt.Println("Kioubit FlapAlerted", Version)
+	fmt.Println("Version", Version)
 	monitor.SetVersion(Version)
 	conf := &config.UserConfig{}
 

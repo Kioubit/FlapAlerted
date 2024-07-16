@@ -5,21 +5,12 @@ function updateCapabilities() {
     }
     const versionBox = document.getElementById("version");
     const infoBox = document.getElementById("info");
-    const pathListLink = document.getElementById("PathListLink");
-    versionBox.innerHTML = "Version: Kioubit FlapAlerted ";
     getCapabilitiesFunction().then((data) => {
-        versionBox.innerHTML += data.Version;
-        if (!data.UserParameters.KeepPathInfo) {
-            pathListLink.href = '';
-            pathListLink.innerText += " (Disabled by the administrator)";
-            pathListLink.classList.add("disabledLink");
-        }
+        versionBox.innerText =  "FlapAlerted " + data.Version;
         if (data.UserParameters.NotifyTarget === 0) {
-            infoBox.innerText = "Current settings: Displaying every BGP Update received (This does not indicate flapping). Removing entries after "+ data.UserParameters.FlapPeriod + " seconds of inactivity.";
-            document.getElementById("dataInfo").innerText = "Live Data -- All BGP Updates";
+            infoBox.innerText = "Current settings: Displaying every BGP update received. Removing entries after "+ data.UserParameters.FlapPeriod + " seconds of inactivity.";
         } else {
-            infoBox.innerText = "Current settings: Detecting a flap if a route changes at least " + data.UserParameters.NotifyTarget + " times in " + data.UserParameters.FlapPeriod + " seconds.";
-            document.getElementById("dataInfo").innerText = "Live Data";
+            infoBox.innerText = "Current settings: A route for a prefix needs to change at least " + data.UserParameters.NotifyTarget + " times in " + data.UserParameters.FlapPeriod + " seconds for it to be shown in the table.";
         }
     }).catch((err) => {
         versionBox.innerHTML += "N/A";
@@ -42,91 +33,33 @@ let gauge = new JustGage({
         ranges: [{
             color: "#43bf58",
             lo: 0,
-            hi: 10
+            hi: 20
         },
         {
             color: "#f7bc08",
-            lo: 11,
-            hi: 50
+            lo: 21,
+            hi: 70
         },
         {
             color: "#ff3b30",
-            lo: 51,
+            lo: 71,
             hi: 100
         }]
     }
 });
 
-
 const ctxFlapCount = document.getElementById('chartFlapCount').getContext('2d');
-const ctxRouteCount = document.getElementById('chartRouteCount').getContext('2d');
 const ctxRoute = document.getElementById('chartRoute').getContext('2d');
-
-const emptyChartPlugin = {
-    id: 'emptyChart',
-    afterDraw(chart, args, options) {
-        const { datasets } = chart.data;
-        let hasData = false;
-
-        for (let dataset of datasets) {
-            if (dataset.data.length > 0 && dataset.data.some(item => item !== 0)) {
-                hasData = true;
-                break;
-            }
-        }
-
-        if (!hasData) {
-            const { chartArea: { left, top, right, bottom }, ctx } = chart;
-            const centerX = (left + right) / 2;
-            const centerY = (top + bottom) / 2;
-
-            chart.clear();
-            ctx.save();
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText('Waiting for BGP flapping...', centerX, centerY);
-            ctx.restore();
-        }
-    }
-};
 
 let dataFlapCount = {
     labels: [],
     datasets: [
         {
-            label: "Count of actively flapping prefixes",
+            label: "Count of active prefixes",
             fill: false,
             lineTension: 0.1,
             backgroundColor: "rgba(255,47,5,0.4)",
             borderColor: "rgba(255,47,5,1)",
-            borderCapStyle: 'butt',
-            borderDash: [],
-            borderDashOffset: 0.0,
-            borderJoinStyle: 'miter',
-            pointBorderColor: "rgba(75,192,192,1)",
-            pointBackgroundColor: "#fff",
-            pointBorderWidth: 1,
-            pointHoverRadius: 5,
-            pointHoverBackgroundColor: "rgba(75,192,192,1)",
-            pointHoverBorderColor: "rgba(220,220,220,1)",
-            pointHoverBorderWidth: 2,
-            pointRadius: 5,
-            pointHitRadius: 10,
-            data: [],
-        }
-    ]
-};
-
-
-let dataRouteChangeCount = {
-    labels: [],
-    datasets: [
-        {
-            label: "Route Change count",
-            fill: false,
-            lineTension: 0.1,
-            backgroundColor: "rgba(75,192,192,0.4)",
-            borderColor: "rgba(75,192,192,1)",
             borderCapStyle: 'butt',
             borderDash: [],
             borderDashOffset: 0.0,
@@ -178,32 +111,22 @@ let dataRouteChange = {
 let liveFlapChart = new Chart(ctxFlapCount, {
     type: "line",
     data: dataFlapCount,
-    plugins: [emptyChartPlugin],
     options: {
         maintainAspectRatio: false
     },
 })
 
-let liveRouteCountChart = new Chart(ctxRouteCount, {
-    type: "line",
-    data: dataRouteChangeCount,
-    plugins: [emptyChartPlugin],
-    options: {
-        maintainAspectRatio: false
-    },
-})
 
 let liveRouteChart = new Chart(ctxRoute, {
     type: "line",
     data: dataRouteChange,
-    plugins: [emptyChartPlugin],
     options: {
         maintainAspectRatio: false
     },
 })
 
-function addToChart(liveChart, point) {
-    const now = new Date();
+function addToChart(liveChart, point, unixTime) {
+    const now = new Date(unixTime * 1000);
     const timeStamp = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0')
         + ":" + String(now.getSeconds()).padStart(2, '0');
 
@@ -218,88 +141,16 @@ function addToChart(liveChart, point) {
 }
 
 
-let flapList = [];
-let avgDerivArr = [];
-let newCount = 0;
-let oldCount = 0;
 updateInfo();
 setInterval(updateInfo, 5000);
 updateCapabilities();
+getStats();
 document.getElementById("loadingScreen").style.display = 'none';
-let firstPass = true;
 function updateInfo() {
     fetch("flaps/active/compact").then(function (response) {
         return response.json();
-    }).then(function (json) {
+    }).then(function (flapList) {
         document.getElementById('connectionLost').style.display = 'none';
-        for (const key in json) {
-            let prefix = json[key].Prefix;
-            let index = flapList.findIndex((obj => obj.Prefix === prefix));
-            if (index === -1) {
-                flapList.push(json[key]);
-                continue;
-            }
-
-            //reuse
-            if (flapList[index].FirstSeen < json[key].FirstSeen) {
-                if ('reuse' in flapList[index]) {
-                    flapList[index].reuse += flapList[index].TotalCount;
-                } else {
-                    flapList[index].reuse = flapList[index].TotalCount
-                }
-                flapList[index].FirstSeen = json[key].FirstSeen;
-            }
-
-            if ('reuse' in flapList[index]) {
-                flapList[index].TotalCount = json[key].TotalCount;
-                flapList[index].LastSeen = json[key].LastSeen;
-            } else {
-                flapList[index] = json[key];
-            }
-        }
-
-        let index = flapList.length
-        while (index--) {
-            let searchPrefix = flapList[index].Prefix;
-            let jsonIndex = json.findIndex((obj => obj.Prefix === searchPrefix));
-            if (jsonIndex === -1) {
-                oldCount = oldCount - flapList[index].TotalCount;
-                if ('reuse' in flapList[index]) {
-                    oldCount = oldCount - flapList[index].reuse;
-                }
-                flapList.splice(index, 1);
-            } else {
-                if ('reuse' in flapList[index]) {
-                    newCount = newCount + flapList[index].TotalCount + flapList[index].reuse;
-                } else {
-                    newCount = newCount + flapList[index].TotalCount;
-                }
-            }
-        }
-        let difference = newCount - oldCount;
-        oldCount = newCount;
-        newCount = 0;
-
-        if (firstPass) {
-            firstPass = false;
-            difference = 0;
-        }
-
-        avgDerivArr.push(difference);
-        if (avgDerivArr.length > 50) {
-            avgDerivArr.splice(0, 1);
-        }
-        let avgDeriv = 0
-        for (let i = 0; i < avgDerivArr.length; i++) {
-            avgDeriv = avgDeriv + avgDerivArr[i];
-        }
-        avgDeriv = avgDeriv / avgDerivArr.length
-
-        addToChart(liveRouteCountChart, oldCount);
-        addToChart(liveRouteChart, difference);
-        addToChart(liveFlapChart, flapList.length);
-        gauge.refresh(avgDeriv);
-
         flapList.sort(function compareFn(a, b) {
             if (a.TotalCount > b.TotalCount) {
                 return -1;
@@ -308,9 +159,9 @@ function updateInfo() {
             }
         });
 
-        let prefixTableHtml = '<table id="prefixTable"><thead><tr><th>Prefix</th><th>Seconds</th><th>Route Changes</th></tr></thead><tbody>';
+        let prefixTableHtml = '<table id="prefixTable"><thead><tr><th>Prefix</th><th>Duration</th><th>Route Changes</th></tr></thead><tbody>';
         for (let i = 0; i < flapList.length; i++) {
-            let duration = flapList[i].LastSeen - flapList[i].FirstSeen;
+            let duration = toTimeElapsed(flapList[i].LastSeen - flapList[i].FirstSeen);
             prefixTableHtml += "<tr>";
             prefixTableHtml += "<td><a target=\"_blank\" href='analyze/?prefix=" + encodeURIComponent(flapList[i].Prefix) +"'>" + flapList[i].Prefix + "</a></td>";
             prefixTableHtml += "<td>" + duration + "</td>";
@@ -324,9 +175,43 @@ function updateInfo() {
         document.getElementById("prefixTableBox").innerHTML = prefixTableHtml;
 
     }).catch(function (error) {
-        firstPass = true;
         document.getElementById('connectionLost').style.display = 'block';
         console.log(error);
     });
+}
 
+function getStats() {
+    const evtSource = new EventSource("flaps/statStream");
+    const avgArray = [];
+    evtSource.addEventListener("u", (event) => {
+        try {
+            console.log(event.data)
+            const js = JSON.parse(event.data)
+
+            addToChart(liveRouteChart, js["Changes"], js["Time"]);
+            addToChart(liveFlapChart, js["Active"], js["Time"]);
+
+            avgArray.push(js["Changes"])
+            if (avgArray.length > 50) {
+                avgArray.shift()
+            }
+            const sum = avgArray.reduce((s, a) => s + a, 0)
+            const avg = sum/avgArray.length;
+            gauge.refresh(avg);
+
+        } catch(err) {
+            console.log(err);
+        }
+    });
+    evtSource.onerror = (err) => {
+        console.log(err)
+    };
+    evtSource.onopen = () => {
+    };
+}
+
+function toTimeElapsed(seconds) {
+    let date = new Date(null);
+    date.setSeconds(seconds);
+    return date.toISOString().slice(11, 19);
 }

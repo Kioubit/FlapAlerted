@@ -11,6 +11,5 @@ COPY --from=build /go/src/project/bin/FlapAlerted /bin/FlapAlerted
 
 EXPOSE 1790:1790
 EXPOSE 8699:8699
-EXPOSE 8700:8700
 LABEL description="FlapAlerted"
 ENTRYPOINT ["/bin/FlapAlerted"]

@@ -39,7 +39,7 @@
     margin-bottom: 0.2em;
 }
 
-#dataInfo {
+.mt-0 {
     margin-top: 0;
 }
 
@@ -58,7 +58,7 @@
 #grid-container-charts {
     display: grid;
     grid-template-columns: minmax(0,1fr);
-    grid-template-rows: repeat(3,15em);
+    grid-template-rows: repeat(2,15em);
     gap: 10px;
 }
 
@@ -121,7 +121,7 @@
 }
 
 .footer {
-    margin-top: 2em;
+    margin-top: 3em;
 }
 
 .disabledLink {

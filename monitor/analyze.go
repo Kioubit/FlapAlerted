@@ -12,12 +12,14 @@ import (
 	"net/netip"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
 const PathLimit = 1000
 
 type Flap struct {
+	sync.RWMutex
 	Cidr                 string
 	LastPath             map[string]update.AsPathList
 	Paths                map[string]*PathInfo
@@ -45,6 +47,7 @@ func StartMonitoring(conf config.UserConfig) {
 
 	go processUpdates(updateChannel)
 	go bgp.StartBGP(updateChannel)
+	go statTracker()
 	go moduleCallback()
 	cleanUpFlapList()
 }
@@ -56,6 +59,8 @@ var (
 	activeFlapListMu sync.RWMutex
 	currentTime      int64
 )
+
+var globalRouteChangeCounter atomic.Uint64
 
 func processUpdates(updateChannel chan update.Msg) {
 	for {
@@ -153,9 +158,12 @@ func updateList(prefix netip.Prefix, asPath []update.AsPathList) {
 		newFlap.LastPath[getRelevantASN(cleanPath)] = cleanPath
 		flapMap[cidr] = newFlap
 
+		globalRouteChangeCounter.Add(1)
+
 		// Notify for every Update
 		if config.GlobalConf.RouteChangeCounter == 0 {
 			newFlap.PathChangeCountTotal = 1
+			newFlap.PathChangeCount = 1
 			activeFlapListMu.Lock()
 			activeFlapList = append(activeFlapList, newFlap)
 			activeFlapListMu.Unlock()
@@ -163,6 +171,8 @@ func updateList(prefix netip.Prefix, asPath []update.AsPathList) {
 		}
 		return
 	}
+	obj.Lock()
+	defer obj.Unlock()
 
 	// If the entry already exists
 
@@ -186,18 +196,21 @@ func updateList(prefix netip.Prefix, asPath []update.AsPathList) {
 
 		obj.PathChangeCount = incrementUint64(obj.PathChangeCount)
 		obj.PathChangeCountTotal = incrementUint64(obj.PathChangeCountTotal)
+		globalRouteChangeCounter.Add(1)
 
 		obj.LastSeen = currentTime
 		obj.LastPath[getRelevantASN(cleanPath)] = cleanPath
 
-		if obj.PathChangeCount == uint64(config.GlobalConf.RouteChangeCounter) {
-			if obj.PathChangeCountTotal == uint64(config.GlobalConf.RouteChangeCounter) {
-				activeFlapListMu.Lock()
-				activeFlapList = append(activeFlapList, obj)
-				activeFlapListMu.Unlock()
+		if config.GlobalConf.RouteChangeCounter != 0 {
+			if obj.PathChangeCount == uint64(config.GlobalConf.RouteChangeCounter) {
+				if obj.PathChangeCountTotal == uint64(config.GlobalConf.RouteChangeCounter) {
+					activeFlapListMu.Lock()
+					activeFlapList = append(activeFlapList, obj)
+					activeFlapListMu.Unlock()
+				}
+				obj.PathChangeCount = 0
+				go mainNotify(obj)
 			}
-			obj.PathChangeCount = 0
-			go mainNotify(obj)
 		}
 	}
 }
@@ -244,12 +257,65 @@ func incrementUint64(n uint64) uint64 {
 	return n + 1
 }
 
-func getActiveFlapList() []Flap {
-	aFlap := make([]Flap, 0)
+func getActiveFlapList() []*Flap {
+	aFlap := make([]*Flap, 0)
 	activeFlapListMu.RLock()
 	for i := range activeFlapList {
-		aFlap = append(aFlap, *activeFlapList[i])
+		aFlap = append(aFlap, activeFlapList[i])
 	}
 	activeFlapListMu.RUnlock()
 	return aFlap
+}
+
+type statistic struct {
+	Time    int64
+	Changes uint64
+	Active  int
+}
+
+var (
+	statList     = make([]statistic, 0)
+	statListLock sync.RWMutex
+
+	statSubscribers     = make([]chan statistic, 0)
+	statSubscribersLock sync.Mutex
+)
+
+func addStatSubscriber() chan statistic {
+	statSubscribersLock.Lock()
+	defer statSubscribersLock.Unlock()
+	c := make(chan statistic, 2)
+	statSubscribers = append(statSubscribers, c)
+	return c
+}
+
+func statTracker() {
+	for {
+		time.Sleep(5 * time.Second)
+		activeFlapListMu.RLock()
+		flapListLength := len(activeFlapList)
+		activeFlapListMu.RUnlock()
+
+		newStatistic := statistic{
+			Time:    time.Now().Unix(),
+			Changes: globalRouteChangeCounter.Swap(0),
+			Active:  flapListLength,
+		}
+
+		statSubscribersLock.Lock()
+		for _, subscriber := range statSubscribers {
+			select {
+			case subscriber <- newStatistic:
+			default:
+			}
+		}
+		statSubscribersLock.Unlock()
+
+		statListLock.Lock()
+		statList = append(statList, newStatistic)
+		if len(statList) > 60 {
+			statList = statList[1:]
+		}
+		statListLock.Unlock()
+	}
 }

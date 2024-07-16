@@ -2,7 +2,6 @@ package monitor
 
 import (
 	"FlapAlerted/config"
-	"math"
 	"sync"
 )
 
@@ -53,7 +52,7 @@ func SetVersion(v string) {
 	version = v
 }
 
-func GetActiveFlaps() []Flap {
+func GetActiveFlaps() []*Flap {
 	return getActiveFlapList()
 }
 
@@ -63,16 +62,17 @@ type Metric struct {
 }
 
 func GetMetric() Metric {
-	activeFlaps := GetActiveFlaps()
-
-	var totalPathChangeCount uint64
-	for i := range activeFlaps {
-		totalPathChangeCount = addUint64(totalPathChangeCount, activeFlaps[i].PathChangeCountTotal)
+	var activeFlapCount = 0
+	var pathChangeCount uint64 = 0
+	stats := GetStats()
+	if len(stats) != 0 {
+		activeFlapCount = stats[len(stats)-1].Active
+		pathChangeCount = stats[len(stats)-1].Changes
 	}
 
 	return Metric{
-		ActiveFlapCount:                len(activeFlaps),
-		ActiveFlapTotalPathChangeCount: totalPathChangeCount,
+		ActiveFlapCount:                activeFlapCount,
+		ActiveFlapTotalPathChangeCount: pathChangeCount,
 	}
 }
 
@@ -126,9 +126,16 @@ func moduleCallback() {
 	}
 }
 
-func addUint64(left, right uint64) uint64 {
-	if left > math.MaxUint64-right {
-		return math.MaxUint64
+func GetStats() []statistic {
+	statListLock.RLock()
+	defer statListLock.RUnlock()
+	result := make([]statistic, len(statList))
+	for i := range statList {
+		result[i] = statList[i]
 	}
-	return left + right
+	return result
+}
+
+func SubscribeToStats() chan statistic {
+	return addStatSubscriber()
 }

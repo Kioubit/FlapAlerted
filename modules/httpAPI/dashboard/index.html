@@ -14,7 +14,7 @@
     <div class="loader"></div>
 </div>
 <h2 id="mainHeading">FlapAlerted</h2>
-<h3 id="dataInfo">Live Data</h3>
+<h3 class="mt-0">Live Data</h3>
 <div id="mainContainer">
     <div id="connectionLost">
         <p id="connectLostText">Connection lost</p>
@@ -30,20 +30,15 @@
         <div class="chartContainer">
             <canvas id="chartRoute"></canvas>
         </div>
-        <div class="chartContainer">
-            <canvas id="chartRouteCount"></canvas>
-        </div>
     </div>
     <div class="footer">
-        <a id="PathListLink" href="/flaps/active" target="_blank">List of all paths for the flapping prefixes
-            (JSON)</a>
         <div id="info"></div>
-        <div id="version"></div>
+        <a href="https://github.com/Kioubit/FlapAlerted/" id="version"></a>
     </div>
 </div>
-<script src="assets/js/chartjs/4.3.0/chart.js"></script>
-<script src="assets/js/justgage/1.6.1/raphael-2.1.4.min.js"></script>
-<script src="assets/js/justgage/1.6.1/justgage.min.js"></script>
+<script src="assets/js/chartjs/4.4.1/chart.umd.min.js"></script>
+<script src="assets/js/justgage/1.7.0/raphael-2.3.0.min.js"></script>
+<script src="assets/js/justgage/1.7.0/justgage.min.js"></script>
 <script src="assets/js/dashboard.js"></script>
 </body>
 </html>

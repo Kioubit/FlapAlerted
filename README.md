@@ -85,6 +85,3 @@ It also provides a user interface at path:
 
 #### mod_log (Disabled by default)
 Logs each event to STDOUT.
-
-#### mod_tcpNotify (Disabled by default)
-Listens for tcp connections on port `8700`. Sends a json string to each client for every event.

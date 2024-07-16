@@ -15,7 +15,7 @@ import (
 
 func newBGPConnection(logger *slog.Logger, conn net.Conn, defaultAFI update.AFI, addPathEnabled bool, routerID netip.Addr, updateChannel chan update.Msg) error {
 	const ownHoldTime = 240
-	err := conn.SetDeadline(time.Now().Add(ownHoldTime))
+	err := conn.SetDeadline(time.Now().Add(ownHoldTime * time.Second))
 	if err != nil {
 		logger.Warn("Failed to set connection deadline", "error", err)
 	}

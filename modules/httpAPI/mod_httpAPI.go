@@ -1,5 +1,4 @@
 //go:build mod_httpAPI
-// +build mod_httpAPI
 
 package httpAPI
 
@@ -33,21 +32,21 @@ var FlapHistoryMapMu sync.RWMutex
 
 func monitorFlap() {
 	for {
-		select {
-		case <-time.After(10 * time.Second):
-		}
+		<-time.After(10 * time.Second)
 		FlapHistoryMapMu.Lock()
-		f := monitor.GetActiveFlaps()
-		for i := range f {
-			obj := FlapHistoryMap[f[i].Cidr]
+		flapList := monitor.GetActiveFlaps()
+		for _, f := range flapList {
+			f.RLock()
+			obj := FlapHistoryMap[f.Cidr]
 			if obj == nil {
-				FlapHistoryMap[f[i].Cidr] = []uint64{f[i].PathChangeCountTotal}
+				FlapHistoryMap[f.Cidr] = []uint64{f.PathChangeCountTotal}
 			} else {
-				if len(FlapHistoryMap[f[i].Cidr]) > 1000 {
-					FlapHistoryMap[f[i].Cidr] = FlapHistoryMap[f[i].Cidr][1:]
+				if len(FlapHistoryMap[f.Cidr]) > 1000 {
+					FlapHistoryMap[f.Cidr] = FlapHistoryMap[f.Cidr][1:]
 				}
-				FlapHistoryMap[f[i].Cidr] = append(FlapHistoryMap[f[i].Cidr], f[i].PathChangeCountTotal)
+				FlapHistoryMap[f.Cidr] = append(FlapHistoryMap[f.Cidr], f.PathChangeCountTotal)
 			}
+			f.RUnlock()
 		}
 		FlapHistoryMapMu.Unlock()
 	}
@@ -58,12 +57,14 @@ func cleanupHistory() {
 		time.Sleep(1 * time.Duration(config.GlobalConf.FlapPeriod+5) * time.Second)
 		FlapHistoryMapMu.Lock()
 		newFlapHistoryMap := make(map[string][]uint64)
-		f := monitor.GetActiveFlaps()
-		for i := range f {
-			obj := FlapHistoryMap[f[i].Cidr]
+		flapList := monitor.GetActiveFlaps()
+		for _, f := range flapList {
+			f.RLock()
+			obj := FlapHistoryMap[f.Cidr]
 			if obj != nil {
-				newFlapHistoryMap[f[i].Cidr] = obj
+				newFlapHistoryMap[f.Cidr] = obj
 			}
+			f.RUnlock()
 		}
 		FlapHistoryMap = newFlapHistoryMap
 		FlapHistoryMapMu.Unlock()
@@ -73,11 +74,13 @@ func cleanupHistory() {
 func startComplete() {
 	go monitorFlap()
 	go cleanupHistory()
+	go streamServe()
 
 	http.Handle("/", dashBoardHandler())
 	http.HandleFunc("/capabilities", showCapabilities)
-	http.HandleFunc("/flaps/active", getActiveFlaps)
-	http.HandleFunc("/flaps/active/compact", activeFlapsCompact)
+	http.Handle("/flaps/active", getActiveFlaps(false))
+	http.Handle("/flaps/active/compact", getActiveFlaps(true))
+	http.HandleFunc("/flaps/statStream", getStatisticStream)
 	http.HandleFunc("/flaps/active/history", getFlapHistory)
 	http.HandleFunc("/flaps/metrics/json", metrics)
 	http.HandleFunc("/flaps/metrics/prometheus", prometheus)
@@ -124,69 +127,44 @@ func showCapabilities(w http.ResponseWriter, req *http.Request) {
 	_, _ = w.Write(b)
 }
 
-func getActiveFlaps(w http.ResponseWriter, req *http.Request) {
-
-	type jsFlap struct {
-		Prefix     string
-		Paths      []monitor.PathInfo
-		FirstSeen  int64
-		LastSeen   int64
-		TotalCount uint64
-	}
-
-	var jsonFlapList = make([]jsFlap, 0)
-	activeFlaps := monitor.GetActiveFlaps()
-	for i := range activeFlaps {
-		pathList := make([]monitor.PathInfo, 0, len(activeFlaps[i].Paths))
-		for n := range activeFlaps[i].Paths {
-			pathList = append(pathList, *activeFlaps[i].Paths[n])
+func getActiveFlaps(compact bool) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		type jsFlap struct {
+			Prefix     string
+			Paths      []monitor.PathInfo
+			FirstSeen  int64
+			LastSeen   int64
+			TotalCount uint64
 		}
 
-		jsFlap := jsFlap{
-			Prefix:     activeFlaps[i].Cidr,
-			FirstSeen:  activeFlaps[i].FirstSeen,
-			LastSeen:   activeFlaps[i].LastSeen,
-			TotalCount: activeFlaps[i].PathChangeCountTotal,
-			Paths:      pathList,
+		var jsonFlapList = make([]jsFlap, 0)
+		activeFlaps := monitor.GetActiveFlaps()
+		for _, f := range activeFlaps {
+			f.RLock()
+			instance := jsFlap{
+				Prefix:     f.Cidr,
+				FirstSeen:  f.FirstSeen,
+				LastSeen:   f.LastSeen,
+				TotalCount: f.PathChangeCountTotal,
+			}
+			if !compact {
+				pathList := make([]monitor.PathInfo, 0, len(f.Paths))
+				for n := range f.Paths {
+					pathList = append(pathList, *f.Paths[n])
+				}
+				instance.Paths = pathList
+			}
+			f.RUnlock()
+			jsonFlapList = append(jsonFlapList, instance)
 		}
-		jsonFlapList = append(jsonFlapList, jsFlap)
-	}
 
-	b, err := json.Marshal(jsonFlapList)
-	if err != nil {
-		w.WriteHeader(500)
-		return
-	}
-	_, _ = w.Write(b)
-}
-
-func activeFlapsCompact(w http.ResponseWriter, req *http.Request) {
-
-	type activeFlapCompact struct {
-		Prefix     string
-		FirstSeen  int64
-		LastSeen   int64
-		TotalCount uint64
-	}
-
-	var jsonFlapList = make([]activeFlapCompact, 0)
-	activeFlaps := monitor.GetActiveFlaps()
-	for i := range activeFlaps {
-		jsFlap := activeFlapCompact{
-			Prefix:     activeFlaps[i].Cidr,
-			FirstSeen:  activeFlaps[i].FirstSeen,
-			LastSeen:   activeFlaps[i].LastSeen,
-			TotalCount: activeFlaps[i].PathChangeCountTotal,
+		b, err := json.Marshal(jsonFlapList)
+		if err != nil {
+			w.WriteHeader(500)
+			return
 		}
-		jsonFlapList = append(jsonFlapList, jsFlap)
-	}
-
-	b, err := json.Marshal(jsonFlapList)
-	if err != nil {
-		w.WriteHeader(500)
-		return
-	}
-	_, _ = w.Write(b)
+		_, _ = w.Write(b)
+	})
 }
 
 func metrics(w http.ResponseWriter, req *http.Request) {
