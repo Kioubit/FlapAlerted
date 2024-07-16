@@ -22,7 +22,7 @@ func main() {
 	asn := flag.Int("asn", 0, "Your ASN number")
 	noPathInfo := flag.Bool("noPathInfo", false, "Disable keeping path information. (Only disable if performance is a concern)")
 	disableAddPath := flag.Bool("disableAddPath", false, "Disable BGP AddPath support. (Setting must be replicated in BGP daemon)")
-	relevantAsnPosition := flag.Int("", -1, "The position of the last static ASN (and for which to keep separate state for)"+
+	relevantAsnPosition := flag.Int("asnPosition", -1, "The position of the last static ASN (and for which to keep separate state for)"+
 		" in each path. If AddPath support has been enabled this value is '1', otherwise it is '0'. For special cases like route collectors the value may differ.")
 	enableDebug := flag.Bool("debug", false, "Enable debug mode (produces a lot of output)")
 

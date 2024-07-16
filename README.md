@@ -11,21 +11,25 @@
 The program will listen on port 1790 for incoming BGP sessions (passive mode - no outgoing connections).
 Peering multiple nodes with a single instance of the program is also possible.
 
-### Commandline arguments
-The following commandline arguments are required:
+### Usage
+```
+Usage:
+  -asnPosition int
+    	The position of the last static ASN (and for which to keep separate state for) in each path. If AddPath support has been enabled this value is '1', otherwise it is '0'. For special cases like route collectors the value may differ. (default -1)
+  -asn int
+    	Your ASN number
+  -debug
+    	Enable debug mode (produces a lot of output)
+  -disableAddPath
+    	Disable BGP AddPath support. (Setting must be replicated in BGP daemon)
+  -noPathInfo
+    	Disable keeping path information. (Only disable if performance is a concern)
+  -period int
+    	Interval in seconds within which the routeChangeCounter value is evaluated (default 60)
+  -routeChangeCounter int
+    	Number of times a route path needs to change to list a prefix
 
-
-    Usage: ./FlapAlerted <RouteChangeCounter> <FlapPeriod> <Asn> <KeepPathInfo> <UseAddPath> <RelevantAsnPosition> <Debug>
-
-Explanation:
-
-1. Number of times a route path needs to change 
-2. Interval in seconds within which a notification will be triggered if the number given in [1] is exceeded.
-3. Your ASN
-4. Recommended: `true`. Whether to store all possible AS paths for each BGP update. Only disable if performance is a concern.
-5. Recommended: `false`. Whether BGP AddPath support should be used. It must be set on the BGP daemon as well.
-6. Recommended: `auto`. The position of the last static ASN (and for which to keep separate state for) in each path starting from 1. If AddPath support has been enabled that value is '1', otherwise it is '0'. For special cases like route collectors the value may differ.
-7. Recommended: `false`. Enable or disable debug output. This option produces a lot of output.
+```
 
 ### Example BIRD bgp daemon configuration
 ```
