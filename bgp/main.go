@@ -18,7 +18,7 @@ import (
 // "Capabilities Advertisement with BGP-4" https://datatracker.ietf.org/doc/html/rfc3392
 
 func StartBGP(updateChannel chan update.Msg) {
-	listener, err := net.Listen("tcp", "[::]:1790")
+	listener, err := net.Listen("tcp", ":1790")
 	if err != nil {
 		log.Fatal("[FATAL]", err.Error())
 	}
