@@ -54,6 +54,20 @@ const (
 	MsgKeepAlive    msgType = 0x04
 )
 
+func (m msgType) String() string {
+	switch m {
+	case MsgOpen:
+		return "OPEN"
+	case MsgUpdate:
+		return "UPDATE"
+	case MsgNotification:
+		return "NOTIFICATION"
+	case MsgKeepAlive:
+		return "KEEPALIVE"
+	}
+	return "UNKNOWN"
+}
+
 var bgpMarker = []byte{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}
 
 func GetHeader(t msgType) BgpHeader {
