@@ -183,6 +183,9 @@ function stringToColor(str) {
 }
 
 function timeConverter(unixTimestamp){
+    function padTo2Digits(num) {
+        return num.toString().padStart(2, '0');
+    }
     const date = new Date(unixTimestamp * 1000);
     const hours = date.getHours();
     const minutes = date.getMinutes();
@@ -198,12 +201,19 @@ function timeConverter(unixTimestamp){
     return `${year}-${month}-${day} ${time}`;
 }
 
-function padTo2Digits(num) {
-    return num.toString().padStart(2, '0');
-}
 
-function toTimeElapsed(seconds) {
-    let date = new Date(null);
-    date.setSeconds(seconds);
-    return date.toISOString().slice(11, 19);
+function toTimeElapsed(secondsIn) {
+    const secondsMinute = 60
+    const secondsHour = secondsMinute * 60
+    const secondsDay = secondsHour * 24
+    const days = Math.floor(secondsIn/secondsDay)
+    const hours = Math.floor((secondsIn%secondsDay)/secondsHour).toString().padStart(2, '0')
+    const minutes = Math.floor((secondsIn%secondsHour)/secondsMinute).toString().padStart(2, '0');
+    const seconds = Math.floor(secondsIn%secondsMinute).toString().padStart(2, '0');
+    let result = "";
+    if (days !== 0) {
+        result += `${days}d `;
+    }
+    result += `${hours}:${minutes}:${seconds}`;
+    return result
 }
