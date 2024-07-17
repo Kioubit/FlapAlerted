@@ -18,14 +18,14 @@ func main() {
 	fmt.Println("FlapAlerted version", Version)
 	monitor.SetVersion(Version)
 
-	routeChangeCounter := flag.Int("routeChangeCounter", 0, "Number of times a route path needs to change to list a prefix")
+	routeChangeCounter := flag.Int("routeChangeCounter", 50, "Number of times a route path needs to change to list a prefix. Use '0' to show all route changes.")
 	flapPeriod := flag.Int("period", 60, "Interval in seconds within which the routeChangeCounter value is evaluated")
 	asn := flag.Int("asn", 0, "Your ASN number")
 	routerID := flag.String("routerID", "0.0.0.51", "BGP Router ID for this program")
 	noPathInfo := flag.Bool("noPathInfo", false, "Disable keeping path information. (Only disable if performance is a concern)")
 	disableAddPath := flag.Bool("disableAddPath", false, "Disable BGP AddPath support. (Setting must be replicated in BGP daemon)")
 	relevantAsnPosition := flag.Int("asnPosition", -1, "The position of the last static ASN (and for which to keep separate state for)"+
-		" in each path. Use of this parameter is required for special cases like for instance when connected to a route collector.")
+		" in each path. Use of this parameter is required for special cases such as when connected to a route collector.")
 	enableDebug := flag.Bool("debug", false, "Enable debug mode (produces a lot of output)")
 
 	flag.Parse()

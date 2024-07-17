@@ -14,21 +14,22 @@ Peering multiple nodes with a single instance of the program is also possible.
 ### Usage
 ```
 Usage:
-  -asnPosition int
-    	The position of the last static ASN (and for which to keep separate state for) in each path. If AddPath support has been enabled this value is '1', otherwise it is '0'. For special cases like route collectors the value may differ. (default -1)
   -asn int
-    	Your ASN number
+        Your ASN number
+  -asnPosition int
+        The position of the last static ASN (and for which to keep separate state for) in each path. Use of this parameter is required for special cases such as when connected to a route collector. (default -1)
   -debug
-    	Enable debug mode (produces a lot of output)
+        Enable debug mode (produces a lot of output)
   -disableAddPath
-    	Disable BGP AddPath support. (Setting must be replicated in BGP daemon)
+        Disable BGP AddPath support. (Setting must be replicated in BGP daemon)
   -noPathInfo
-    	Disable keeping path information. (Only disable if performance is a concern)
+        Disable keeping path information. (Only disable if performance is a concern)
   -period int
-    	Interval in seconds within which the routeChangeCounter value is evaluated (default 60)
+        Interval in seconds within which the routeChangeCounter value is evaluated (default 60)
   -routeChangeCounter int
-    	Number of times a route path needs to change to list a prefix
-
+        Number of times a route path needs to change to list a prefix. Use '0' to show all route changes. (default 50)
+  -routerID string
+        BGP Router ID for this program (default "0.0.0.51")
 ```
 
 ### Example BIRD bgp daemon configuration
