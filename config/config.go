@@ -1,5 +1,7 @@
 package config
 
+import "net/netip"
+
 var GlobalConf UserConfig
 
 type UserConfig struct {
@@ -10,4 +12,5 @@ type UserConfig struct {
 	UseAddPath          bool
 	RelevantAsnPosition int
 	Debug               bool
+	RouterID            netip.Addr
 }

@@ -6,7 +6,6 @@ import (
 	"log"
 	"log/slog"
 	"net"
-	"net/netip"
 )
 
 // RFCs implemented
@@ -35,7 +34,7 @@ func StartBGP(updateChannel chan update.Msg) {
 
 		go func() {
 			err := newBGPConnection(logger, conn, update.AFI4, config.GlobalConf.UseAddPath, config.GlobalConf.Asn,
-				netip.MustParseAddr("0.0.0.51"), updateChannel)
+				config.GlobalConf.RouterID, updateChannel)
 			if err != nil {
 				logger.Error("connection encountered an error", "error", err.Error())
 			}

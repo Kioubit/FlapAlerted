@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"log/slog"
+	"net/netip"
 	"os"
 	"time"
 )
@@ -20,10 +21,11 @@ func main() {
 	routeChangeCounter := flag.Int("routeChangeCounter", 0, "Number of times a route path needs to change to list a prefix")
 	flapPeriod := flag.Int("period", 60, "Interval in seconds within which the routeChangeCounter value is evaluated")
 	asn := flag.Int("asn", 0, "Your ASN number")
+	routerID := flag.String("routerID", "0.0.0.51", "BGP Router ID for this program")
 	noPathInfo := flag.Bool("noPathInfo", false, "Disable keeping path information. (Only disable if performance is a concern)")
 	disableAddPath := flag.Bool("disableAddPath", false, "Disable BGP AddPath support. (Setting must be replicated in BGP daemon)")
 	relevantAsnPosition := flag.Int("asnPosition", -1, "The position of the last static ASN (and for which to keep separate state for)"+
-		" in each path. If AddPath support has been enabled this value is '1', otherwise it is '0'. For special cases like route collectors the value may differ.")
+		" in each path. Use of this parameter is required for special cases like for instance when connected to a route collector.")
 	enableDebug := flag.Bool("debug", false, "Enable debug mode (produces a lot of output)")
 
 	flag.Parse()
@@ -46,6 +48,13 @@ func main() {
 
 	if conf.Asn == 0 {
 		fmt.Println("ASN value not specified")
+		os.Exit(1)
+	}
+
+	var err error
+	conf.RouterID, err = netip.ParseAddr(*routerID)
+	if err != nil {
+		fmt.Println("Invalid Router ID:", err)
 		os.Exit(1)
 	}
 
