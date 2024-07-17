@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-var Version = "3.8"
+var Version = "3.9"
 
 func main() {
 	fmt.Println("FlapAlerted version", Version)
@@ -29,12 +29,12 @@ func main() {
 	flag.Parse()
 
 	conf := config.UserConfig{}
-	conf.RouteChangeCounter = int64(*routeChangeCounter)
+	conf.RouteChangeCounter = *routeChangeCounter
 	conf.FlapPeriod = int64(*flapPeriod)
-	conf.Asn = int64(*asn)
+	conf.Asn = uint32(*asn)
 	conf.KeepPathInfo = !*noPathInfo
 	conf.UseAddPath = !*disableAddPath
-	conf.RelevantAsnPosition = int64(*relevantAsnPosition)
+	conf.RelevantAsnPosition = *relevantAsnPosition
 	if conf.RelevantAsnPosition == -1 {
 		if conf.UseAddPath {
 			conf.RelevantAsnPosition = 1

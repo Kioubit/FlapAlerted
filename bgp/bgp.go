@@ -13,7 +13,8 @@ import (
 	"time"
 )
 
-func newBGPConnection(logger *slog.Logger, conn net.Conn, defaultAFI update.AFI, addPathEnabled bool, routerID netip.Addr, updateChannel chan update.Msg) error {
+func newBGPConnection(logger *slog.Logger, conn net.Conn, defaultAFI update.AFI,
+	addPathEnabled bool, asn uint32, routerID netip.Addr, updateChannel chan update.Msg) error {
 	const ownHoldTime = 240
 	err := conn.SetDeadline(time.Now().Add(ownHoldTime * time.Second))
 	if err != nil {
@@ -23,22 +24,20 @@ func newBGPConnection(logger *slog.Logger, conn net.Conn, defaultAFI update.AFI,
 	openMessage, err := open.GetOpen(ownHoldTime, routerID,
 		open.CapabilityOptionalParameter{
 			CapabilityCode:  open.CapabilityCodeFourByteASN,
-			CapabilityValue: open.FourByteASNCapability{ASN: 4242423914},
+			CapabilityValue: open.FourByteASNCapability{ASN: asn},
 		},
 		open.CapabilityOptionalParameter{
 			CapabilityCode: open.CapabilityCodeMultiProtocol,
 			CapabilityValue: open.MultiProtocolCapability{
-				AFI:      update.AFI4,
-				Reserved: 0,
-				SAFI:     update.UNICAST,
+				AFI:  update.AFI4,
+				SAFI: update.UNICAST,
 			},
 		},
 		open.CapabilityOptionalParameter{
 			CapabilityCode: open.CapabilityCodeMultiProtocol,
 			CapabilityValue: open.MultiProtocolCapability{
-				AFI:      update.AFI6,
-				Reserved: 0,
-				SAFI:     update.UNICAST,
+				AFI:  update.AFI6,
+				SAFI: update.UNICAST,
 			},
 		},
 		open.CapabilityOptionalParameter{

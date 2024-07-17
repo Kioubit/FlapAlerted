@@ -34,7 +34,8 @@ func StartBGP(updateChannel chan update.Msg) {
 		logger.Info("New connection")
 
 		go func() {
-			err := newBGPConnection(logger, conn, update.AFI4, config.GlobalConf.UseAddPath, netip.MustParseAddr("0.0.0.51"), updateChannel)
+			err := newBGPConnection(logger, conn, update.AFI4, config.GlobalConf.UseAddPath, config.GlobalConf.Asn,
+				netip.MustParseAddr("0.0.0.51"), updateChannel)
 			if err != nil {
 				logger.Error("connection encountered an error", "error", err.Error())
 			}

@@ -87,10 +87,10 @@ type Capabilities struct {
 
 type UserParameters struct {
 	FlapPeriod          int64
-	NotifyTarget        int64
+	NotifyTarget        int
 	KeepPathInfo        bool
 	AddPath             bool
-	RelevantAsnPosition int64
+	RelevantAsnPosition int
 	NotifyOnce          bool
 }
 

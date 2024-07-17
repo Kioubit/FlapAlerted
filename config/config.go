@@ -3,11 +3,11 @@ package config
 var GlobalConf UserConfig
 
 type UserConfig struct {
-	RouteChangeCounter  int64
+	RouteChangeCounter  int
 	FlapPeriod          int64
-	Asn                 int64
+	Asn                 uint32
 	KeepPathInfo        bool
 	UseAddPath          bool
-	RelevantAsnPosition int64 `overloadString:"true"`
+	RelevantAsnPosition int
 	Debug               bool
 }
