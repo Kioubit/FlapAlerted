@@ -17,8 +17,9 @@ func init() {
 	})
 }
 
+var logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{}))
+
 func logFlap(f *monitor.Flap) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{}))
 	f.Lock()
 	logger.Info("prefix", f.Cidr, "path_change_count", f.PathChangeCountTotal, "first_seen", f.FirstSeen)
 	f.Unlock()
