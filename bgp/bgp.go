@@ -70,7 +70,7 @@ func newBGPConnection(logger *slog.Logger, conn net.Conn, defaultAFI update.AFI,
 		return fmt.Errorf("error reading OPEN message from peer %w", err)
 	}
 	if msg.Header.BgpType != common.MsgOpen {
-		return fmt.Errorf("unexpected message of type '%d', expected open", msg.Header.BgpType)
+		return fmt.Errorf("unexpected message of type '%s', expected open", msg.Header.BgpType)
 	}
 
 	msg.Body, err = open.ParseMsgOpen(r)
@@ -150,7 +150,7 @@ func newBGPConnection(logger *slog.Logger, conn net.Conn, defaultAFI update.AFI,
 		return fmt.Errorf("error reading KEEPALIVE message from peer %w", err)
 	}
 	if msg.Header.BgpType != common.MsgKeepAlive {
-		return fmt.Errorf("unexpected message of type '%d', expected keepalive", msg.Header.BgpType)
+		return fmt.Errorf("unexpected message of type '%s', expected keepalive", msg.Header.BgpType)
 	}
 
 	logger.Info("BGP session established", "routerID", remoteRouterID)
