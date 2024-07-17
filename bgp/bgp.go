@@ -195,7 +195,6 @@ func keepAliveHandler(logger *slog.Logger, in chan bool, conn net.Conn, holdTime
 				_ = conn.Close()
 				return
 			case <-in:
-
 			}
 		}
 	}()
@@ -212,10 +211,18 @@ func handleIncoming(logger *slog.Logger, conn io.Reader, defaultAFI update.AFI, 
 			return errors.New("bgp notification")
 		case common.MsgKeepAlive:
 			logger.Debug("Received keepalive message")
-			keepAliveChan <- true
+			select {
+			case keepAliveChan <- true:
+			default:
+			}
 		case common.MsgOpen:
 			return errors.New("invalid state. Got OPEN message while the session was already established")
 		case common.MsgUpdate:
+			// Reset holdTimer as per RFC
+			select {
+			case keepAliveChan <- true:
+			default:
+			}
 			msg.Body, err = update.ParseMsgUpdate(r, defaultAFI, addPathEnabled)
 			if err != nil {
 				return fmt.Errorf("failed parsing UPDATE message %w", err)
