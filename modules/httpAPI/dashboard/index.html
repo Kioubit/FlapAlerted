@@ -13,15 +13,17 @@
 <div id="loadingScreen">
     <div class="loader"></div>
 </div>
-<h2 id="mainHeading">FlapAlerted</h2>
-<h3 class="mt-0">Live Data</h3>
+<h2 id="mainHeading" class="mt-0">FlapAlerted</h2>
+<h3 class="mt-0" id="dataInfo">Live Data</h3>
 <div id="mainContainer">
     <div id="connectionLost">
         <p id="connectLostText">Connection lost</p>
     </div>
     <div id="grid-container-main">
         <div id="justgage"></div>
-        <div id="prefixTableBox"></div>
+        <div id="prefixTableBox">
+            <table id="prefixTable"></table>
+        </div>
     </div>
     <div id="grid-container-charts">
         <div class="chartContainer">
@@ -32,7 +34,7 @@
         </div>
     </div>
     <div class="footer">
-        <div id="info"></div>
+        <div id="info"></div><div>Average route changes value: 90th percentile average over the last 250 seconds, shown as overall route changes per second.</div>
         <a href="https://github.com/Kioubit/FlapAlerted/" id="version"></a>
     </div>
 </div>

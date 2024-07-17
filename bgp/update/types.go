@@ -1,6 +1,10 @@
 package update
 
-import "net/netip"
+import (
+	"encoding/json"
+	"log/slog"
+	"net/netip"
+)
 
 type Msg struct {
 	WithdrawnRoutesLength               uint16
@@ -8,6 +12,48 @@ type Msg struct {
 	TotalPathAttributeLength            uint16
 	PathAttributes                      []pathAttribute
 	NetworkLayerReachabilityInformation []prefix
+}
+
+func (u Msg) LogValue() slog.Value {
+	k, err := json.Marshal(u)
+	if err != nil {
+		return slog.StringValue("Failed to marshal update to JSON: " + err.Error())
+	}
+
+	asPath, err := u.GetAsPaths()
+	if err != nil {
+		slog.Warn("error getting ASPath", "error", err)
+	}
+
+	nlRi, foundNlRi, err := u.GetMpReachNLRI()
+	if err != nil {
+		slog.Warn("error getting MpReachNLRI", "error", err)
+	}
+	prefixList := make([]string, 0)
+	if foundNlRi {
+		for i := range nlRi.NLRI {
+			prefixList = append(prefixList, nlRi.NLRI[i].ToNetCidr().String())
+		}
+	}
+
+	for _, information := range u.NetworkLayerReachabilityInformation {
+		prefixList = append(prefixList, information.ToNetCidr().String())
+	}
+
+	return slog.GroupValue(
+		slog.Attr{
+			Key:   "full",
+			Value: slog.StringValue(string(k)),
+		},
+		slog.Attr{
+			Key:   "asPath",
+			Value: slog.AnyValue(asPath),
+		},
+		slog.Attr{
+			Key:   "prefixes",
+			Value: slog.AnyValue(prefixList),
+		},
+	)
 }
 
 type prefix struct {

@@ -5,8 +5,6 @@ import (
 	"FlapAlerted/bgp/common"
 	"FlapAlerted/bgp/update"
 	"FlapAlerted/config"
-	"encoding/json"
-	"fmt"
 	"log"
 	"log/slog"
 	"math"
@@ -24,7 +22,7 @@ type Flap struct {
 	Cidr                 string
 	LastPath             map[string]common.AsPathList
 	Paths                map[string]*PathInfo
-	PathChangeCount      uint64
+	pathChangeCount      uint64
 	PathChangeCountTotal uint64
 	FirstSeen            int64
 	LastSeen             int64
@@ -41,12 +39,14 @@ func StartMonitoring(conf config.UserConfig) {
 		log.Fatal("Invalid RelevantAsnPosition value")
 	}
 
-	updateChannel := make(chan update.Msg, 100)
+	updateChannel := make(chan update.Msg, 200)
+	notificationChannel := make(chan *Flap, 10)
 	// Initialize activeFlapList and flapMap
 	flapMap = make(map[string]*Flap)
 	activeFlapList = make([]*Flap, 0)
 
-	go processUpdates(updateChannel)
+	go notificationHandler(notificationChannel)
+	go processUpdates(updateChannel, notificationChannel)
 	go bgp.StartBGP(updateChannel)
 	go statTracker()
 	go moduleCallback()
@@ -61,21 +61,19 @@ var (
 	currentTime      int64
 )
 
-var globalRouteChangeCounter atomic.Uint64
+var globalTotalRouteChangeCounter atomic.Uint64
+var globalListedRouteChangeCounter atomic.Uint64
 
-func processUpdates(updateChannel chan update.Msg) {
+func processUpdates(updateChannel chan update.Msg, notificationChannel chan *Flap) {
 	for {
 		u, ok := <-updateChannel
 		if !ok {
 			return
 		}
 
-		if config.GlobalConf.Debug {
-			k, err := json.Marshal(u)
-			fmt.Println(string(k), err)
-		}
+		slog.Debug("Received update", "update", u)
 
-		nlri, foundNlri, err := u.GetMpReachNLRI()
+		nlRi, foundNlRi, err := u.GetMpReachNLRI()
 		if err != nil {
 			slog.Warn("error getting MpReachNLRI", "error", err)
 			continue
@@ -93,19 +91,13 @@ func processUpdates(updateChannel chan update.Msg) {
 
 		flapMapMu.Lock()
 		currentTime = time.Now().Unix()
-		if foundNlri {
-			for i := range nlri.NLRI {
-				if config.GlobalConf.Debug {
-					fmt.Println("UPDATE", nlri.NLRI[i].ToNetCidr().String(), asPath)
-				}
-				updateList(nlri.NLRI[i].ToNetCidr(), asPath)
+		if foundNlRi {
+			for i := range nlRi.NLRI {
+				updateList(nlRi.NLRI[i].ToNetCidr(), asPath, notificationChannel)
 			}
 		}
 		for i := range u.NetworkLayerReachabilityInformation {
-			updateList(u.NetworkLayerReachabilityInformation[i].ToNetCidr(), asPath)
-			if config.GlobalConf.Debug {
-				fmt.Println("UPDATE", u.NetworkLayerReachabilityInformation[i].ToNetCidr().String(), asPath)
-			}
+			updateList(u.NetworkLayerReachabilityInformation[i].ToNetCidr(), asPath, notificationChannel)
 		}
 		flapMapMu.Unlock()
 	}
@@ -134,7 +126,7 @@ func cleanUpFlapList() {
 	}
 }
 
-func updateList(prefix netip.Prefix, asPath []common.AsPathList) {
+func updateList(prefix netip.Prefix, asPath []common.AsPathList, notificationChannel chan *Flap) {
 	cidr := prefix.String()
 	if len(asPath) == 0 {
 		return
@@ -148,7 +140,7 @@ func updateList(prefix netip.Prefix, asPath []common.AsPathList) {
 			Cidr:                 cidr,
 			LastSeen:             currentTime,
 			FirstSeen:            currentTime,
-			PathChangeCount:      0,
+			pathChangeCount:      0,
 			PathChangeCountTotal: 0,
 			LastPath:             make(map[string]common.AsPathList),
 			Paths:                make(map[string]*PathInfo),
@@ -159,16 +151,21 @@ func updateList(prefix netip.Prefix, asPath []common.AsPathList) {
 		newFlap.LastPath[getRelevantASN(cleanPath)] = cleanPath
 		flapMap[cidr] = newFlap
 
-		globalRouteChangeCounter.Add(1)
+		globalTotalRouteChangeCounter.Add(1)
 
-		// Notify for every Update
+		// Handle every Update
 		if config.GlobalConf.RouteChangeCounter == 0 {
+			globalListedRouteChangeCounter.Add(1)
 			newFlap.PathChangeCountTotal = 1
-			newFlap.PathChangeCount = 1
+			newFlap.pathChangeCount = 1
 			activeFlapListMu.Lock()
 			activeFlapList = append(activeFlapList, newFlap)
 			activeFlapListMu.Unlock()
-			go mainNotify(newFlap)
+			select {
+			case notificationChannel <- newFlap:
+			default:
+			}
+
 		}
 		return
 	}
@@ -195,22 +192,29 @@ func updateList(prefix netip.Prefix, asPath []common.AsPathList) {
 			return
 		}
 
-		obj.PathChangeCount = incrementUint64(obj.PathChangeCount)
+		obj.pathChangeCount = incrementUint64(obj.pathChangeCount)
 		obj.PathChangeCountTotal = incrementUint64(obj.PathChangeCountTotal)
-		globalRouteChangeCounter.Add(1)
+		globalTotalRouteChangeCounter.Add(1)
 
 		obj.LastSeen = currentTime
 		obj.LastPath[getRelevantASN(cleanPath)] = cleanPath
 
+		if obj.PathChangeCountTotal >= uint64(config.GlobalConf.RouteChangeCounter) {
+			globalListedRouteChangeCounter.Add(1)
+		}
+
 		if config.GlobalConf.RouteChangeCounter != 0 {
-			if obj.PathChangeCount == uint64(config.GlobalConf.RouteChangeCounter) {
+			if obj.pathChangeCount == uint64(config.GlobalConf.RouteChangeCounter) {
 				if obj.PathChangeCountTotal == uint64(config.GlobalConf.RouteChangeCounter) {
 					activeFlapListMu.Lock()
 					activeFlapList = append(activeFlapList, obj)
 					activeFlapListMu.Unlock()
 				}
-				obj.PathChangeCount = 0
-				go mainNotify(obj)
+				obj.pathChangeCount = 0
+				select {
+				case notificationChannel <- obj:
+				default:
+				}
 			}
 		}
 	}
@@ -269,9 +273,10 @@ func getActiveFlapList() []*Flap {
 }
 
 type statistic struct {
-	Time    int64
-	Changes uint64
-	Active  int
+	Time          int64
+	Changes       uint64
+	ListedChanges uint64
+	Active        int
 }
 
 var (
@@ -298,9 +303,10 @@ func statTracker() {
 		activeFlapListMu.RUnlock()
 
 		newStatistic := statistic{
-			Time:    time.Now().Unix(),
-			Changes: globalRouteChangeCounter.Swap(0),
-			Active:  flapListLength,
+			Time:          time.Now().Unix(),
+			Changes:       globalTotalRouteChangeCounter.Swap(0),
+			ListedChanges: globalListedRouteChangeCounter.Swap(0),
+			Active:        flapListLength,
 		}
 
 		statSubscribersLock.Lock()

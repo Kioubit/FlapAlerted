@@ -1,28 +1,22 @@
-function updateCapabilities() {
-    let getCapabilitiesFunction = async () => {
-        const response = await fetch("capabilities");
-        return await response.json();
-    }
+async function updateCapabilities() {
+    const response = await fetch("capabilities")
+    const data = await response.json()
     const versionBox = document.getElementById("version");
     const infoBox = document.getElementById("info");
-    getCapabilitiesFunction().then((data) => {
-        versionBox.innerText =  "FlapAlerted " + data.Version;
-        if (data.UserParameters.NotifyTarget === 0) {
-            infoBox.innerText = "Current settings: Displaying every BGP update received. Removing entries after "+ data.UserParameters.FlapPeriod + " seconds of inactivity.";
-        } else {
-            infoBox.innerText = "Current settings: A route for a prefix needs to change at least " + data.UserParameters.NotifyTarget + " times in " + data.UserParameters.FlapPeriod + " seconds for it to be shown in the table.";
-        }
-    }).catch((err) => {
-        versionBox.innerHTML += "N/A";
-        console.log(err);
-    });
+    versionBox.innerText =  "FlapAlerted " + data.Version;
+    if (data.UserParameters.NotifyTarget === 0) {
+        infoBox.innerText = "Current settings: Displaying every BGP update received. Removing entries after "+ data.UserParameters.FlapPeriod + " seconds of inactivity.";
+    } else {
+        dataRouteChange.datasets.push(listedPrefixDataset);
+        infoBox.innerText = "Current settings: A route for a prefix needs to change at least " + data.UserParameters.NotifyTarget + " times in " + data.UserParameters.FlapPeriod + " seconds for it to be shown in the table.";
+    }
 }
 
 let gauge = new JustGage({
     id: "justgage",
     value: 0,
     min: 0,
-    max: 1000,
+    max: 200,
     label: "Average Route Changes",
     decimals: 2,
     gaugeWidthScale: 0.2,
@@ -106,6 +100,27 @@ let dataRouteChange = {
     ]
 };
 
+const listedPrefixDataset =        {
+        label: "Route Changes (listed prefixes)",
+        fill: false,
+        lineTension: 0.1,
+        backgroundColor: "rgba(75,192,157,0.4)",
+        borderColor: "rgb(75,192,87)",
+        borderCapStyle: 'butt',
+        borderDash: [],
+        borderDashOffset: 0.0,
+        borderJoinStyle: 'miter',
+        pointBorderColor: "rgba(75,192,192,1)",
+        pointBackgroundColor: "#fff",
+        pointBorderWidth: 1,
+        pointHoverRadius: 5,
+        pointHoverBackgroundColor: "rgba(75,192,192,1)",
+        pointHoverBorderColor: "rgba(220,220,220,1)",
+        pointHoverBorderWidth: 2,
+        pointRadius: 5,
+        pointHitRadius: 10,
+        data: [],
+    }
 
 
 let liveFlapChart = new Chart(ctxFlapCount, {
@@ -129,32 +144,43 @@ function addToChart(liveChart, point, unixTime) {
     const now = new Date(unixTime * 1000);
     const timeStamp = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0')
         + ":" + String(now.getSeconds()).padStart(2, '0');
+    let shifted = false;
+    for (let i = 0; i < point.length; i++) {
+        if (liveChart.data.datasets[i] === undefined) {
+            continue
+        }
+        liveChart.data.datasets[i].data.push(point[i])
 
-    liveChart.data.labels.push(timeStamp);
-    liveChart.data.datasets[0].data.push(point)
-
-    if (liveChart.data.datasets[0].data.length > 50) {
-        liveChart.data.labels.shift();
-        liveChart.data.datasets[0].data.shift();
+        if (liveChart.data.datasets[i].data.length > 50) {
+            shifted = true;
+            liveChart.data.datasets[i].data.shift();
+        }
     }
+    if (shifted) {
+        liveChart.data.labels.shift();
+    }
+    liveChart.data.labels.push(timeStamp);
     liveChart.update();
 }
 
 
 
 window.onload = () => {
-    updateCapabilities();
-    updateInfo();
-    setInterval(updateInfo, 5000);
-    getStats();
-    document.getElementById("loadingScreen").style.display = 'none';
+    updateCapabilities().catch((err) => {
+        console.log(err)
+    }).finally(() => {
+        getStats();
+        updateInfo();
+        setInterval(updateInfo, 5000);
+        document.getElementById("loadingScreen").style.display = 'none';
+    });
 }
 
 function updateInfo() {
     fetch("flaps/active/compact").then(function (response) {
         return response.json();
     }).then(function (flapList) {
-        displayConnectionLost(false, "updateInfo");
+        handleConnectionLost(false, "updateInfo");
         flapList.sort(function compareFn(a, b) {
             if (a.TotalCount > b.TotalCount) {
                 return -1;
@@ -163,23 +189,25 @@ function updateInfo() {
             }
         });
 
-        let prefixTableHtml = '<table id="prefixTable"><thead><tr><th>Prefix</th><th>Duration</th><th>Route Changes</th></tr></thead><tbody>';
+        let prefixTableHtml = '<thead><tr><th>Prefix</th><th>Duration</th><th>Route Changes</th></tr></thead><tbody>';
         for (let i = 0; i < flapList.length; i++) {
             let duration = toTimeElapsed(flapList[i].LastSeen - flapList[i].FirstSeen);
             prefixTableHtml += "<tr>";
             prefixTableHtml += "<td><a target=\"_blank\" href='analyze/?prefix=" + encodeURIComponent(flapList[i].Prefix) +"'>" + flapList[i].Prefix + "</a></td>";
             prefixTableHtml += "<td>" + duration + "</td>";
-            prefixTableHtml += "<td>" + flapList[i].TotalCount + "</td>";
+            prefixTableHtml += "<td>" + truncateRouteChanges(flapList[i].TotalCount) + "</td>";
             prefixTableHtml += "</tr>";
+            if (i >= 100) {
+                break
+            }
         }
         if (flapList.length === 0) {
             prefixTableHtml += '<tr><td colspan="3" class="centerText">Waiting for BGP flapping...</td></tr>';
         }
-        prefixTableHtml += "</tbody></table>";
-        document.getElementById("prefixTableBox").innerHTML = prefixTableHtml;
-
+        prefixTableHtml += "</tbody>";
+        document.getElementById("prefixTable").innerHTML = prefixTableHtml;
     }).catch(function (error) {
-        displayConnectionLost(true, "updateInfo");
+        handleConnectionLost(true, "updateInfo");
         console.log(error);
     });
 }
@@ -191,27 +219,32 @@ function getStats() {
         try {
             const js = JSON.parse(event.data)
 
-            addToChart(liveRouteChart, js["Changes"], js["Time"]);
-            addToChart(liveFlapChart, js["Active"], js["Time"]);
+            addToChart(liveRouteChart, [js["Changes"],js["ListedChanges"]], js["Time"]);
+            addToChart(liveFlapChart, [js["Active"]], js["Time"]);
 
             avgArray.push(js["Changes"])
             if (avgArray.length > 50) {
                 avgArray.shift()
             }
-            const sum = avgArray.reduce((s, a) => s + a, 0)
-            const avg = sum/avgArray.length;
-            gauge.refresh(avg);
+
+            let percentile = [...avgArray].sort((a, b) => a - b);
+            percentile = percentile.slice(0, Math.ceil(percentile.length * 0.90))
+            const sum = percentile.reduce((s, a) => s + a, 0)
+            const avg = sum/percentile.length;
+            //const sum = avgArray.reduce((s, a) => s + a, 0)
+            //const avg = sum/avgArray.length;
+            gauge.refresh(avg/5);
 
         } catch(err) {
             console.log(err);
         }
     });
     evtSource.onerror = (err) => {
-        displayConnectionLost(true, "getStats");
+        handleConnectionLost(true, "getStats");
         console.log(err)
     };
     evtSource.onopen = () => {
-        displayConnectionLost(false, "getStats");
+        handleConnectionLost(false, "getStats");
     };
 }
 
@@ -221,17 +254,34 @@ function toTimeElapsed(seconds) {
     return date.toISOString().slice(11, 19);
 }
 
+const million = 1000000;
+const billion = million * 1000;
+const trillion = billion * 1000;
+function truncateRouteChanges(routeChanges) {
+    if (routeChanges < million) {
+        return routeChanges;
+    } else if (routeChanges >= million && routeChanges < billion) {
+        return (+(routeChanges / million).toFixed(2)) + " mil";
+    } else if (routeChanges >=billion && routeChanges < trillion ) {
+        return (+(routeChanges / billion).toFixed(2)) + " billion";
+    } else {
+        return (+(routeChanges / trillion).toFixed(2)) + " trillion";
+    }
+}
+
 let lostType = [];
-function displayConnectionLost(lost, type) {
+function handleConnectionLost(lost, type) {
     if (lost) {
         if (lostType.indexOf(type) === -1) {
             lostType.push(type)
         }
         document.getElementById('connectionLost').style.display = 'block';
     } else {
-        lostType = lostType.filter(e => e !== type);
-        if (lostType.length === 0) {
-            document.getElementById('connectionLost').style.display = 'none';
+        if (lostType.length !== 0) {
+            lostType = lostType.filter(e => e !== type);
+            if (lostType.length === 0) {
+                document.getElementById('connectionLost').style.display = 'none';
+            }
         }
     }
 }

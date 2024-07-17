@@ -20,19 +20,22 @@ var (
 	version string
 )
 
-func mainNotify(f *Flap) {
-	moduleMu.Lock()
-	defer moduleMu.Unlock()
-	for _, m := range moduleList {
-		if m.Callback != nil {
-			m.Callback(f)
-		}
-		if m.CallbackOnce != nil {
-			if f.PathChangeCountTotal > uint64(config.GlobalConf.RouteChangeCounter) {
-				return
+func notificationHandler(c chan *Flap) {
+	for {
+		f := <-c
+		moduleMu.Lock()
+		for _, m := range moduleList {
+			if m.Callback != nil {
+				m.Callback(f)
 			}
-			m.CallbackOnce(f)
+			if m.CallbackOnce != nil {
+				if f.PathChangeCountTotal > uint64(config.GlobalConf.RouteChangeCounter) {
+					return
+				}
+				m.CallbackOnce(f)
+			}
 		}
+		moduleMu.Unlock()
 	}
 }
 

@@ -34,32 +34,24 @@ const dataRouteChangeCount = {
 
 function display() {
     const prefix = new URL(location.href).searchParams.get("prefix");
-    let targetJson;
-    fetch("../flaps/active").then(function (response) {
+    if (prefix == null) {
+        alert("Invalid link");
+        return;
+    }
+    fetch("../flaps/prefix?prefix=" + encodeURIComponent(prefix)).then(function (response) {
         return response.json();
     }).then(function (json) {
-        let pJson;
-        if (prefix == null) {
-            alert("Invalid link");
-            return;
-        }
-
-        for (let i = 0; i < json.length; i++) {
-            if (json[i].Prefix === prefix) {
-                targetJson = json[i];
-                pJson = json[i].Paths;
-                break;
-            }
-        }
-
-        if (pJson == null) {
+        if (json === null) {
             document.getElementById("loader").style.display = "none";
             document.getElementById("loaderText").innerText = "Prefix not found. The link may have expired";
             return;
         }
 
+        const pJson = json["Paths"];
+
         if (pJson.length === 0) {
-            alert("The analysis feature is not available as the instance has been configured to not keep path information")
+            document.getElementById("loader").style.display = "none";
+            document.getElementById("loaderText").innerText = "The analysis feature is not available as the instance has been configured to not keep path information";
         }
 
         let obj = [];
@@ -120,10 +112,10 @@ function display() {
         document.getElementById("loaderText").style.display = "none";
 
 
-        document.getElementById("pathChangeDisplay").innerText = targetJson.TotalCount;
-        document.getElementById("fistSeenDisplay").innerText = timeConverter(targetJson.FirstSeen);
-        document.getElementById("lastSeenDisplay").innerText = timeConverter(targetJson.LastSeen);
-        document.getElementById("durationDisplay").innerText = toTimeElapsed(targetJson.LastSeen - targetJson.FirstSeen);
+        document.getElementById("pathChangeDisplay").innerText = json.TotalCount;
+        document.getElementById("fistSeenDisplay").innerText = timeConverter(json.FirstSeen);
+        document.getElementById("lastSeenDisplay").innerText = timeConverter(json.LastSeen);
+        document.getElementById("durationDisplay").innerText = toTimeElapsed(json.LastSeen - json.FirstSeen);
 
         document.getElementById("informationText1").style.display = "block";
         document.getElementById("informationText2").style.display = "block";
@@ -150,16 +142,21 @@ function display() {
             },
         })
 
+        const t = Date.now()
         let labels = [];
         for (let i = 0; i < json.length; i++) {
-            labels.push(i);
+            // Timestamps are within an accuracy of about 10 seconds
+            const ts = new Date(t - (10000 * (json.length - i)));
+            const timeStamp = String(ts.getHours()).padStart(2, '0') + ':' + String(ts.getMinutes()).padStart(2, '0')
+                + ":" + String(ts.getSeconds()).padStart(2, '0');
+            labels.push(timeStamp);
         }
         RouteCountChart.data.labels = labels;
         RouteCountChart.data.datasets[0].data = json;
         RouteCountChart.update();
 
-        window.addEventListener('beforeprint', (event) => {
-            RouteCountChart.resize(600,150);
+        window.addEventListener('beforeprint', () => {
+            RouteCountChart.resize(700,150);
         });
         window.addEventListener('afterprint', () => {
             RouteCountChart.resize();
