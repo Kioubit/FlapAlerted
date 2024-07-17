@@ -223,10 +223,10 @@ func updateList(prefix netip.Prefix, asPath []common.AsPathList, notificationCha
 func getRelevantASN(asPath common.AsPathList) string {
 	pathLen := len(asPath.Asn)
 
-	if pathLen < int(config.GlobalConf.RelevantAsnPosition) || config.GlobalConf.RelevantAsnPosition == 0 {
+	if pathLen < config.GlobalConf.RelevantAsnPosition || config.GlobalConf.RelevantAsnPosition == 0 {
 		return "0"
 	}
-	b := make([]byte, 0, pathLen*11)
+	b := make([]byte, 0)
 	for i := range asPath.Asn[0:config.GlobalConf.RelevantAsnPosition] {
 		b = strconv.AppendInt(b, int64(asPath.Asn[i]), 10)
 		b = append(b, ',')
@@ -235,7 +235,7 @@ func getRelevantASN(asPath common.AsPathList) string {
 }
 
 func pathToString(asPath common.AsPathList) string {
-	b := make([]byte, 0, len(asPath.Asn)*11)
+	b := make([]byte, 0)
 	for i := range asPath.Asn {
 		b = strconv.AppendInt(b, int64(asPath.Asn[i]), 10)
 		b = append(b, ',')
