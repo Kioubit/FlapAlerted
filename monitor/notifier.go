@@ -91,7 +91,6 @@ type UserParameters struct {
 	KeepPathInfo        bool
 	AddPath             bool
 	RelevantAsnPosition int
-	NotifyOnce          bool
 }
 
 func GetCapabilities() Capabilities {

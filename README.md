@@ -52,41 +52,37 @@ protocol bgp FLAPALERTED {
 }
 ```
 
-
-### Special mode: All BGP updates
-Use the value `0` for the RouteChangeCounter [2] if all BGP updates should cause a notification from the program. 
-
-### Building
-
-#### Enabling or disabling modules
-
-To enable or disable modules edit the `MODULES` variable in `Makefile` or the `Dockerfile` if you are using Docker.
-
-#### Manual
-
-You will need to have GO installed on your system. Then run `make release` and find the binary in the `bin/` directory.
-
-#### Docker
-
-Clone this repository and run `docker build .` to generate a docker image.
-
-
-***
-
 ### Module Documentation
+The program supports some modules that can be customized at build-time.
 
 #### mod_httpAPI (Enabled by default)
 Provides the following http API endpoints on port `8699`:
 
 - `/capabilities`
-- `/flaps/active`
-- `/flaps/active/history?cidr=<cidr value>`
 - `/flaps/active/compact`
+- `/flaps/prefix?prefix=<cidr value>`
+- `/flaps/active/history?cidr=<cidr value>`
 - `/flaps/metrics/json`
 - `/flaps/metrics/prometheus`
 
 It also provides a user interface at path:
 - `/`
 
+To disable this module add the following tag to the `MODULES` variable in the `Makefile`: `disable_mod_httpAPI`
+
 #### mod_log (Disabled by default)
-Logs each event to STDOUT.
+Logs each time a prefix exceeds the defined `routeChangeCounter` within the defined `period` to STDOUT.
+
+To enable this module add the following tag to the `MODULES` variable in the `Makefile`: `mod_log`
+
+***
+
+### Building
+
+#### Manually
+
+You will need to have GO installed on your system. Then run `make release` and find the binary in the `bin/` directory.
+
+#### Docker
+
+Clone this repository and run `docker build .` to generate a docker image.
