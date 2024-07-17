@@ -83,10 +83,12 @@ func newBGPConnection(logger *slog.Logger, conn net.Conn, defaultAFI update.AFI,
 	hasAddPathIPv4 := false
 	hasAddPathIPv6 := false
 	hasFourByteAsn := false
+	var remoteASN uint32 = 0
 	for _, p := range msg.Body.(open.Msg).OptionalParameters {
 		for _, t := range p.ParameterValue.(open.CapabilityList).List {
 			switch v := t.CapabilityValue.(type) {
 			case open.FourByteASNCapability:
+				remoteASN = v.ASN
 				hasFourByteAsn = true
 			case open.AddPathCapabilityList:
 				for _, ac := range v {
@@ -125,6 +127,10 @@ func newBGPConnection(logger *slog.Logger, conn net.Conn, defaultAFI update.AFI,
 	if !hasFourByteAsn {
 		return fmt.Errorf("four byte ASNs not supported by peer")
 	}
+	if remoteASN != asn {
+		return fmt.Errorf("remote ASN (%d) does not match the set asn (%d)", remoteASN, asn)
+	}
+
 	if !hasMultiProtocolIPv4 && !hasMultiProtocolIPv6 {
 		return fmt.Errorf("multiprotocol capbility is not supported by peer")
 	}
