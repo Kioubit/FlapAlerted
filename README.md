@@ -68,7 +68,7 @@ Provides the following http API endpoints on port `8699`:
 - `/flaps/metrics/json`
 - `/flaps/metrics/prometheus`
 
-It also provides a user interface at path on the same port:
+It also provides a user interface (on the same port) at path:
 - `/`
 
 To disable this module, add the following tag to the `MODULES` variable in the `Makefile`: `disable_mod_httpAPI`
