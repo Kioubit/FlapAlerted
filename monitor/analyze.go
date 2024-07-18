@@ -141,6 +141,9 @@ func updateList(prefix netip.Prefix, asPath []common.AsPathList, notificationCha
 		return
 	}
 	cleanPath := asPath[0] // Multiple AS paths in a single update message currently unsupported (not used by bird)
+	if len(cleanPath.Asn) >= 20 {
+		cleanPath.Asn = cleanPath.Asn[:20]
+	}
 
 	obj := flapMap[cidr]
 
