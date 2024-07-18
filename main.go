@@ -18,7 +18,7 @@ func main() {
 	fmt.Println("FlapAlerted version", Version)
 	monitor.SetVersion(Version)
 
-	routeChangeCounter := flag.Int("routeChangeCounter", 50, "Number of times a route path needs"+
+	routeChangeCounter := flag.Int("routeChangeCounter", 100, "Number of times a route path needs"+
 		" to change to list a prefix. Use '0' to show all route changes.")
 	flapPeriod := flag.Int("period", 60, "Interval in seconds within which the"+
 		" routeChangeCounter value is evaluated. Higher values increase memory consumption.")
@@ -28,7 +28,8 @@ func main() {
 	disableAddPath := flag.Bool("disableAddPath", false, "Disable BGP AddPath support. (Setting must be replicated in BGP daemon)")
 	relevantAsnPosition := flag.Int("asnPosition", -1, "The position of the last static ASN (and for which to keep separate state for)"+
 		" in each path. Use of this parameter is required for special cases such as when connected to a route collector.")
-	minimumAge := flag.Int("minimumAge", 60, "Minimum age in seconds a prefix must be active to be listed")
+	minimumAge := flag.Int("minimumAge", 60, "Minimum age in seconds a prefix must be active to be listed."+
+		" Has no effect if the routeChangeCounter is set to zero")
 	enableDebug := flag.Bool("debug", false, "Enable debug mode (produces a lot of output)")
 
 	flag.Parse()

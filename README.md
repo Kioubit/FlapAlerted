@@ -9,7 +9,8 @@
 ### Setup notes
 
 The program will listen on port 1790 for incoming BGP sessions (passive mode - no outgoing connections).
-Peering multiple nodes with a single instance of the program is also possible.
+Peering multiple nodes with a single instance of the program is supported. It is recommended to adjust
+the `routeChangeCounter` and `minimumAge` parameters (see usage) to produce the desired result.
 
 ### Usage
 ```
@@ -23,13 +24,13 @@ Usage:
   -disableAddPath
         Disable BGP AddPath support. (Setting must be replicated in BGP daemon)
   -minimumAge int
-        Minimum age in seconds a prefix must be active to be listed (default 60)
+        Minimum age in seconds a prefix must be active to be listed. Has no effect if the routeChangeCounter is set to zero (default 60)
   -noPathInfo
         Disable keeping path information. (Only disable if performance is a concern)
   -period int
         Interval in seconds within which the routeChangeCounter value is evaluated. Higher values increase memory consumption. (default 60)
   -routeChangeCounter int
-        Number of times a route path needs to change to list a prefix. Use '0' to show all route changes. (default 50)
+        Number of times a route path needs to change to list a prefix. Use '0' to show all route changes. (default 100)
   -routerID string
         BGP Router ID for this program (default "0.0.0.51")
 ```
@@ -55,7 +56,7 @@ protocol bgp FLAPALERTED {
 ```
 
 ### Module Documentation
-The program supports some modules that can be customized at build-time.
+The program supports additional modules that can be customized at build-time.
 
 #### mod_httpAPI (Enabled by default)
 Provides the following http API endpoints on port `8699`:
