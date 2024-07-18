@@ -27,6 +27,7 @@ type Flap struct {
 	FirstSeen            int64
 	LastSeen             int64
 	meetsMinimumAge      bool
+	notifiedOnce         bool
 }
 
 type PathInfo struct {
@@ -50,7 +51,6 @@ func StartMonitoring(conf config.UserConfig) {
 	go processUpdates(updateChannel, notificationChannel)
 	go bgp.StartBGP(updateChannel)
 	go statTracker()
-	go moduleCallback()
 	cleanUpFlapList()
 }
 

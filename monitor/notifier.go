@@ -2,7 +2,7 @@ package monitor
 
 import (
 	"FlapAlerted/config"
-	"sync"
+	"log/slog"
 )
 
 type Module struct {
@@ -13,41 +13,67 @@ type Module struct {
 }
 
 var (
-	moduleList = make([]*Module, 0)
-	moduleMu   sync.Mutex
+	moduleList     = make([]*Module, 0)
+	modulesStarted = false
 )
 var (
 	version string
 )
 
 func notificationHandler(c chan *Flap) {
+	modulesStarted = true
+	moduleCallbackStartComplete()
 	for {
 		f := <-c
-		moduleMu.Lock()
 		for _, m := range moduleList {
 			if m.Callback != nil {
 				m.Callback(f)
 			}
 			if m.CallbackOnce != nil {
-				if f.PathChangeCountTotal > uint64(config.GlobalConf.RouteChangeCounter) {
+				f.RLock()
+				if f.notifiedOnce {
+					f.RUnlock()
 					return
 				}
+				if !f.meetsMinimumAge {
+					f.RUnlock()
+					return
+				}
+				f.RUnlock()
+				f.Lock()
+				f.notifiedOnce = true
+				f.Unlock()
 				m.CallbackOnce(f)
 			}
 		}
-		moduleMu.Unlock()
 	}
 }
 
 func RegisterModule(module *Module) {
-	moduleMu.Lock()
-	defer moduleMu.Unlock()
+	if modulesStarted {
+		slog.Error("cannot register module", "name", module.Name)
+		return
+	}
 	moduleList = append(moduleList, module)
 }
 
+func moduleCallbackStartComplete() {
+	for _, m := range moduleList {
+		if m.StartComplete != nil {
+			go m.StartComplete()
+		}
+	}
+}
+
+func getModuleNameList() []string {
+	moduleNameList := make([]string, len(moduleList))
+	for i := range moduleList {
+		moduleNameList[i] = moduleList[i].Name
+	}
+	return moduleNameList
+}
+
 func GetRegisteredModules() []*Module {
-	moduleMu.Lock()
-	defer moduleMu.Unlock()
 	return moduleList
 }
 
@@ -97,7 +123,7 @@ type UserParameters struct {
 func GetCapabilities() Capabilities {
 	return Capabilities{
 		Version: version,
-		Modules: getModuleList(),
+		Modules: getModuleNameList(),
 		UserParameters: UserParameters{
 			FlapPeriod:          config.GlobalConf.FlapPeriod,
 			RouteChangeCounter:  config.GlobalConf.RouteChangeCounter,
@@ -106,26 +132,6 @@ func GetCapabilities() Capabilities {
 			RelevantAsnPosition: config.GlobalConf.RelevantAsnPosition,
 			MinimumAge:          config.GlobalConf.MinimumAge,
 		},
-	}
-}
-
-func getModuleList() []string {
-	moduleMu.Lock()
-	defer moduleMu.Unlock()
-	moduleNameList := make([]string, len(moduleList))
-	for i := range moduleList {
-		moduleNameList[i] = moduleList[i].Name
-	}
-	return moduleNameList
-}
-
-func moduleCallback() {
-	moduleMu.Lock()
-	defer moduleMu.Unlock()
-	for _, m := range moduleList {
-		if m.StartComplete != nil {
-			go m.StartComplete()
-		}
 	}
 }
 
