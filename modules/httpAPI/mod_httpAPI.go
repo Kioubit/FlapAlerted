@@ -23,8 +23,8 @@ var dashboardContent embed.FS
 
 func init() {
 	monitor.RegisterModule(&monitor.Module{
-		Name:          moduleName,
-		StartComplete: startComplete,
+		Name:            moduleName,
+		OnStartComplete: startComplete,
 	})
 }
 

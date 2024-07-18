@@ -44,15 +44,17 @@ func StartMonitoring(conf config.UserConfig) {
 
 	updateChannel := make(chan update.Msg, 200)
 	notificationChannel := make(chan *Flap, 20)
+	notificationEndChannel := make(chan *Flap, 20)
+
 	// Initialize activeFlapList and flapMap
 	flapMap = make(map[string]*Flap)
 	activeFlapList = make([]*Flap, 0)
 
-	go notificationHandler(notificationChannel)
+	go notificationHandler(notificationChannel, notificationEndChannel)
 	go processUpdates(updateChannel, notificationChannel)
 	go bgp.StartBGP(updateChannel)
 	go statTracker()
-	cleanUpFlapList()
+	cleanUpFlapList(notificationEndChannel)
 }
 
 var (
@@ -105,9 +107,9 @@ func processUpdates(updateChannel chan update.Msg, notificationChannel chan *Fla
 	}
 }
 
-func cleanUpFlapList() {
+func cleanUpFlapList(endChannel chan *Flap) {
 	for {
-		time.Sleep(1 * time.Duration(config.GlobalConf.FlapPeriod) * time.Second)
+		time.Sleep(time.Duration(config.GlobalConf.FlapPeriod) * time.Second)
 
 		flapMapMu.Lock()
 		activeFlapListMu.Lock()
@@ -119,6 +121,11 @@ func cleanUpFlapList() {
 			if activeFlapList[index].LastSeen.Load()+int64(config.GlobalConf.FlapPeriod) > currentTime {
 				flapMap[activeFlapList[index].Cidr] = activeFlapList[index]
 				newActiveFlapList = append(newActiveFlapList, activeFlapList[index])
+			} else {
+				select {
+				case endChannel <- activeFlapList[index]:
+				default:
+				}
 			}
 		}
 

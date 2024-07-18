@@ -6,10 +6,11 @@ import (
 )
 
 type Module struct {
-	Name          string
-	Callback      func(*Flap)
-	CallbackOnce  func(*Flap)
-	StartComplete func()
+	Name            string
+	Callback        func(*Flap)
+	CallbackOnce    func(*Flap)
+	CallbackOnceEnd func(*Flap)
+	OnStartComplete func()
 }
 
 var (
@@ -20,12 +21,27 @@ var (
 	version string
 )
 
-func notificationHandler(c chan *Flap) {
+func notificationHandler(c, cEnd chan *Flap) {
 	modulesStarted = true
 	moduleCallbackStartComplete()
 	for {
-		f := <-c
+		var f *Flap
+		endNotification := false
+		select {
+		case f = <-c:
+		case f = <-cEnd:
+			endNotification = true
+		}
 		for _, m := range moduleList {
+			if endNotification {
+				if !f.notifiedOnce.Load() {
+					continue
+				}
+				if m.CallbackOnceEnd != nil {
+					go m.CallbackOnceEnd(f)
+				}
+				continue
+			}
 			if m.Callback != nil {
 				go m.Callback(f)
 			}
@@ -52,8 +68,8 @@ func RegisterModule(module *Module) {
 
 func moduleCallbackStartComplete() {
 	for _, m := range moduleList {
-		if m.StartComplete != nil {
-			go m.StartComplete()
+		if m.OnStartComplete != nil {
+			go m.OnStartComplete()
 		}
 	}
 }

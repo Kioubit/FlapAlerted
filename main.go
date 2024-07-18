@@ -77,8 +77,10 @@ func main() {
 		slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{})))
 	}
 
-	fmt.Println("Using the following parameters:")
-	fmt.Println("Detecting a flap if the route to a prefix changes within", conf.FlapPeriod, "seconds at least", conf.RouteChangeCounter, "time(s) and be active for at least", conf.MinimumAge, "seconds")
+	fmt.Println("Using the following parameters: "+
+		"Detecting a flap if the route to a prefix changes within", conf.FlapPeriod,
+		"seconds at least", conf.RouteChangeCounter, "time(s) and remains active for at least",
+		conf.MinimumAge, "seconds")
 
 	slog.Info("Started")
 	monitor.StartMonitoring(conf)

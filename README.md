@@ -73,10 +73,10 @@ It also provides a user interface (on the same port) at path:
 
 To disable this module, add the following tag to the `MODULES` variable in the `Makefile`: `disable_mod_httpAPI`
 
-#### mod_log (Disabled by default)
+#### mod_log (Enabled by default)
 Logs each time a prefix exceeds the defined `routeChangeCounter` within the defined `period` to STDOUT.
 
-To enable this module, add the following tag to the `MODULES` variable in the `Makefile`: `mod_log`
+To disable this module, add the following tag to the `MODULES` variable in the `Makefile`: `disable_mod_log`
 
 ***
 
