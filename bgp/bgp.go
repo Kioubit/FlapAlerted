@@ -4,6 +4,7 @@ import (
 	"FlapAlerted/bgp/common"
 	"FlapAlerted/bgp/open"
 	"FlapAlerted/bgp/update"
+	"bufio"
 	"errors"
 	"fmt"
 	"io"
@@ -201,6 +202,7 @@ func keepAliveHandler(logger *slog.Logger, in chan bool, conn net.Conn, holdTime
 }
 
 func handleIncoming(logger *slog.Logger, conn io.Reader, defaultAFI update.AFI, addPathEnabled bool, updateChannel chan update.Msg, keepAliveChan chan bool) error {
+	conn = bufio.NewReader(conn)
 	for {
 		msg, r, err := common.ReadMessage(conn)
 		if err != nil {
