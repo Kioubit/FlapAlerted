@@ -166,7 +166,7 @@ function display() {
         }
 
         const dataSum = data.reduce((s,a) => s + a , 0);
-        const avg = ((dataSum/data.length)/dataIntervalSeconds).toFixed(2);
+        const avg = ((dataSum/data.length)).toFixed(2);
         document.getElementById("averageDisplay").innerText = `${avg}/s during the last ${toTimeElapsed(data.length*dataIntervalSeconds)}`;
 
         RouteChangeChart.data.labels = labels;
