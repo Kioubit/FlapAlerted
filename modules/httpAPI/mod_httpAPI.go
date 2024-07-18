@@ -43,7 +43,7 @@ func monitorFlap() {
 			if obj == nil {
 				FlapHistoryMap[f.Cidr] = []uint64{f.PathChangeCountTotal}
 			} else {
-				if len(FlapHistoryMap[f.Cidr]) > 500 {
+				if len(FlapHistoryMap[f.Cidr]) > 100 {
 					FlapHistoryMap[f.Cidr] = FlapHistoryMap[f.Cidr][1:]
 				}
 				FlapHistoryMap[f.Cidr] = append(FlapHistoryMap[f.Cidr], f.PathChangeCountTotal)

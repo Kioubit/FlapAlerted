@@ -26,6 +26,7 @@ func main() {
 	disableAddPath := flag.Bool("disableAddPath", false, "Disable BGP AddPath support. (Setting must be replicated in BGP daemon)")
 	relevantAsnPosition := flag.Int("asnPosition", -1, "The position of the last static ASN (and for which to keep separate state for)"+
 		" in each path. Use of this parameter is required for special cases such as when connected to a route collector.")
+	minimumAge := flag.Int("minimumAge", 60, "Minimum age in seconds a prefix must be active to be listed")
 	enableDebug := flag.Bool("debug", false, "Enable debug mode (produces a lot of output)")
 
 	flag.Parse()
@@ -33,6 +34,7 @@ func main() {
 	conf := config.UserConfig{}
 	conf.RouteChangeCounter = *routeChangeCounter
 	conf.FlapPeriod = int64(*flapPeriod)
+	conf.MinimumAge = *minimumAge
 	conf.Asn = uint32(*asn)
 	conf.KeepPathInfo = !*noPathInfo
 	conf.UseAddPath = !*disableAddPath

@@ -7,6 +7,7 @@ var GlobalConf UserConfig
 type UserConfig struct {
 	RouteChangeCounter  int
 	FlapPeriod          int64
+	MinimumAge          int
 	Asn                 uint32
 	KeepPathInfo        bool
 	UseAddPath          bool

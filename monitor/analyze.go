@@ -26,6 +26,7 @@ type Flap struct {
 	PathChangeCountTotal uint64
 	FirstSeen            int64
 	LastSeen             int64
+	meetsMinimumAge      bool
 }
 
 type PathInfo struct {
@@ -151,10 +152,10 @@ func updateList(prefix netip.Prefix, asPath []common.AsPathList, notificationCha
 		newFlap.LastPath[getRelevantASN(cleanPath)] = cleanPath
 		flapMap[cidr] = newFlap
 
-		globalTotalRouteChangeCounter.Add(1)
-
 		// Handle every Update
 		if config.GlobalConf.RouteChangeCounter == 0 {
+			// Only increment the global route change counter in cases where we want to show each update instead of
+			// only route changes
 			globalListedRouteChangeCounter.Add(1)
 			newFlap.PathChangeCountTotal = 1
 			newFlap.pathChangeCount = 1
@@ -200,7 +201,10 @@ func updateList(prefix netip.Prefix, asPath []common.AsPathList, notificationCha
 		obj.LastPath[getRelevantASN(cleanPath)] = cleanPath
 
 		if obj.PathChangeCountTotal >= uint64(config.GlobalConf.RouteChangeCounter) {
-			globalListedRouteChangeCounter.Add(1)
+			if obj.LastSeen-obj.FirstSeen > int64(config.GlobalConf.MinimumAge) {
+				obj.meetsMinimumAge = true
+				globalListedRouteChangeCounter.Add(1)
+			}
 		}
 
 		if config.GlobalConf.RouteChangeCounter != 0 {
@@ -266,6 +270,12 @@ func getActiveFlapList() []*Flap {
 	aFlap := make([]*Flap, 0)
 	activeFlapListMu.RLock()
 	for i := range activeFlapList {
+		activeFlapList[i].RLock()
+		if !activeFlapList[i].meetsMinimumAge {
+			activeFlapList[i].RUnlock()
+			continue
+		}
+		activeFlapList[i].RUnlock()
 		aFlap = append(aFlap, activeFlapList[i])
 	}
 	activeFlapListMu.RUnlock()

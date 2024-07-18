@@ -4,11 +4,11 @@ async function updateCapabilities() {
     const versionBox = document.getElementById("version");
     const infoBox = document.getElementById("info");
     versionBox.innerText =  "FlapAlerted " + data.Version;
-    if (data.UserParameters.NotifyTarget === 0) {
-        infoBox.innerText = "Current settings: Displaying every BGP update received. Removing entries after "+ data.UserParameters.FlapPeriod + " seconds of inactivity.";
+    if (data.UserParameters.RouteChangeCounter === 0) {
+        infoBox.innerText = `Current settings: Displaying every BGP update received. Removing entries after ${data.UserParameters.FlapPeriod} seconds of inactivity.`;
     } else {
         dataRouteChange.datasets.push(listedPrefixDataset);
-        infoBox.innerText = "Current settings: A route for a prefix needs to change at least " + data.UserParameters.NotifyTarget + " times in " + data.UserParameters.FlapPeriod + " seconds for it to be shown in the table.";
+        infoBox.innerText = `Current settings: A route for a prefix needs to change at least ${data.UserParameters.RouteChangeCounter}  times in ${data.UserParameters.FlapPeriod} seconds and do so for at least ${data.UserParameters.MinimumAge} seconds for it to be shown in the table.`;
     }
 }
 
