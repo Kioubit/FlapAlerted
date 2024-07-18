@@ -37,17 +37,15 @@ func monitorFlap() {
 		FlapHistoryMapMu.Lock()
 		flapList := monitor.GetActiveFlaps()
 		for _, f := range flapList {
-			f.RLock()
 			obj := FlapHistoryMap[f.Cidr]
 			if obj == nil {
-				FlapHistoryMap[f.Cidr] = []uint64{f.PathChangeCountTotal}
+				FlapHistoryMap[f.Cidr] = []uint64{f.PathChangeCountTotal.Load()}
 			} else {
 				if len(FlapHistoryMap[f.Cidr]) > 100 {
 					FlapHistoryMap[f.Cidr] = FlapHistoryMap[f.Cidr][1:]
 				}
-				FlapHistoryMap[f.Cidr] = append(FlapHistoryMap[f.Cidr], f.PathChangeCountTotal)
+				FlapHistoryMap[f.Cidr] = append(FlapHistoryMap[f.Cidr], f.PathChangeCountTotal.Load())
 			}
-			f.RUnlock()
 		}
 		FlapHistoryMapMu.Unlock()
 	}
@@ -60,12 +58,10 @@ func cleanupHistory() {
 		newFlapHistoryMap := make(map[string][]uint64)
 		flapList := monitor.GetActiveFlaps()
 		for _, f := range flapList {
-			f.RLock()
 			obj := FlapHistoryMap[f.Cidr]
 			if obj != nil {
 				newFlapHistoryMap[f.Cidr] = obj
 			}
-			f.RUnlock()
 		}
 		FlapHistoryMap = newFlapHistoryMap
 		FlapHistoryMapMu.Unlock()
@@ -140,14 +136,12 @@ func getActiveFlaps(w http.ResponseWriter, _ *http.Request) {
 	var jsonFlapList = make([]jsFlap, 0)
 	activeFlaps := monitor.GetActiveFlaps()
 	for _, f := range activeFlaps {
-		f.RLock()
 		instance := jsFlap{
 			Prefix:     f.Cidr,
 			FirstSeen:  f.FirstSeen,
-			LastSeen:   f.LastSeen,
-			TotalCount: f.PathChangeCountTotal,
+			LastSeen:   f.LastSeen.Load(),
+			TotalCount: f.PathChangeCountTotal.Load(),
 		}
-		f.RUnlock()
 		jsonFlapList = append(jsonFlapList, instance)
 	}
 
@@ -171,7 +165,7 @@ func getPrefix(w http.ResponseWriter, r *http.Request) {
 	flaps := monitor.GetActiveFlaps()
 	for _, f := range flaps {
 		if f.Cidr == prefix.String() {
-			f.RLock()
+			f.RLock() // Needed to obtain paths
 			pathList := make([]monitor.PathInfo, 0, len(f.Paths))
 			for n := range f.Paths {
 				pathList = append(pathList, *f.Paths[n])
@@ -185,8 +179,8 @@ func getPrefix(w http.ResponseWriter, r *http.Request) {
 			}{
 				f.Cidr,
 				f.FirstSeen,
-				f.LastSeen,
-				f.PathChangeCountTotal,
+				f.LastSeen.Load(),
+				f.PathChangeCountTotal.Load(),
 				pathList,
 			})
 			if err != nil {

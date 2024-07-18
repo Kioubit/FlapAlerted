@@ -30,17 +30,12 @@ func notificationHandler(c chan *Flap) {
 				go m.Callback(f)
 			}
 			if m.CallbackOnce != nil {
-				f.Lock()
-				if f.notifiedOnce {
-					f.Unlock()
+				if !f.meetsMinimumAge.Load() {
 					continue
 				}
-				if !f.meetsMinimumAge {
-					f.Unlock()
+				if !f.notifiedOnce.CompareAndSwap(false, true) {
 					continue
 				}
-				f.notifiedOnce = true
-				f.Unlock()
 				go m.CallbackOnce(f)
 			}
 		}

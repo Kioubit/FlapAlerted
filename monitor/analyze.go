@@ -19,15 +19,15 @@ const PathLimit = 1000
 
 type Flap struct {
 	sync.RWMutex
-	Cidr                 string
+	Cidr                 string // Read only
 	lastPath             map[string]common.AsPathList
 	Paths                map[string]*PathInfo
 	pathChangeCount      uint64
-	PathChangeCountTotal uint64
-	FirstSeen            int64
-	LastSeen             int64
-	meetsMinimumAge      bool
-	notifiedOnce         bool
+	PathChangeCountTotal atomic.Uint64 // Atomic only for reads
+	FirstSeen            int64         // Read only
+	LastSeen             atomic.Int64  // Atomic only for reads
+	meetsMinimumAge      atomic.Bool
+	notifiedOnce         atomic.Bool
 }
 
 type PathInfo struct {
@@ -116,7 +116,7 @@ func cleanUpFlapList() {
 		newActiveFlapList := make([]*Flap, 0)
 
 		for index := range activeFlapList {
-			if activeFlapList[index].LastSeen+int64(config.GlobalConf.FlapPeriod) > currentTime {
+			if activeFlapList[index].LastSeen.Load()+int64(config.GlobalConf.FlapPeriod) > currentTime {
 				flapMap[activeFlapList[index].Cidr] = activeFlapList[index]
 				newActiveFlapList = append(newActiveFlapList, activeFlapList[index])
 			}
@@ -139,14 +139,13 @@ func updateList(prefix netip.Prefix, asPath []common.AsPathList, notificationCha
 
 	if obj == nil {
 		newFlap := &Flap{
-			Cidr:                 cidr,
-			LastSeen:             currentTime,
-			FirstSeen:            currentTime,
-			pathChangeCount:      0,
-			PathChangeCountTotal: 0,
-			lastPath:             make(map[string]common.AsPathList),
-			Paths:                make(map[string]*PathInfo),
+			Cidr:            cidr,
+			FirstSeen:       currentTime,
+			pathChangeCount: 0,
+			lastPath:        make(map[string]common.AsPathList),
+			Paths:           make(map[string]*PathInfo),
 		}
+		newFlap.LastSeen.Store(currentTime)
 		if config.GlobalConf.KeepPathInfo {
 			newFlap.Paths[pathToString(cleanPath)] = &PathInfo{Path: cleanPath, Count: 1}
 		}
@@ -158,8 +157,8 @@ func updateList(prefix netip.Prefix, asPath []common.AsPathList, notificationCha
 			// Only increment the global route change counter in cases where we want to show each update instead of
 			// only route changes
 			globalListedRouteChangeCounter.Add(1)
-			newFlap.meetsMinimumAge = true // In this mode all updates are shown
-			newFlap.PathChangeCountTotal = 1
+			newFlap.meetsMinimumAge.Store(true) // In this mode all updates are shown
+			newFlap.PathChangeCountTotal.Store(1)
 			newFlap.pathChangeCount = 1
 			activeFlapListMu.Lock()
 			activeFlapList = append(activeFlapList, newFlap)
@@ -196,22 +195,23 @@ func updateList(prefix netip.Prefix, asPath []common.AsPathList, notificationCha
 		}
 
 		obj.pathChangeCount = incrementUint64(obj.pathChangeCount)
-		obj.PathChangeCountTotal = incrementUint64(obj.PathChangeCountTotal)
+		obj.PathChangeCountTotal.Store(incrementUint64(obj.PathChangeCountTotal.Load()))
 		globalTotalRouteChangeCounter.Add(1)
 
-		obj.LastSeen = currentTime
+		obj.LastSeen.Store(currentTime)
 		obj.lastPath[getRelevantASN(cleanPath)] = cleanPath
 
-		if obj.PathChangeCountTotal >= uint64(config.GlobalConf.RouteChangeCounter) {
-			if obj.LastSeen-obj.FirstSeen > int64(config.GlobalConf.MinimumAge) {
-				obj.meetsMinimumAge = true
+		// Mutex is needed for below - not atomic
+		if obj.PathChangeCountTotal.Load() >= uint64(config.GlobalConf.RouteChangeCounter) {
+			if obj.LastSeen.Load()-obj.FirstSeen > int64(config.GlobalConf.MinimumAge) {
+				obj.meetsMinimumAge.Store(true)
 				globalListedRouteChangeCounter.Add(1)
 			}
 		}
 
 		if config.GlobalConf.RouteChangeCounter != 0 {
 			if obj.pathChangeCount == uint64(config.GlobalConf.RouteChangeCounter) {
-				if obj.PathChangeCountTotal == uint64(config.GlobalConf.RouteChangeCounter) {
+				if obj.PathChangeCountTotal.Load() == uint64(config.GlobalConf.RouteChangeCounter) {
 					activeFlapListMu.Lock()
 					activeFlapList = append(activeFlapList, obj)
 					activeFlapListMu.Unlock()
@@ -272,12 +272,9 @@ func getActiveFlapList() []*Flap {
 	aFlap := make([]*Flap, 0)
 	activeFlapListMu.RLock()
 	for i := range activeFlapList {
-		activeFlapList[i].RLock()
-		if !activeFlapList[i].meetsMinimumAge {
-			activeFlapList[i].RUnlock()
+		if !activeFlapList[i].meetsMinimumAge.Load() {
 			continue
 		}
-		activeFlapList[i].RUnlock()
 		aFlap = append(aFlap, activeFlapList[i])
 	}
 	activeFlapListMu.RUnlock()
