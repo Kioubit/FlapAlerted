@@ -1,18 +1,4 @@
-async function updateCapabilities() {
-    const response = await fetch("capabilities")
-    const data = await response.json()
-    const versionBox = document.getElementById("version");
-    const infoBox = document.getElementById("info");
-    versionBox.innerText =  "FlapAlerted " + data.Version;
-    if (data.UserParameters.RouteChangeCounter === 0) {
-        infoBox.innerText = `Current settings: Displaying every BGP update received. Removing entries after ${data.UserParameters.FlapPeriod} seconds of inactivity.`;
-    } else {
-        dataRouteChange.datasets.push(listedPrefixDataset);
-        infoBox.innerText = `Current settings: A route for a prefix needs to change at least ${data.UserParameters.RouteChangeCounter}  times in ${data.UserParameters.FlapPeriod} seconds and do so for at least ${data.UserParameters.MinimumAge} seconds for it to be shown in the table.`;
-    }
-}
-
-let gauge = new JustGage({
+const gauge = new JustGage({
     id: "justgage",
     value: 0,
     min: 0,
@@ -29,23 +15,20 @@ let gauge = new JustGage({
             lo: 0,
             hi: 20
         },
-        {
-            color: "#f7bc08",
-            lo: 21,
-            hi: 70
-        },
-        {
-            color: "#ff3b30",
-            lo: 71,
-            hi: 100
-        }]
+            {
+                color: "#f7bc08",
+                lo: 21,
+                hi: 70
+            },
+            {
+                color: "#ff3b30",
+                lo: 71,
+                hi: 100
+            }]
     }
 });
 
-const ctxFlapCount = document.getElementById('chartFlapCount').getContext('2d');
-const ctxRoute = document.getElementById('chartRoute').getContext('2d');
-
-let dataFlapCount = {
+const dataFlapCount = {
     labels: [],
     datasets: [
         {
@@ -72,8 +55,7 @@ let dataFlapCount = {
     ]
 };
 
-
-let dataRouteChange = {
+const dataRouteChange = {
     labels: [],
     datasets: [
         {
@@ -100,56 +82,74 @@ let dataRouteChange = {
     ]
 };
 
-const listedPrefixDataset =        {
-        label: "Route Changes (listed prefixes)",
-        fill: false,
-        lineTension: 0.1,
-        backgroundColor: "rgba(75,192,157,0.4)",
-        borderColor: "rgb(75,192,87)",
-        borderCapStyle: 'butt',
-        borderDash: [],
-        borderDashOffset: 0.0,
-        borderJoinStyle: 'miter',
-        pointBorderColor: "rgba(75,192,192,1)",
-        pointBackgroundColor: "#fff",
-        pointBorderWidth: 1,
-        pointHoverRadius: 5,
-        pointHoverBackgroundColor: "rgba(75,192,192,1)",
-        pointHoverBorderColor: "rgba(220,220,220,1)",
-        pointHoverBorderWidth: 2,
-        pointRadius: 5,
-        pointHitRadius: 10,
-        data: [],
-    }
+const listedPrefixDataset = {
+    label: "Route Changes (listed prefixes)",
+    fill: false,
+    lineTension: 0.1,
+    backgroundColor: "rgba(75,192,157,0.4)",
+    borderColor: "rgb(75,192,87)",
+    borderCapStyle: 'butt',
+    borderDash: [],
+    borderDashOffset: 0.0,
+    borderJoinStyle: 'miter',
+    pointBorderColor: "rgba(75,192,192,1)",
+    pointBackgroundColor: "#fff",
+    pointBorderWidth: 1,
+    pointHoverRadius: 5,
+    pointHoverBackgroundColor: "rgba(75,192,192,1)",
+    pointHoverBorderColor: "rgba(220,220,220,1)",
+    pointHoverBorderWidth: 2,
+    pointRadius: 5,
+    pointHitRadius: 10,
+    data: [],
+};
 
 
-let liveFlapChart = new Chart(ctxFlapCount, {
+const ctxFlapCount = document.getElementById('chartFlapCount').getContext('2d');
+const ctxRoute = document.getElementById('chartRoute').getContext('2d');
+
+const liveFlapChart = new Chart(ctxFlapCount, {
     type: "line",
     data: dataFlapCount,
     options: {
         maintainAspectRatio: false
     },
-})
+});
 
 
-let liveRouteChart = new Chart(ctxRoute, {
+const liveRouteChart = new Chart(ctxRoute, {
     type: "line",
     data: dataRouteChange,
     options: {
         maintainAspectRatio: false
     },
-})
+});
+
+
+async function updateCapabilities() {
+    const response = await fetch("capabilities");
+    const data = await response.json();
+    const versionBox = document.getElementById("version");
+    const infoBox = document.getElementById("info");
+    versionBox.innerText = "FlapAlerted " + data.Version;
+    if (data.UserParameters.RouteChangeCounter === 0) {
+        infoBox.innerText = `Current settings: Displaying every BGP update received. Removing entries after ${data.UserParameters.FlapPeriod} seconds of inactivity.`;
+    } else {
+        dataRouteChange.datasets.push(listedPrefixDataset);
+        infoBox.innerText = `Current settings: A route for a prefix needs to change at least ${data.UserParameters.RouteChangeCounter}  times in ${data.UserParameters.FlapPeriod} seconds and remain active for at least ${data.UserParameters.MinimumAge} seconds for it to be shown in the table.`;
+    }
+}
 
 function addToChart(liveChart, point, unixTime) {
     const now = new Date(unixTime * 1000);
-    const timeStamp = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0')
-        + ":" + String(now.getSeconds()).padStart(2, '0');
+    const timeStamp = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0') +
+        ":" + String(now.getSeconds()).padStart(2, '0');
     let shifted = false;
     for (let i = 0; i < point.length; i++) {
         if (liveChart.data.datasets[i] === undefined) {
-            continue
+            continue;
         }
-        liveChart.data.datasets[i].data.push(point[i])
+        liveChart.data.datasets[i].data.push(point[i]);
 
         if (liveChart.data.datasets[i].data.length > 50) {
             shifted = true;
@@ -164,41 +164,34 @@ function addToChart(liveChart, point, unixTime) {
 }
 
 
-
 window.onload = () => {
     updateCapabilities().catch((err) => {
-        console.log(err)
+        console.log(err);
     }).finally(() => {
         getStats();
         updateInfo();
         setInterval(updateInfo, 5000);
         document.getElementById("loadingScreen").style.display = 'none';
     });
-}
+};
 
 function updateInfo() {
     fetch("flaps/active/compact").then(function (response) {
         return response.json();
     }).then(function (flapList) {
         handleConnectionLost(false, "updateInfo");
-        flapList.sort(function compareFn(a, b) {
-            if (a.TotalCount > b.TotalCount) {
-                return -1;
-            } else {
-                return 1;
-            }
-        });
+        flapList.sort((a, b) => b.TotalCount - a.TotalCount);
 
         let prefixTableHtml = '<thead><tr><th>Prefix</th><th>Duration</th><th>Route Changes</th></tr></thead><tbody>';
         for (let i = 0; i < flapList.length; i++) {
             let duration = toTimeElapsed(flapList[i].LastSeen - flapList[i].FirstSeen);
             prefixTableHtml += "<tr>";
-            prefixTableHtml += "<td><a target=\"_blank\" href='analyze/?prefix=" + encodeURIComponent(flapList[i].Prefix) +"'>" + flapList[i].Prefix + "</a></td>";
+            prefixTableHtml += "<td><a target=\"_blank\" href='analyze/?prefix=" + encodeURIComponent(flapList[i].Prefix) + "'>" + flapList[i].Prefix + "</a></td>";
             prefixTableHtml += "<td>" + duration + "</td>";
             prefixTableHtml += "<td>" + truncateRouteChanges(flapList[i].TotalCount) + "</td>";
             prefixTableHtml += "</tr>";
             if (i >= 100) {
-                break
+                break;
             }
         }
         if (flapList.length === 0) {
@@ -217,31 +210,29 @@ function getStats() {
     const avgArray = [];
     evtSource.addEventListener("u", (event) => {
         try {
-            const js = JSON.parse(event.data)
+            const js = JSON.parse(event.data);
 
-            addToChart(liveRouteChart, [js["Changes"],js["ListedChanges"]], js["Time"]);
+            addToChart(liveRouteChart, [js["Changes"], js["ListedChanges"]], js["Time"]);
             addToChart(liveFlapChart, [js["Active"]], js["Time"]);
 
-            avgArray.push(js["Changes"])
+            avgArray.push(js["Changes"]);
             if (avgArray.length > 50) {
-                avgArray.shift()
+                avgArray.shift();
             }
 
             let percentile = [...avgArray].sort((a, b) => a - b);
-            percentile = percentile.slice(0, Math.ceil(percentile.length * 0.90))
-            const sum = percentile.reduce((s, a) => s + a, 0)
-            const avg = sum/percentile.length;
-            //const sum = avgArray.reduce((s, a) => s + a, 0)
-            //const avg = sum/avgArray.length;
-            gauge.refresh(avg/5);
+            percentile = percentile.slice(0, Math.ceil(percentile.length * 0.90));
+            const sum = percentile.reduce((s, a) => s + a, 0);
+            const avg = sum / percentile.length;
+            gauge.refresh(avg / 5);
 
-        } catch(err) {
+        } catch (err) {
             console.log(err);
         }
     });
     evtSource.onerror = (err) => {
         handleConnectionLost(true, "getStats");
-        console.log(err)
+        console.log(err);
     };
     evtSource.onopen = () => {
         handleConnectionLost(false, "getStats");
@@ -249,30 +240,31 @@ function getStats() {
 }
 
 function toTimeElapsed(secondsIn) {
-    const secondsMinute = 60
-    const secondsHour = secondsMinute * 60
-    const secondsDay = secondsHour * 24
-    const days = Math.floor(secondsIn/secondsDay)
-    const hours = Math.floor((secondsIn%secondsDay)/secondsHour).toString().padStart(2, '0')
-    const minutes = Math.floor((secondsIn%secondsHour)/secondsMinute).toString().padStart(2, '0');
-    const seconds = Math.floor(secondsIn%secondsMinute).toString().padStart(2, '0');
+    const secondsMinute = 60;
+    const secondsHour = secondsMinute * 60;
+    const secondsDay = secondsHour * 24;
+    const days = Math.floor(secondsIn / secondsDay);
+    const hours = Math.floor((secondsIn % secondsDay) / secondsHour).toString().padStart(2, '0');
+    const minutes = Math.floor((secondsIn % secondsHour) / secondsMinute).toString().padStart(2, '0');
+    const seconds = Math.floor(secondsIn % secondsMinute).toString().padStart(2, '0');
     let result = "";
     if (days !== 0) {
         result += `${days}d `;
     }
     result += `${hours}:${minutes}:${seconds}`;
-    return result
+    return result;
 }
 
 const million = 1000000;
 const billion = million * 1000;
 const trillion = billion * 1000;
+
 function truncateRouteChanges(routeChanges) {
     if (routeChanges < million) {
         return routeChanges;
     } else if (routeChanges >= million && routeChanges < billion) {
         return (+(routeChanges / million).toFixed(3)) + " million";
-    } else if (routeChanges >=billion && routeChanges < trillion ) {
+    } else if (routeChanges >= billion && routeChanges < trillion) {
         return (+(routeChanges / billion).toFixed(3)) + " billion";
     } else if (routeChanges >= trillion) {
         return (+(routeChanges / trillion).toFixed(2)) + " trillion";
@@ -281,10 +273,11 @@ function truncateRouteChanges(routeChanges) {
 }
 
 let lostType = [];
+
 function handleConnectionLost(lost, type) {
     if (lost) {
         if (lostType.indexOf(type) === -1) {
-            lostType.push(type)
+            lostType.push(type);
         }
         document.getElementById('connectionLost').style.display = 'block';
     } else {

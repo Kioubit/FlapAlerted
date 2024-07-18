@@ -5,10 +5,10 @@ import (
 	"FlapAlerted/bgp/common"
 	"FlapAlerted/bgp/update"
 	"FlapAlerted/config"
-	"log"
 	"log/slog"
 	"math"
 	"net/netip"
+	"os"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -20,7 +20,7 @@ const PathLimit = 1000
 type Flap struct {
 	sync.RWMutex
 	Cidr                 string
-	LastPath             map[string]common.AsPathList
+	lastPath             map[string]common.AsPathList
 	Paths                map[string]*PathInfo
 	pathChangeCount      uint64
 	PathChangeCountTotal uint64
@@ -38,11 +38,12 @@ type PathInfo struct {
 func StartMonitoring(conf config.UserConfig) {
 	config.GlobalConf = conf
 	if config.GlobalConf.RelevantAsnPosition < 0 {
-		log.Fatal("Invalid RelevantAsnPosition value")
+		slog.Error("Invalid RelevantAsnPosition value", "position", config.GlobalConf.RelevantAsnPosition)
+		os.Exit(1)
 	}
 
 	updateChannel := make(chan update.Msg, 200)
-	notificationChannel := make(chan *Flap, 10)
+	notificationChannel := make(chan *Flap, 20)
 	// Initialize activeFlapList and flapMap
 	flapMap = make(map[string]*Flap)
 	activeFlapList = make([]*Flap, 0)
@@ -115,7 +116,7 @@ func cleanUpFlapList() {
 		newActiveFlapList := make([]*Flap, 0)
 
 		for index := range activeFlapList {
-			if activeFlapList[index].LastSeen+config.GlobalConf.FlapPeriod > currentTime {
+			if activeFlapList[index].LastSeen+int64(config.GlobalConf.FlapPeriod) > currentTime {
 				flapMap[activeFlapList[index].Cidr] = activeFlapList[index]
 				newActiveFlapList = append(newActiveFlapList, activeFlapList[index])
 			}
@@ -143,13 +144,13 @@ func updateList(prefix netip.Prefix, asPath []common.AsPathList, notificationCha
 			FirstSeen:            currentTime,
 			pathChangeCount:      0,
 			PathChangeCountTotal: 0,
-			LastPath:             make(map[string]common.AsPathList),
+			lastPath:             make(map[string]common.AsPathList),
 			Paths:                make(map[string]*PathInfo),
 		}
 		if config.GlobalConf.KeepPathInfo {
 			newFlap.Paths[pathToString(cleanPath)] = &PathInfo{Path: cleanPath, Count: 1}
 		}
-		newFlap.LastPath[getRelevantASN(cleanPath)] = cleanPath
+		newFlap.lastPath[getRelevantASN(cleanPath)] = cleanPath
 		flapMap[cidr] = newFlap
 
 		// Handle every Update
@@ -157,6 +158,7 @@ func updateList(prefix netip.Prefix, asPath []common.AsPathList, notificationCha
 			// Only increment the global route change counter in cases where we want to show each update instead of
 			// only route changes
 			globalListedRouteChangeCounter.Add(1)
+			newFlap.meetsMinimumAge = true // In this mode all updates are shown
 			newFlap.PathChangeCountTotal = 1
 			newFlap.pathChangeCount = 1
 			activeFlapListMu.Lock()
@@ -175,7 +177,7 @@ func updateList(prefix netip.Prefix, asPath []common.AsPathList, notificationCha
 
 	// If the entry already exists
 
-	if !pathsEqual(obj.LastPath[getRelevantASN(cleanPath)], cleanPath) {
+	if !pathsEqual(obj.lastPath[getRelevantASN(cleanPath)], cleanPath) {
 		if config.GlobalConf.KeepPathInfo {
 			if len(obj.Paths) <= PathLimit {
 				searchPath := obj.Paths[pathToString(cleanPath)]
@@ -188,8 +190,8 @@ func updateList(prefix netip.Prefix, asPath []common.AsPathList, notificationCha
 			}
 		}
 
-		if len(obj.LastPath[getRelevantASN(cleanPath)].Asn) == 0 {
-			obj.LastPath[getRelevantASN(cleanPath)] = cleanPath
+		if len(obj.lastPath[getRelevantASN(cleanPath)].Asn) == 0 {
+			obj.lastPath[getRelevantASN(cleanPath)] = cleanPath
 			return
 		}
 
@@ -198,7 +200,7 @@ func updateList(prefix netip.Prefix, asPath []common.AsPathList, notificationCha
 		globalTotalRouteChangeCounter.Add(1)
 
 		obj.LastSeen = currentTime
-		obj.LastPath[getRelevantASN(cleanPath)] = cleanPath
+		obj.lastPath[getRelevantASN(cleanPath)] = cleanPath
 
 		if obj.PathChangeCountTotal >= uint64(config.GlobalConf.RouteChangeCounter) {
 			if obj.LastSeen-obj.FirstSeen > int64(config.GlobalConf.MinimumAge) {
@@ -330,7 +332,7 @@ func statTracker() {
 
 		statListLock.Lock()
 		statList = append(statList, newStatistic)
-		if len(statList) > 60 {
+		if len(statList) > 50 {
 			statList = statList[1:]
 		}
 		statListLock.Unlock()

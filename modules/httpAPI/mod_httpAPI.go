@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
-	"log"
 	"log/slog"
 	"net/http"
 	"net/netip"
@@ -78,7 +77,7 @@ func startComplete() {
 	go cleanupHistory()
 	go streamServe()
 
-	http.Handle("/", dashBoardHandler())
+	http.Handle("/", mainPageHandler())
 	http.HandleFunc("/capabilities", showCapabilities)
 	http.HandleFunc("/flaps/prefix", getPrefix)
 	http.HandleFunc("/flaps/active/compact", getActiveFlaps)
@@ -88,7 +87,7 @@ func startComplete() {
 	http.HandleFunc("/flaps/metrics/prometheus", prometheus)
 	err := http.ListenAndServe(":8699", nil)
 	if err != nil {
-		log.Println("["+moduleName+"] Error starting HTTP api server", err.Error())
+		slog.Error("["+moduleName+"] Error starting HTTP api server", "error", err)
 	}
 }
 
@@ -113,7 +112,7 @@ func getFlapHistory(w http.ResponseWriter, req *http.Request) {
 	FlapHistoryMapMu.RUnlock()
 }
 
-func dashBoardHandler() http.Handler {
+func mainPageHandler() http.Handler {
 	fSys := fs.FS(dashboardContent)
 	html, _ := fs.Sub(fSys, "dashboard")
 	return http.FileServer(http.FS(html))
@@ -165,14 +164,14 @@ func getPrefix(w http.ResponseWriter, r *http.Request) {
 	prefix, err := netip.ParsePrefix(r.URL.Query().Get("prefix"))
 	if err != nil {
 		w.WriteHeader(500)
-		_, _ = w.Write([]byte("Invalid prefix"))
+		_, _ = w.Write([]byte("null"))
 		return
 	}
 
 	flaps := monitor.GetActiveFlaps()
 	for _, f := range flaps {
-		f.RLock()
 		if f.Cidr == prefix.String() {
+			f.RLock()
 			pathList := make([]monitor.PathInfo, 0, len(f.Paths))
 			for n := range f.Paths {
 				pathList = append(pathList, *f.Paths[n])
@@ -200,7 +199,6 @@ func getPrefix(w http.ResponseWriter, r *http.Request) {
 			f.RUnlock()
 			return
 		}
-		f.RUnlock()
 	}
 	_, _ = w.Write([]byte("null"))
 }

@@ -3,9 +3,9 @@ package bgp
 import (
 	"FlapAlerted/bgp/update"
 	"FlapAlerted/config"
-	"log"
 	"log/slog"
 	"net"
+	"os"
 )
 
 // RFCs implemented
@@ -18,7 +18,8 @@ import (
 func StartBGP(updateChannel chan update.Msg) {
 	listener, err := net.Listen("tcp", ":1790")
 	if err != nil {
-		log.Fatal("[FATAL]", err.Error())
+		slog.Error("Failed to start BGP listener", "error", err)
+		os.Exit(1)
 	}
 	defer func(listener net.Listener) {
 		_ = listener.Close()

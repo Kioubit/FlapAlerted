@@ -22,10 +22,12 @@ Usage:
         Enable debug mode (produces a lot of output)
   -disableAddPath
         Disable BGP AddPath support. (Setting must be replicated in BGP daemon)
+  -minimumAge int
+        Minimum age in seconds a prefix must be active to be listed (default 60)
   -noPathInfo
         Disable keeping path information. (Only disable if performance is a concern)
   -period int
-        Interval in seconds within which the routeChangeCounter value is evaluated (default 60)
+        Interval in seconds within which the routeChangeCounter value is evaluated. Higher values increase memory consumption. (default 60)
   -routeChangeCounter int
         Number of times a route path needs to change to list a prefix. Use '0' to show all route changes. (default 50)
   -routerID string
@@ -65,15 +67,15 @@ Provides the following http API endpoints on port `8699`:
 - `/flaps/metrics/json`
 - `/flaps/metrics/prometheus`
 
-It also provides a user interface at path:
+It also provides a user interface at path on the same port:
 - `/`
 
-To disable this module add the following tag to the `MODULES` variable in the `Makefile`: `disable_mod_httpAPI`
+To disable this module, add the following tag to the `MODULES` variable in the `Makefile`: `disable_mod_httpAPI`
 
 #### mod_log (Disabled by default)
 Logs each time a prefix exceeds the defined `routeChangeCounter` within the defined `period` to STDOUT.
 
-To enable this module add the following tag to the `MODULES` variable in the `Makefile`: `mod_log`
+To enable this module, add the following tag to the `MODULES` variable in the `Makefile`: `mod_log`
 
 ***
 

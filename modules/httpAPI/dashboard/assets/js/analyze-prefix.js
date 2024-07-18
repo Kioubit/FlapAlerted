@@ -1,13 +1,13 @@
-window.addEventListener('load', function () {
+window.onload = () => {
     display();
-});
+};
 
 const ctxRouteCount = document.getElementById('chartRouteCount').getContext('2d');
 const dataRouteChangeCount = {
     labels: [],
     datasets: [
         {
-            label: "Route Change count",
+            label: "Route Changes",
             fill: false,
             lineTension: 0.1,
             backgroundColor: "rgba(75,192,192,0.4)",
@@ -29,7 +29,6 @@ const dataRouteChangeCount = {
         }
     ]
 };
-
 
 
 function display() {
@@ -65,16 +64,15 @@ function display() {
         }
 
         let htmlBundles = [];
-
-        for (const key in obj) {
+        Object.entries(obj).forEach(([_, value]) => {
             let elementHTML = "";
             let totalCount = 0;
-            for (let c = 0; c < obj[key].length; c++) {
-                let count = obj[key][c].Count;
+            for (let c = 0; c < value.length; c++) {
+                let count = value[c].Count;
                 totalCount += count;
                 elementHTML += count + "&nbsp;&nbsp;";
-                for (let d = 0; d < obj[key][c].Path.Asn.length; d++) {
-                    let sa = obj[key][c].Path.Asn[d].toString();
+                for (let d = 0; d < value[c].Path.Asn.length; d++) {
+                    let sa = value[c].Path.Asn[d].toString();
                     let saLen = sa.length;
                     let gap = " ";
                     while (saLen < 10) {
@@ -85,26 +83,20 @@ function display() {
                     let r = parseInt(hexColor.slice(1, 3), 16);
                     let g = parseInt(hexColor.slice(3, 5), 16);
                     let b = parseInt(hexColor.slice(5, 7), 16);
-                    elementHTML += "<span style='background-color: rgba(" + r + "," + g + "," + b + "," + "0.3');>" + gap + sa + "</span>";
+                    elementHTML += `<span style='background-color: rgba(${r},${g},${b},0.3);'>${gap}${sa}</span>`;
                 }
                 elementHTML += "<br>";
             }
             elementHTML += "<br>";
             let htmlBundle = {html: elementHTML, count: totalCount};
             htmlBundles.push(htmlBundle);
-        }
-        htmlBundles.sort((a,b)=> {
-            if (a.count < b.count) {
-                return 1;
-            }  else if (a.count > b.count) {
-                return -1;
-            }
-            return 0;
         });
+        htmlBundles.sort((a, b) => b - a);
+
         let tableHtml = '';
         htmlBundles.forEach((bundle) => {
             tableHtml += bundle.html;
-        })
+        });
 
         document.getElementById("pathTable").innerHTML = tableHtml;
         document.getElementById("prefixTitle").innerHTML = "Flap report for " + prefix;
@@ -121,7 +113,7 @@ function display() {
         document.getElementById("informationText2").style.display = "block";
         document.getElementById("printButton").onclick = function () {
             window.print();
-        }
+        };
     }).catch(function (error) {
         alert("Network error");
         console.log(error);
@@ -140,27 +132,37 @@ function display() {
             options: {
                 maintainAspectRatio: false
             },
-        })
-
-        const t = Date.now()
-        let labels = [];
-        for (let i = 0; i < json.length; i++) {
-            // Timestamps are within an accuracy of about 10 seconds
-            const ts = new Date(t - (10000 * (json.length - i)));
-            const timeStamp = String(ts.getHours()).padStart(2, '0') + ':' + String(ts.getMinutes()).padStart(2, '0')
-                + ":" + String(ts.getSeconds()).padStart(2, '0');
-            labels.push(timeStamp);
-        }
-        RouteCountChart.data.labels = labels;
-        RouteCountChart.data.datasets[0].data = json;
-        RouteCountChart.update();
-
+        });
         window.addEventListener('beforeprint', () => {
-            RouteCountChart.resize(700,150);
+            RouteCountChart.resize(700, 150);
         });
         window.addEventListener('afterprint', () => {
             RouteCountChart.resize();
         });
+
+        const t = Date.now();
+        const labels = [];
+        const data = [];
+        let previousValue = json[0];
+        for (let i = 1; i < json.length; i++) {
+            // Timestamps are within an accuracy of about 10 seconds
+            const ts = new Date(t - (10000 * (json.length - i)));
+            const timeStamp = String(ts.getHours()).padStart(2, '0') + ':' +
+                String(ts.getMinutes()).padStart(2, '0') + ":" + String(ts.getSeconds()).padStart(2, '0');
+            labels.push(timeStamp);
+            data.push(json[i] - previousValue);
+            previousValue = json[i];
+        }
+        if (data.length === 0 ) {
+            return;
+        }
+        RouteCountChart.data.labels = labels;
+        RouteCountChart.data.datasets[0].data = data;
+        RouteCountChart.update();
+
+        const dataSum = data.reduce((s,a) => s + a , 0);
+        const avg = Math.round((dataSum/data.length)/10);
+        document.getElementById("averageDisplay").innerText = `${avg}/s during the last ${toTimeElapsed(data.length*10)}`;
     }).catch(function (error) {
         alert("Network error");
         console.log(error);
@@ -177,22 +179,21 @@ function stringToColor(str) {
     for (let i = 0; i < 3; i++) {
         let value = (hash >> (i * 8)) & 0xFF;
         let rawColour = '00' + value.toString(16);
-        colour += rawColour.substring(rawColour.length-2);
+        colour += rawColour.substring(rawColour.length - 2);
     }
     return colour;
 }
 
-function timeConverter(unixTimestamp){
+function timeConverter(unixTimestamp) {
     function padTo2Digits(num) {
         return num.toString().padStart(2, '0');
     }
+
     const date = new Date(unixTimestamp * 1000);
     const hours = date.getHours();
     const minutes = date.getMinutes();
     const seconds = date.getSeconds();
-    const time = `${padTo2Digits(hours)}:${padTo2Digits(minutes)}:${padTo2Digits(
-        seconds,
-    )}`;
+    const time = `${padTo2Digits(hours)}:${padTo2Digits(minutes)}:${padTo2Digits(seconds)}`;
 
     const year = date.getFullYear();
     const month = padTo2Digits(date.getMonth() + 1);
@@ -203,17 +204,17 @@ function timeConverter(unixTimestamp){
 
 
 function toTimeElapsed(secondsIn) {
-    const secondsMinute = 60
-    const secondsHour = secondsMinute * 60
-    const secondsDay = secondsHour * 24
-    const days = Math.floor(secondsIn/secondsDay)
-    const hours = Math.floor((secondsIn%secondsDay)/secondsHour).toString().padStart(2, '0')
-    const minutes = Math.floor((secondsIn%secondsHour)/secondsMinute).toString().padStart(2, '0');
-    const seconds = Math.floor(secondsIn%secondsMinute).toString().padStart(2, '0');
+    const secondsMinute = 60;
+    const secondsHour = secondsMinute * 60;
+    const secondsDay = secondsHour * 24;
+    const days = Math.floor(secondsIn / secondsDay);
+    const hours = Math.floor((secondsIn % secondsDay) / secondsHour).toString().padStart(2, '0');
+    const minutes = Math.floor((secondsIn % secondsHour) / secondsMinute).toString().padStart(2, '0');
+    const seconds = Math.floor(secondsIn % secondsMinute).toString().padStart(2, '0');
     let result = "";
     if (days !== 0) {
         result += `${days}d `;
     }
     result += `${hours}:${minutes}:${seconds}`;
-    return result
+    return result;
 }

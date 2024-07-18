@@ -1,4 +1,4 @@
-//go:build !mod_log
+//go:build mod_log
 
 package log
 
@@ -6,6 +6,7 @@ import (
 	"FlapAlerted/monitor"
 	"log/slog"
 	"os"
+	"time"
 )
 
 var moduleName = "mod_log"
@@ -20,7 +21,5 @@ func init() {
 var logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{}))
 
 func logFlap(f *monitor.Flap) {
-	f.RLock()
-	logger.Info("prefix", f.Cidr, "path_change_count", f.PathChangeCountTotal, "first_seen", f.FirstSeen)
-	f.RUnlock()
+	logger.Info("event", "prefix", f.Cidr, "first_seen", time.Unix(f.FirstSeen, 0))
 }

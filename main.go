@@ -12,14 +12,16 @@ import (
 	"time"
 )
 
-var Version = "3.9"
+var Version = "3.10"
 
 func main() {
 	fmt.Println("FlapAlerted version", Version)
 	monitor.SetVersion(Version)
 
-	routeChangeCounter := flag.Int("routeChangeCounter", 50, "Number of times a route path needs to change to list a prefix. Use '0' to show all route changes.")
-	flapPeriod := flag.Int("period", 60, "Interval in seconds within which the routeChangeCounter value is evaluated")
+	routeChangeCounter := flag.Int("routeChangeCounter", 50, "Number of times a route path needs"+
+		" to change to list a prefix. Use '0' to show all route changes.")
+	flapPeriod := flag.Int("period", 60, "Interval in seconds within which the"+
+		" routeChangeCounter value is evaluated. Higher values increase memory consumption.")
 	asn := flag.Int("asn", 0, "Your ASN number")
 	routerID := flag.String("routerID", "0.0.0.51", "BGP Router ID for this program")
 	noPathInfo := flag.Bool("noPathInfo", false, "Disable keeping path information. (Only disable if performance is a concern)")
@@ -33,7 +35,7 @@ func main() {
 
 	conf := config.UserConfig{}
 	conf.RouteChangeCounter = *routeChangeCounter
-	conf.FlapPeriod = int64(*flapPeriod)
+	conf.FlapPeriod = *flapPeriod
 	conf.MinimumAge = *minimumAge
 	conf.Asn = uint32(*asn)
 	conf.KeepPathInfo = !*noPathInfo
@@ -75,8 +77,7 @@ func main() {
 	}
 
 	fmt.Println("Using the following parameters:")
-	fmt.Println("Detecting a flap if the route to a prefix changes within", conf.FlapPeriod, "seconds at least", conf.RouteChangeCounter, "time(s)")
-	fmt.Println("ASN:", conf.Asn, "| Keep Path Info:", conf.KeepPathInfo, "| AddPath Capability:", conf.UseAddPath, "| Relevant ASN Position:", conf.RelevantAsnPosition)
+	fmt.Println("Detecting a flap if the route to a prefix changes within", conf.FlapPeriod, "seconds at least", conf.RouteChangeCounter, "time(s) and be active for at least", conf.MinimumAge, "seconds")
 
 	slog.Info("Started")
 	monitor.StartMonitoring(conf)

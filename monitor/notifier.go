@@ -27,23 +27,21 @@ func notificationHandler(c chan *Flap) {
 		f := <-c
 		for _, m := range moduleList {
 			if m.Callback != nil {
-				m.Callback(f)
+				go m.Callback(f)
 			}
 			if m.CallbackOnce != nil {
-				f.RLock()
+				f.Lock()
 				if f.notifiedOnce {
-					f.RUnlock()
-					return
+					f.Unlock()
+					continue
 				}
 				if !f.meetsMinimumAge {
-					f.RUnlock()
-					return
+					f.Unlock()
+					continue
 				}
-				f.RUnlock()
-				f.Lock()
 				f.notifiedOnce = true
 				f.Unlock()
-				m.CallbackOnce(f)
+				go m.CallbackOnce(f)
 			}
 		}
 	}
@@ -112,7 +110,7 @@ type Capabilities struct {
 }
 
 type UserParameters struct {
-	FlapPeriod          int64
+	FlapPeriod          int
 	RouteChangeCounter  int
 	MinimumAge          int
 	KeepPathInfo        bool

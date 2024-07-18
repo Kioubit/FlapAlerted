@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	clientMutex sync.RWMutex
+	clientMutex sync.Mutex
 	clients     = make([]chan string, 0)
 )
 
@@ -30,18 +30,20 @@ func getStatisticStream(w http.ResponseWriter, r *http.Request) {
 	clients = append(clients, messageChan)
 	clientMutex.Unlock()
 
+	var channelClosedFirst = false
 	go func() {
 		// Listen for connection close
 		<-r.Context().Done()
 		clientMutex.Lock()
-		newClients := make([]chan string, 0)
-		for _, c := range clients {
-			if c == messageChan {
-				continue
+		if !channelClosedFirst {
+			for i := 0; i < len(clients); i++ {
+				if clients[i] == messageChan {
+					clients[i] = clients[len(clients)-1]
+					clients = clients[:len(clients)-1]
+					break
+				}
 			}
-			newClients = append(newClients, c)
 		}
-		clients = newClients
 		close(messageChan)
 		clientMutex.Unlock()
 	}()
@@ -59,6 +61,7 @@ func getStatisticStream(w http.ResponseWriter, r *http.Request) {
 	for {
 		data, ok := <-messageChan
 		if !ok {
+			channelClosedFirst = true
 			return
 		}
 		_, _ = w.Write([]byte(data))
@@ -74,11 +77,19 @@ func streamServe() {
 		if err != nil {
 			continue
 		}
-		clientMutex.RLock()
+		clientMutex.Lock()
+		tmp := clients[:0]
 		for _, c := range clients {
-			c <- formatEventStreamMessage("u", string(m))
+			select {
+			case c <- formatEventStreamMessage("u", string(m)):
+			default:
+				close(c)
+				continue
+			}
+			tmp = append(tmp, c)
 		}
-		clientMutex.RUnlock()
+		clients = tmp
+		clientMutex.Unlock()
 	}
 }
 
