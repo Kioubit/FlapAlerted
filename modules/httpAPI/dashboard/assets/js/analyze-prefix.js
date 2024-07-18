@@ -123,21 +123,29 @@ function display() {
     fetch("../flaps/active/history?cidr=" + prefix).then(function (response) {
         return response.json();
     }).then(function (json) {
+        const dataIntervalSeconds = 10
         if (json.length === 0) {
             return;
         }
-        const RouteCountChart = new Chart(ctxRouteCount, {
+        const RouteChangeChart = new Chart(ctxRouteCount, {
             type: "line",
             data: dataRouteChangeCount,
             options: {
-                maintainAspectRatio: false
+                maintainAspectRatio: false,
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: (context) => `${context.dataset.label}: ${context.parsed.y}/sec`,
+                        },
+                    },
+                },
             },
         });
         window.addEventListener('beforeprint', () => {
-            RouteCountChart.resize(700, 150);
+            RouteChangeChart.resize(700, 150);
         });
         window.addEventListener('afterprint', () => {
-            RouteCountChart.resize();
+            RouteChangeChart.resize();
         });
 
         const t = Date.now();
@@ -150,19 +158,19 @@ function display() {
             const timeStamp = String(ts.getHours()).padStart(2, '0') + ':' +
                 String(ts.getMinutes()).padStart(2, '0') + ":" + String(ts.getSeconds()).padStart(2, '0');
             labels.push(timeStamp);
-            data.push(json[i] - previousValue);
+            data.push(((json[i] - previousValue)/dataIntervalSeconds).toFixed(2));
             previousValue = json[i];
         }
         if (data.length === 0 ) {
             return;
         }
-        RouteCountChart.data.labels = labels;
-        RouteCountChart.data.datasets[0].data = data;
-        RouteCountChart.update();
+        RouteChangeChart.data.labels = labels;
+        RouteChangeChart.data.datasets[0].data = data;
+        RouteChangeChart.update();
 
         const dataSum = data.reduce((s,a) => s + a , 0);
-        const avg = Math.round((dataSum/data.length)/10);
-        document.getElementById("averageDisplay").innerText = `${avg}/s during the last ${toTimeElapsed(data.length*10)}`;
+        const avg = Math.round((dataSum/data.length)/dataIntervalSeconds);
+        document.getElementById("averageDisplay").innerText = `${avg}/s during the last ${toTimeElapsed(data.length*dataIntervalSeconds)}`;
     }).catch(function (error) {
         alert("Network error");
         console.log(error);

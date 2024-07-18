@@ -86,17 +86,17 @@ const listedPrefixDataset = {
     label: "Route Changes (listed prefixes)",
     fill: false,
     lineTension: 0.1,
-    backgroundColor: "rgba(75,192,157,0.4)",
-    borderColor: "rgb(75,192,87)",
+    backgroundColor: "rgba(15,151,3,0.4)",
+    borderColor: "rgb(50,168,5)",
     borderCapStyle: 'butt',
     borderDash: [],
     borderDashOffset: 0.0,
     borderJoinStyle: 'miter',
-    pointBorderColor: "rgba(75,192,192,1)",
+    pointBorderColor: "rgb(75,192,81)",
     pointBackgroundColor: "#fff",
     pointBorderWidth: 1,
     pointHoverRadius: 5,
-    pointHoverBackgroundColor: "rgba(75,192,192,1)",
+    pointHoverBackgroundColor: "rgb(75,192,102)",
     pointHoverBorderColor: "rgba(220,220,220,1)",
     pointHoverBorderWidth: 2,
     pointRadius: 5,
@@ -121,7 +121,14 @@ const liveRouteChart = new Chart(ctxRoute, {
     type: "line",
     data: dataRouteChange,
     options: {
-        maintainAspectRatio: false
+        maintainAspectRatio: false,
+        plugins: {
+            tooltip: {
+                callbacks: {
+                    label: (context) => `${context.dataset.label}: ${context.parsed.y}/sec`,
+                },
+            },
+        },
     },
 });
 
@@ -140,7 +147,7 @@ async function updateCapabilities() {
     }
 }
 
-function addToChart(liveChart, point, unixTime) {
+function addToChart(liveChart, point, unixTime, dataInterval) {
     const now = new Date(unixTime * 1000);
     const timeStamp = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0') +
         ":" + String(now.getSeconds()).padStart(2, '0');
@@ -149,7 +156,7 @@ function addToChart(liveChart, point, unixTime) {
         if (liveChart.data.datasets[i] === undefined) {
             continue;
         }
-        liveChart.data.datasets[i].data.push(point[i]);
+        liveChart.data.datasets[i].data.push((point[i]/dataInterval).toFixed(2));
 
         if (liveChart.data.datasets[i].data.length > 50) {
             shifted = true;
@@ -212,8 +219,8 @@ function getStats() {
         try {
             const js = JSON.parse(event.data);
 
-            addToChart(liveRouteChart, [js["Changes"], js["ListedChanges"]], js["Time"]);
-            addToChart(liveFlapChart, [js["Active"]], js["Time"]);
+            addToChart(liveRouteChart, [js["Changes"], js["ListedChanges"]], js["Time"],5);
+            addToChart(liveFlapChart, [js["Active"]], js["Time"],1);
 
             avgArray.push(js["Changes"]);
             if (avgArray.length > 50) {
