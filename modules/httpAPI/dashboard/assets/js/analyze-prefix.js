@@ -158,19 +158,20 @@ function display() {
             const timeStamp = String(ts.getHours()).padStart(2, '0') + ':' +
                 String(ts.getMinutes()).padStart(2, '0') + ":" + String(ts.getSeconds()).padStart(2, '0');
             labels.push(timeStamp);
-            data.push(((json[i] - previousValue)/dataIntervalSeconds).toFixed(2));
+            data.push(((json[i] - previousValue)/dataIntervalSeconds));
             previousValue = json[i];
         }
         if (data.length === 0 ) {
             return;
         }
+
+        const dataSum = data.reduce((s,a) => s + a , 0);
+        const avg = ((dataSum/data.length)/dataIntervalSeconds).toFixed(2);
+        document.getElementById("averageDisplay").innerText = `${avg}/s during the last ${toTimeElapsed(data.length*dataIntervalSeconds)}`;
+
         RouteChangeChart.data.labels = labels;
         RouteChangeChart.data.datasets[0].data = data;
         RouteChangeChart.update();
-
-        const dataSum = data.reduce((s,a) => s + a , 0);
-        const avg = Math.round((dataSum/data.length)/dataIntervalSeconds);
-        document.getElementById("averageDisplay").innerText = `${avg}/s during the last ${toTimeElapsed(data.length*dataIntervalSeconds)}`;
     }).catch(function (error) {
         alert("Network error");
         console.log(error);

@@ -156,7 +156,7 @@ function addToChart(liveChart, point, unixTime, dataInterval) {
         if (liveChart.data.datasets[i] === undefined) {
             continue;
         }
-        liveChart.data.datasets[i].data.push((point[i]/dataInterval).toFixed(2));
+        liveChart.data.datasets[i].data.push((point[i]/dataInterval));
 
         if (liveChart.data.datasets[i].data.length > 50) {
             shifted = true;
