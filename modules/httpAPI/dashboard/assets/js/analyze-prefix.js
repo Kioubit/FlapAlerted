@@ -91,7 +91,7 @@ function display() {
             let htmlBundle = {html: elementHTML, count: totalCount};
             htmlBundles.push(htmlBundle);
         });
-        htmlBundles.sort((a, b) => b - a);
+        htmlBundles.sort((a, b) => b.count - a.count);
 
         let tableHtml = '';
         htmlBundles.forEach((bundle) => {
