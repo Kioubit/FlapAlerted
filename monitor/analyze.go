@@ -42,7 +42,7 @@ func StartMonitoring(conf config.UserConfig) {
 		os.Exit(1)
 	}
 
-	updateChannel := make(chan update.Msg, 200)
+	updateChannel := make(chan update.Msg, 10000)
 	notificationChannel := make(chan *Flap, 20)
 	notificationEndChannel := make(chan *Flap, 20)
 
@@ -68,11 +68,32 @@ var (
 var globalTotalRouteChangeCounter atomic.Uint64
 var globalListedRouteChangeCounter atomic.Uint64
 
+var messageDropperRunning atomic.Bool
+
+func messageDropper(updateChannel chan update.Msg) {
+	time.Sleep(2 * time.Second) // Allow for short bursts
+	dropped := 0
+	for len(updateChannel) > max(cap(updateChannel)-5, 1) {
+		<-updateChannel
+		dropped++
+	}
+	if dropped > 0 {
+		slog.Warn("dropped BGP messages", "count", dropped)
+	}
+	messageDropperRunning.Store(false)
+}
+
 func processUpdates(updateChannel chan update.Msg, notificationChannel chan *Flap) {
 	for {
 		u, ok := <-updateChannel
 		if !ok {
 			return
+		}
+
+		if len(updateChannel) == cap(updateChannel) {
+			if messageDropperRunning.CompareAndSwap(false, true) {
+				go messageDropper(updateChannel)
+			}
 		}
 
 		slog.Debug("Received update", "update", u)

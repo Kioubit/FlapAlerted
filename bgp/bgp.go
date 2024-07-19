@@ -229,12 +229,7 @@ func handleIncoming(logger *slog.Logger, conn io.Reader, defaultAFI update.AFI, 
 			if err != nil {
 				return fmt.Errorf("failed parsing UPDATE message %w", err)
 			}
-			select {
-			case updateChannel <- msg.Body.(update.Msg):
-			default:
-				// Cannot keep up
-			}
-
+			updateChannel <- msg.Body.(update.Msg)
 		}
 
 		// Discard any unread bytes
