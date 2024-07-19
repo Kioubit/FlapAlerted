@@ -9,13 +9,15 @@ import (
 	"log/slog"
 	"net/netip"
 	"os"
+	"strings"
 	"time"
 )
 
 var Version = "3.11"
 
 func main() {
-	fmt.Println("FlapAlerted version", Version)
+	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{})))
+	_, _ = fmt.Fprintln(os.Stderr, "FlapAlerted", "version", Version)
 	monitor.SetVersion(Version)
 
 	routeChangeCounter := flag.Int("routeChangeCounter", 700, "Number of times a route path needs"+
@@ -65,9 +67,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	modules := monitor.GetRegisteredModules()
-	for _, m := range modules {
-		fmt.Println("Enabled module:", m.Name)
+	modules := monitor.GetRegisteredModuleNames()
+	if len(modules) != 0 {
+		slog.Info("Enabled", "modules", strings.Join(modules, ","))
 	}
 
 	if conf.Debug {
@@ -75,14 +77,11 @@ func main() {
 		fmt.Println("Waiting for 4 seconds...")
 		time.Sleep(4 * time.Second)
 		slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug, AddSource: true})))
-	} else {
-		slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{})))
 	}
 
-	fmt.Println("Using the following parameters: "+
-		"Detecting a flap if the route to a prefix changes within", conf.FlapPeriod,
-		"seconds at least", conf.RouteChangeCounter, "time(s) and remains active for at least",
-		conf.MinimumAge, "seconds")
+	slog.Info("Program started", "parameters", fmt.Sprintf(
+		"Detecting a flap if the route to a prefix changes within %d seconds at least %d time(s)"+
+			" and remains active for at least %d seconds", conf.FlapPeriod, conf.RouteChangeCounter, conf.MinimumAge))
 
 	slog.Info("Started")
 	monitor.StartMonitoring(conf)

@@ -82,8 +82,12 @@ func getModuleNameList() []string {
 	return moduleNameList
 }
 
-func GetRegisteredModules() []*Module {
-	return moduleList
+func GetRegisteredModuleNames() []string {
+	list := make([]string, 0)
+	for _, m := range moduleList {
+		list = append(list, m.Name)
+	}
+	return list
 }
 
 func SetVersion(v string) {
