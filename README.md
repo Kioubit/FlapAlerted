@@ -1,10 +1,10 @@
 # FlapAlerted
 
-## Receives BGP Update messages by peering with your BGP daemon. Detects path changes and BGP flapping events.
+<h3>Receives BGP Update messages by peering with your BGP daemon. Detects path changes and BGP flapping events.</h3>
 
-<p align="center">
-<img src="https://github.com/user-attachments/assets/67f83d31-0abc-48cf-a35e-efe33fc808b9" height="400">
-</p>
+| Overview Page | Event details page |
+| ------------- | ------------------ |
+| ![a](https://github.com/user-attachments/assets/303d9aca-b4e3-4613-91ad-891ae16bf49d) | ![b](https://github.com/user-attachments/assets/860615e2-4116-429d-ab27-f8e5e70b69a0) |
 
 ### Setup notes
 
