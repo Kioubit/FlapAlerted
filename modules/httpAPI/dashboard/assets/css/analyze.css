@@ -33,13 +33,18 @@
     font-size: 1.3em;
 }
 
+#pathTableContainer {
+    width: fit-content;
+    max-width: 100%;
+    float: right;
+    overflow-x: auto;
+}
+
 #pathTable {
     width: fit-content;
     text-align: right;
     font-family: monospace;
     white-space: pre;
-    float: right;
-    overflow-x: auto;
 }
 
 .informationText {
@@ -53,6 +58,10 @@
     border-spacing: 0;
 }
 
+#informationText2 {
+    margin-bottom: 1em;
+}
+
 @media print
 {
     .no-print, .no-print *
@@ -64,5 +73,5 @@
 #chartRouteCount-container {
     position: relative;
     height: 20vh;
-    width: 100vw;
+    margin-bottom: 1em;
 }

@@ -94,14 +94,14 @@ function display() {
         });
 
         if (tableHtml === "") {
-            document.getElementById("pathTable").innerHTML = "No path data is available yet. Try refreshing later.";
+            document.getElementById("informationText2").innerHTML = "No path data is available yet. Try refreshing later.";
             (async () => {
                 try {
-                    const response = await fetch("capabilities");
+                    const response = await fetch("../capabilities");
                     const data = await response.json();
                     if (!data["UserParameters"]["KeepPathInfo"]) {
-                        document.getElementById("pathTable").innerHTML = "This instance has been configured to not keep path information." +
-                            " THe analysis tool is not available as a result";
+                        document.getElementById("informationText2").innerHTML = "This instance has been configured to not keep path information." +
+                            " The analysis tool is not available as a result";
                     }
                 } catch (e) {
                     console.log(e);
