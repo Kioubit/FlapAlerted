@@ -28,6 +28,7 @@ type Flap struct {
 	LastSeen             atomic.Int64  // Atomic only for reads
 	meetsMinimumAge      atomic.Bool
 	notifiedOnce         atomic.Bool
+	active               bool
 }
 
 type PathInfo struct {
@@ -191,6 +192,7 @@ func updateList(prefix netip.Prefix, asPath []common.AsPathList, notificationCha
 			newFlap.meetsMinimumAge.Store(true) // In this mode all updates are shown
 			newFlap.PathChangeCountTotal.Store(1)
 			newFlap.pathChangeCount = 1
+			newFlap.active = true
 			activeFlapListMu.Lock()
 			activeFlapList = append(activeFlapList, newFlap)
 			activeFlapListMu.Unlock()
@@ -208,7 +210,7 @@ func updateList(prefix netip.Prefix, asPath []common.AsPathList, notificationCha
 	// If the entry already exists
 
 	if !pathsEqual(obj.lastPath[getRelevantASN(cleanPath)], cleanPath) {
-		if config.GlobalConf.KeepPathInfo {
+		if (config.GlobalConf.KeepPathInfo && !config.GlobalConf.KeepPathInfoActiveOnly) || (config.GlobalConf.KeepPathInfo && obj.active) {
 			if len(obj.Paths) <= PathLimit {
 				searchPath := obj.Paths[pathToString(cleanPath)]
 				if searchPath == nil {
@@ -243,6 +245,7 @@ func updateList(prefix netip.Prefix, asPath []common.AsPathList, notificationCha
 		if config.GlobalConf.RouteChangeCounter != 0 {
 			if obj.pathChangeCount == uint64(config.GlobalConf.RouteChangeCounter) {
 				if obj.PathChangeCountTotal.Load() == uint64(config.GlobalConf.RouteChangeCounter) {
+					obj.active = true
 					activeFlapListMu.Lock()
 					activeFlapList = append(activeFlapList, obj)
 					activeFlapListMu.Unlock()

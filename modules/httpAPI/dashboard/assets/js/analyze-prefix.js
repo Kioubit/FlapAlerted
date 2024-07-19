@@ -48,11 +48,6 @@ function display() {
 
         const pJson = json["Paths"];
 
-        if (pJson.length === 0) {
-            document.getElementById("loader").style.display = "none";
-            document.getElementById("loaderText").innerText = "The analysis feature is not available as the instance has been configured to not keep path information";
-        }
-
         let obj = [];
         for (let i = 0; i < pJson.length; i++) {
             let firstAsn = pJson[i].Path.Asn[0];
@@ -98,7 +93,24 @@ function display() {
             tableHtml += bundle.html;
         });
 
-        document.getElementById("pathTable").innerHTML = tableHtml;
+        if (tableHtml === "") {
+            document.getElementById("pathTable").innerHTML = "No path data is available yet. Try refreshing later.";
+            (async () => {
+                try {
+                    const response = await fetch("capabilities");
+                    const data = await response.json();
+                    if (!data["UserParameters"]["KeepPathInfo"]) {
+                        document.getElementById("pathTable").innerHTML = "This instance has been configured to not keep path information." +
+                            " THe analysis tool is not available as a result";
+                    }
+                } catch (e) {
+                    console.log(e);
+                }
+            })();
+        } else {
+            document.getElementById("pathTable").innerHTML = tableHtml;
+        }
+
         document.getElementById("prefixTitle").innerHTML = "Flap report for " + prefix;
         document.getElementById("loader").style.display = "none";
         document.getElementById("loaderText").style.display = "none";
