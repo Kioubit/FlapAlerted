@@ -27,7 +27,7 @@ func main() {
 	asn := flag.Int("asn", 0, "Your ASN number")
 	routerID := flag.String("routerID", "0.0.0.51", "BGP Router ID for this program")
 	noPathInfo := flag.Bool("noPathInfo", false, "Disable keeping path information. (only disable if memory usage is a concern)")
-	pathInfoActiveOnly := flag.Bool("pathInfoActiveOnly", false, "Keep path information only for active prefixes (reduces memory usage)")
+	pathInfoAll := flag.Bool("pathInfoAll", false, "Keep path information for all instead of only active prefixes (increases memory usage)")
 	disableAddPath := flag.Bool("disableAddPath", false, "Disable BGP AddPath support. (Setting must be replicated in BGP daemon)")
 	relevantAsnPosition := flag.Int("asnPosition", -1, "The position of the last static ASN (and for which to keep separate state for)"+
 		" in each path. Use of this parameter is required for special cases such as when connected to a route collector.")
@@ -43,7 +43,7 @@ func main() {
 	conf.MinimumAge = *minimumAge
 	conf.Asn = uint32(*asn)
 	conf.KeepPathInfo = !*noPathInfo
-	conf.KeepPathInfoActiveOnly = *pathInfoActiveOnly
+	conf.KeepPathInfoActiveOnly = !*pathInfoAll
 	conf.UseAddPath = !*disableAddPath
 	conf.RelevantAsnPosition = *relevantAsnPosition
 	if conf.RelevantAsnPosition == -1 {
