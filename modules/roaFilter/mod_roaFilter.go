@@ -16,7 +16,6 @@ var moduleName = "mod_roaFilter"
 
 var source, output *string
 var lock sync.Mutex
-var cleanupNeeded = true
 
 func init() {
 	source = flag.String("roaSource", "", "File path of source ROA JSON")
@@ -31,9 +30,7 @@ func init() {
 func started() {
 	for {
 		// Copy unmodified to output
-		if cleanupNeeded {
-			filter(*source, *output, "")
-		}
+		filter(*source, *output, "")
 		time.Sleep(12 * time.Hour)
 	}
 }
@@ -119,6 +116,5 @@ func filter(source, output string, cidr string) {
 		slog.Error("roaFilter error writing", "file", source)
 		return
 	}
-	cleanupNeeded = true
 	slog.Info("roaFilter wrote filtered ROA file")
 }
