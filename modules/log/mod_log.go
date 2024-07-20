@@ -22,7 +22,7 @@ func init() {
 var logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{}))
 
 func logFlapStart(f *monitor.Flap) {
-	logger.Info("event", "type", "start", "prefix", f.Cidr, "first_seen", time.Unix(f.FirstSeen, 0))
+	logger.Info("event", "type", "start", "prefix", f.Cidr, "first_seen", time.Unix(f.FirstSeen, 0), "path_change_count", f.PathChangeCountTotal.Load())
 }
 
 func logFlapEnd(f *monitor.Flap) {
