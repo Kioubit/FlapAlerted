@@ -195,7 +195,10 @@ func keepAliveHandler(logger *slog.Logger, in chan bool, conn net.Conn, holdTime
 				logger.Warn("hold time expired")
 				_ = conn.Close()
 				return
-			case <-in:
+			case _, ok := <-in:
+				if !ok {
+					return
+				}
 			}
 		}
 	}()
