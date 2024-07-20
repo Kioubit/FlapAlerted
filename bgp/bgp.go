@@ -190,16 +190,23 @@ func keepAliveHandler(logger *slog.Logger, in chan bool, conn net.Conn, holdTime
 		}
 	}()
 	go func() {
+		holdTimeRemaining := holdTime
+		// time.after in a select statement cannot be used to avoid large amounts of channel allocations
 		for {
+			time.Sleep(2 * time.Second)
+			holdTimeRemaining -= 2
 			select {
-			case <-time.After(time.Duration(holdTime) * time.Second):
-				logger.Warn("hold time expired")
-				_ = conn.Close()
-				return
 			case _, ok := <-in:
 				if !ok {
 					return
 				}
+				holdTimeRemaining = holdTime
+			default:
+			}
+			if holdTimeRemaining <= 0 {
+				logger.Warn("hold time expired")
+				_ = conn.Close()
+				return
 			}
 		}
 	}()
