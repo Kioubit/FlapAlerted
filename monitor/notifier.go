@@ -156,8 +156,9 @@ func GetStats() []statisticWrapper {
 	result := make([]statisticWrapper, len(statList))
 	for i := range statList {
 		result[i] = statisticWrapper{
-			List:  nil,
-			Stats: statList[i],
+			List:     nil,
+			Stats:    statList[i],
+			Sessions: -1,
 		}
 	}
 	return result

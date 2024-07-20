@@ -218,7 +218,10 @@ function getStats() {
 
             const flapList = js["List"]
             const stats = js["Stats"]
-            document.getElementById("sessionCount").innerText = js["Sessions"];
+            const sessionCount= js["Sessions"];
+            if (sessionCount !== -1) {
+                document.getElementById("sessionCount").innerText = sessionCount;
+            }
 
             updateList(flapList).then();
 
