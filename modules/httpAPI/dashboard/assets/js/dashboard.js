@@ -182,7 +182,6 @@ window.onload = () => {
 
 async function updateList(flapList) {
     let prefixTableHtml = '<thead><tr><th>Prefix</th><th>Duration</th><th>Route Changes</th></tr></thead><tbody>';
-    const emptyHTML = '<tr><td colspan="3" class="centerText">Waiting for BGP flapping...</td></tr>';
 
     if (flapList !== null) {
         flapList.sort((a, b) => b.TotalCount - a.TotalCount);
@@ -199,10 +198,10 @@ async function updateList(flapList) {
             }
         }
         if (flapList.length === 0) {
-            prefixTableHtml += emptyHTML;
+            prefixTableHtml += '<tr><td colspan="3" class="centerText">Waiting for BGP flapping...</td></tr>';
         }
     } else {
-        prefixTableHtml += emptyHTML;
+        prefixTableHtml += '<tr><td colspan="3" class="centerText"><b>Please wait</b></td></tr>';
     }
 
     prefixTableHtml += "</tbody>";
