@@ -27,8 +27,8 @@ Usage:
         Minimum age in seconds a prefix must be active to be listed. Has no effect if the routeChangeCounter is set to zero (default 540)
   -noPathInfo
         Disable keeping path information. (only disable if memory usage is a concern)
-  -pathInfoActiveOnly
-        Keep path information only for active prefixes (reduces memory usage)
+  -pathInfoAll
+        Keep path information for all instead of only active prefixes (increases memory usage)
   -period int
         Interval in seconds within which the routeChangeCounter value is evaluated. Higher values increase memory consumption. (default 60)
   -routeChangeCounter int
@@ -80,6 +80,11 @@ Logs each time a prefix exceeds the defined `routeChangeCounter` within the defi
 
 To disable this module, add the following tag to the `MODULES` variable in the `Makefile`: `disable_mod_log`
 
+#### mod_roaFilter (Disabled by default)
+Filters a ROA file in JSON format to remove flapping prefixes and copies it to another location.
+See the command line help for required arguments.
+
+To enable this module, add the following tag to the `MODULES` variable in the `Makefile`: `mod_roaFilter`
 ***
 
 ### Building
