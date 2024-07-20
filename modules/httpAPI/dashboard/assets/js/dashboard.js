@@ -176,20 +176,17 @@ window.onload = () => {
         console.log(err);
     }).finally(() => {
         getStats();
-        updateInfo();
-        setInterval(updateInfo, 5000);
         document.getElementById("loadingScreen").style.display = 'none';
     });
 };
 
-function updateInfo() {
-    fetch("flaps/active/compact").then(function (response) {
-        return response.json();
-    }).then(function (flapList) {
-        handleConnectionLost(false, "updateInfo");
+async function updateList(flapList) {
+    let prefixTableHtml = '<thead><tr><th>Prefix</th><th>Duration</th><th>Route Changes</th></tr></thead><tbody>';
+    const emptyHTML = '<tr><td colspan="3" class="centerText">Waiting for BGP flapping...</td></tr>';
+
+    if (flapList !== null) {
         flapList.sort((a, b) => b.TotalCount - a.TotalCount);
 
-        let prefixTableHtml = '<thead><tr><th>Prefix</th><th>Duration</th><th>Route Changes</th></tr></thead><tbody>';
         for (let i = 0; i < flapList.length; i++) {
             let duration = toTimeElapsed(flapList[i].LastSeen - flapList[i].FirstSeen);
             prefixTableHtml += "<tr>";
@@ -202,14 +199,14 @@ function updateInfo() {
             }
         }
         if (flapList.length === 0) {
-            prefixTableHtml += '<tr><td colspan="3" class="centerText">Waiting for BGP flapping...</td></tr>';
+            prefixTableHtml += emptyHTML;
         }
-        prefixTableHtml += "</tbody>";
-        document.getElementById("prefixTable").innerHTML = prefixTableHtml;
-    }).catch(function (error) {
-        handleConnectionLost(true, "updateInfo");
-        console.log(error);
-    });
+    } else {
+        prefixTableHtml += emptyHTML;
+    }
+
+    prefixTableHtml += "</tbody>";
+    document.getElementById("prefixTable").innerHTML = prefixTableHtml;
 }
 
 function getStats() {
@@ -219,10 +216,17 @@ function getStats() {
         try {
             const js = JSON.parse(event.data);
 
-            addToChart(liveRouteChart, [js["Changes"], js["ListedChanges"]], js["Time"],5);
-            addToChart(liveFlapChart, [js["Active"]], js["Time"],1);
+            const flapList = js["List"]
+            const stats = js["Stats"]
+            document.getElementById("sessionCount").innerText = js["Sessions"];
 
-            avgArray.push(js["Changes"]);
+            updateList(flapList).then();
+
+
+            addToChart(liveRouteChart, [stats["Changes"], stats["ListedChanges"]], stats["Time"],5);
+            addToChart(liveFlapChart, [stats["Active"]], stats["Time"],1);
+
+            avgArray.push(stats["Changes"]);
             if (avgArray.length > 50) {
                 avgArray.shift();
             }
@@ -238,11 +242,11 @@ function getStats() {
         }
     });
     evtSource.onerror = (err) => {
-        handleConnectionLost(true, "getStats");
+        handleConnectionLost(true);
         console.log(err);
     };
     evtSource.onopen = () => {
-        handleConnectionLost(false, "getStats");
+        handleConnectionLost(false);
     };
 }
 
@@ -279,20 +283,11 @@ function truncateRouteChanges(routeChanges) {
     return routeChanges;
 }
 
-let lostType = [];
 
-function handleConnectionLost(lost, type) {
+function handleConnectionLost(lost) {
     if (lost) {
-        if (lostType.indexOf(type) === -1) {
-            lostType.push(type);
-        }
         document.getElementById('connectionLost').style.display = 'block';
     } else {
-        if (lostType.length !== 0) {
-            lostType = lostType.filter(e => e !== type);
-            if (lostType.length === 0) {
-                document.getElementById('connectionLost').style.display = 'none';
-            }
-        }
+        document.getElementById('connectionLost').style.display = 'none';
     }
 }

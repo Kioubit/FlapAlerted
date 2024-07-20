@@ -9,6 +9,7 @@ import (
 	"math"
 	"net/netip"
 	"os"
+	"slices"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -315,6 +316,20 @@ func getActiveFlapList() []*Flap {
 	return aFlap
 }
 
+// -----------------------------------------------------
+
+type statisticWrapper struct {
+	List     []flapSummary
+	Stats    statistic
+	Sessions int
+}
+type flapSummary struct {
+	Prefix     string
+	FirstSeen  int64
+	LastSeen   int64
+	TotalCount uint64
+}
+
 type statistic struct {
 	Time          int64
 	Changes       uint64
@@ -326,14 +341,14 @@ var (
 	statList     = make([]statistic, 0)
 	statListLock sync.RWMutex
 
-	statSubscribers     = make([]chan statistic, 0)
+	statSubscribers     = make([]chan statisticWrapper, 0)
 	statSubscribersLock sync.Mutex
 )
 
-func addStatSubscriber() chan statistic {
+func addStatSubscriber() chan statisticWrapper {
 	statSubscribersLock.Lock()
 	defer statSubscribersLock.Unlock()
-	c := make(chan statistic, 2)
+	c := make(chan statisticWrapper, 2)
 	statSubscribers = append(statSubscribers, c)
 	return c
 }
@@ -341,9 +356,39 @@ func addStatSubscriber() chan statistic {
 func statTracker() {
 	for {
 		time.Sleep(5 * time.Second)
+
 		activeFlapListMu.RLock()
 		flapListLength := len(activeFlapList)
+		aFlap := make([]*Flap, 0)
+		for i := range activeFlapList {
+			if !activeFlapList[i].meetsMinimumAge.Load() {
+				continue
+			}
+			aFlap = append(aFlap, activeFlapList[i])
+		}
 		activeFlapListMu.RUnlock()
+
+		if len(aFlap) > 100 {
+			slices.SortFunc(aFlap, func(a, b *Flap) int {
+				if b.PathChangeCountTotal.Load() > a.PathChangeCountTotal.Load() {
+					return 1
+				} else if b.PathChangeCountTotal.Load() < a.PathChangeCountTotal.Load() {
+					return -1
+				}
+				return 0
+			})
+			aFlap = aFlap[:100]
+		}
+
+		jsFlapList := make([]flapSummary, len(aFlap))
+		for i, f := range aFlap {
+			jsFlapList[i] = flapSummary{
+				Prefix:     f.Cidr,
+				FirstSeen:  f.FirstSeen,
+				LastSeen:   f.LastSeen.Load(),
+				TotalCount: f.PathChangeCountTotal.Load(),
+			}
+		}
 
 		newStatistic := statistic{
 			Time:          time.Now().Unix(),
@@ -352,10 +397,16 @@ func statTracker() {
 			Active:        flapListLength,
 		}
 
+		newWrapper := statisticWrapper{
+			List:     jsFlapList,
+			Stats:    newStatistic,
+			Sessions: bgp.GetSessionCount(),
+		}
+
 		statSubscribersLock.Lock()
 		for _, subscriber := range statSubscribers {
 			select {
-			case subscriber <- newStatistic:
+			case subscriber <- newWrapper:
 			default:
 			}
 		}

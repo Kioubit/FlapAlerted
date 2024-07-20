@@ -11,41 +11,45 @@
 <body>
 <div id="loaderText">Please wait... This may take a while.</div>
 <div id="loader" class="loader"></div>
-<div id="prefixTitle"></div>
-<div class="informationText" id="informationText1">
-    <table id="informationTable">
-        <tr>
-            <td><b>Total path changes:</b></td>
-            <td><span id="pathChangeDisplay">N/A</span></td>
-        </tr>
-        <tr>
-            <td><b>First seen:</b></td>
-            <td><span id="fistSeenDisplay">N/A</span></td>
-        </tr>
-        <tr>
-            <td><b>Last seen:</b></td>
-            <td><span id="lastSeenDisplay">N/A</span></td>
-        </tr>
-        <tr>
-            <td><b>Duration:</b></td>
-            <td><span id="durationDisplay">N/A</span></td>
-        </tr>
-        <tr>
-            <td><b>Average path changes:</b></td>
-            <td><span id="averageDisplay">N/A</span></td>
-        </tr>
-    </table>
-</div>
-<div id="chartRouteCount-container">
-    <canvas id="chartRouteCount"></canvas>
-</div>
-<div class="informationText" id="informationText2">
-    <span>AS paths sorted by amount of changes (represented by the numbers before each path). Grouped by the first ASN and colorized.</span><br>
-    <button id="printButton" class="no-print">Print</button>
-    <br>
-</div>
-<div id="pathTableContainer">
-    <div id="pathTable"></div>
+<div id="mainContainer">
+    <div id="prefixTitle"></div>
+    <div class="informationText" id="informationText1">
+        <table id="informationTable">
+            <tr>
+                <td><b>Total path changes:</b></td>
+                <td><span id="pathChangeDisplay">N/A</span></td>
+            </tr>
+            <tr>
+                <td><b>First seen:</b></td>
+                <td><span id="fistSeenDisplay">N/A</span></td>
+            </tr>
+            <tr>
+                <td><b>Last seen:</b></td>
+                <td><span id="lastSeenDisplay">N/A</span></td>
+            </tr>
+            <tr>
+                <td><b>Duration:</b></td>
+                <td><span id="durationDisplay">N/A</span></td>
+            </tr>
+            <tr>
+                <td><b>Average path changes:</b></td>
+                <td><span id="averageDisplay">N/A</span></td>
+            </tr>
+        </table>
+    </div>
+    <div id="chartRouteCount-outerContainer">
+        <div id="chartRouteCount-container">
+            <canvas id="chartRouteCount"></canvas>
+        </div>
+    </div>
+    <div class="informationText" id="informationText2">
+        <span>AS paths sorted by amount of changes (represented by the numbers before each path). Grouped by the first ASN and colorized.</span><br>
+        <button id="printButton" class="no-print">Print</button>
+        <br>
+    </div>
+    <div id="pathTableContainer">
+        <div id="pathTable"></div>
+    </div>
 </div>
 <script src="../assets/js/chartjs/4.4.1/chart.umd.min.js"></script>
 <script src="../assets/js/analyze-prefix.js"></script>

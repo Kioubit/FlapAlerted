@@ -29,6 +29,11 @@
     font-size: 2em;
 }
 
+#mainContainer {
+    max-width: 150em;
+    margin: 0 auto;
+}
+
 #prefixTitle {
     font-size: 1.3em;
 }
@@ -70,8 +75,13 @@
     }
 }
 
+#chartRouteCount-outerContainer {
+    overflow-x: auto;
+}
+
 #chartRouteCount-container {
     position: relative;
-    height: 20vh;
+    height: 12em;
+    min-width: 70em;
     margin-bottom: 1em;
 }

@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net"
 	"os"
+	"sync"
 )
 
 // RFCs implemented
@@ -40,6 +41,31 @@ func StartBGP(updateChannel chan update.Msg) {
 				logger.Error("connection encountered an error", "error", err.Error())
 			}
 			_ = conn.Close()
+			sessionCount(false)
 		}()
 	}
+}
+
+// Established session counter
+var (
+	SessionCounter     int
+	SessionCounterLock sync.RWMutex
+)
+
+func sessionCount(add bool) {
+	SessionCounterLock.Lock()
+	defer SessionCounterLock.Unlock()
+	if add {
+		SessionCounter++
+	} else {
+		if SessionCounter > 0 {
+			SessionCounter--
+		}
+	}
+}
+
+func GetSessionCount() int {
+	SessionCounterLock.RLock()
+	defer SessionCounterLock.RUnlock()
+	return SessionCounter
 }

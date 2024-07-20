@@ -155,6 +155,7 @@ func newBGPConnection(logger *slog.Logger, conn net.Conn, defaultAFI update.AFI,
 	}
 
 	logger.Info("BGP session established", "routerID", remoteRouterID)
+	sessionCount(true)
 
 	// From this point on the hold timer will manage the connection deadline
 	err = conn.SetDeadline(time.Time{})

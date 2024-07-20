@@ -108,8 +108,8 @@ func GetMetric() Metric {
 	var pathChangeCount uint64 = 0
 	stats := GetStats()
 	if len(stats) != 0 {
-		activeFlapCount = stats[len(stats)-1].Active
-		pathChangeCount = stats[len(stats)-1].Changes
+		activeFlapCount = stats[len(stats)-1].Stats.Active
+		pathChangeCount = stats[len(stats)-1].Stats.Changes
 	}
 
 	return Metric{
@@ -150,16 +150,19 @@ func GetCapabilities() Capabilities {
 	}
 }
 
-func GetStats() []statistic {
+func GetStats() []statisticWrapper {
 	statListLock.RLock()
 	defer statListLock.RUnlock()
-	result := make([]statistic, len(statList))
+	result := make([]statisticWrapper, len(statList))
 	for i := range statList {
-		result[i] = statList[i]
+		result[i] = statisticWrapper{
+			List:  nil,
+			Stats: statList[i],
+		}
 	}
 	return result
 }
 
-func SubscribeToStats() chan statistic {
+func SubscribeToStats() chan statisticWrapper {
 	return addStatSubscriber()
 }
