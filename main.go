@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-var Version = "3.12"
+var Version = "3.13"
 
 func main() {
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{})))
@@ -43,7 +43,7 @@ func main() {
 	conf.MinimumAge = *minimumAge
 	conf.Asn = uint32(*asn)
 	conf.KeepPathInfo = !*noPathInfo
-	conf.KeepPathInfoDetectedOnly = !*pathInfoDetectedOnly
+	conf.KeepPathInfoDetectedOnly = *pathInfoDetectedOnly
 	conf.UseAddPath = !*disableAddPath
 	conf.RelevantAsnPosition = *relevantAsnPosition
 	if conf.RelevantAsnPosition == -1 {
