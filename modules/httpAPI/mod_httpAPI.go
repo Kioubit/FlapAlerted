@@ -7,11 +7,13 @@ import (
 	"FlapAlerted/monitor"
 	"embed"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io/fs"
 	"log/slog"
 	"net/http"
 	"net/netip"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -21,7 +23,14 @@ var moduleName = "mod_httpAPI"
 //go:embed dashboard/*
 var dashboardContent embed.FS
 
+var limitedHttpAPI *bool
+var httpAPIPort *int
+
 func init() {
+	limitedHttpAPI = flag.Bool("limitedHttpApi", false, "Disable http API endpoints not needed for"+
+		" the user interface")
+	httpAPIPort = flag.Int("httpApiPort", 8699, "Port for the http api")
+
 	monitor.RegisterModule(&monitor.Module{
 		Name:            moduleName,
 		OnStartComplete: startComplete,
@@ -76,12 +85,15 @@ func startComplete() {
 	http.Handle("/", mainPageHandler())
 	http.HandleFunc("/capabilities", showCapabilities)
 	http.HandleFunc("/flaps/prefix", getPrefix)
-	http.HandleFunc("/flaps/active/compact", getActiveFlaps)
 	http.HandleFunc("/flaps/statStream", getStatisticStream)
 	http.HandleFunc("/flaps/active/history", getFlapHistory)
-	http.HandleFunc("/flaps/metrics/json", metrics)
-	http.HandleFunc("/flaps/metrics/prometheus", prometheus)
-	err := http.ListenAndServe(":8699", nil)
+
+	if !*limitedHttpAPI {
+		http.HandleFunc("/flaps/active/compact", getActiveFlaps)
+		http.HandleFunc("/flaps/metrics/json", metrics)
+		http.HandleFunc("/flaps/metrics/prometheus", prometheus)
+	}
+	err := http.ListenAndServe(":"+strconv.Itoa(*httpAPIPort), nil)
 	if err != nil {
 		slog.Error("["+moduleName+"] Error starting HTTP api server", "error", err)
 	}
