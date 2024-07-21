@@ -9,94 +9,76 @@ import (
 	"log/slog"
 	"os"
 	"sync"
-	"time"
 )
 
 var moduleName = "mod_roaFilter"
 
-var source, output *string
+var roaJsonFile *string
 var lock sync.Mutex
 
 func init() {
-	source = flag.String("roaSource", "", "File path of source ROA JSON")
-	output = flag.String("roaOutput", "", "File path of output for the filtered ROA JSON")
-	monitor.RegisterModule(&monitor.Module{
-		Name:            moduleName,
-		CallbackOnce:    change,
-		OnStartComplete: started,
-	})
-}
+	roaJsonFile = flag.String("roaJson", "", "File path of source ROA JSON")
 
-func started() {
-	for {
-		// Copy unmodified to output
-		filter(*source, *output, "")
-		time.Sleep(12 * time.Hour)
-	}
+	monitor.RegisterModule(&monitor.Module{
+		Name:         moduleName,
+		CallbackOnce: change,
+	})
 }
 
 func change(f *monitor.Flap) {
 	// Continue filtering already filtered file
-	filter(*output, *output, f.Cidr)
+	filter(*roaJsonFile, f.Cidr)
 }
 
-func filter(source, output string, cidr string) {
-	if source == "" || output == "" {
-		slog.Error("roaFilter No source or output files defined")
+func filter(filePath string, cidr string) {
+	logger := slog.With("file", filePath, "prefix", cidr)
+	if filePath == "" {
+		logger.Error("roaFilter no roaJson file specified")
 		return
 	}
 	if !lock.TryLock() {
-		slog.Warn("roaFilter can't keep up", "prefix", cidr)
+		logger.Warn("roaFilter can't keep up")
 		return
 	}
 	defer lock.Unlock()
-	inFile, err := os.ReadFile(source)
+	inFile, err := os.ReadFile(filePath)
 	if err != nil {
-		slog.Error("roaFilter error reading", "file", source)
-		return
-	}
-	if cidr == "" {
-		err = os.WriteFile(output, inFile, 0644)
-		if err != nil {
-			slog.Error("roaFilter error writing", "file", source)
-			return
-		}
-		slog.Info("roaFilter wrote unfiltered ROA file")
+		logger.Error("roaFilter error reading file", "error", err)
 		return
 	}
 
 	var data map[string]any
 	err = json.Unmarshal(inFile, &data)
 	if err != nil {
-		slog.Error("roaFilter json unmarshal failed", "file", source, "error", err)
+		logger.Error("roaFilter json unmarshal failed", "error", err)
 		return
 	}
 	roas, ok := data["roas"]
 	if !ok {
-		slog.Error("roaFilter json 'roas' key not found", "file", source)
+		logger.Error("roaFilter json 'roas' key not found")
 		return
 	}
-	//fmt.Println(roas)
+
 	prefixList, ok := roas.([]any)
 	if !ok {
-		slog.Error("roaFilter json 'roas' key is not an array", "file", source)
+		logger.Error("roaFilter json 'roas' key is not an array")
 		return
 	}
 	tmp := prefixList[:0]
 	for _, prefix := range prefixList {
 		prefixType, ok := prefix.(map[string]any)
 		if !ok {
-			slog.Error("roaFilter json 'roas' array elements are not json objects", "file", source)
+			logger.Error("roaFilter json 'roas' array elements are not json objects")
 			return
 		}
 		prefixKey, ok := prefixType["prefix"]
 		if !ok {
-			slog.Error("roaFilter json 'prefix' key not found in an element of the 'roas' array", "file", source)
+			logger.Error("roaFilter json 'prefix' key not found in an element of the 'roas' array")
 			return
 		}
 		prefixString, ok := prefixKey.(string)
 		if !ok {
-			slog.Error("roaFilter json 'prefix' key not a string", "file", source)
+			logger.Error("roaFilter json 'prefix' key not a string")
 			return
 		}
 
@@ -108,13 +90,13 @@ func filter(source, output string, cidr string) {
 	data["roas"] = prefixList
 	outputJson, err := json.Marshal(data)
 	if err != nil {
-		slog.Error("roaFilter json marshal failed", "file", source, "error", err)
+		logger.Error("roaFilter json marshal failed", "error", err)
 		return
 	}
-	err = os.WriteFile(output, outputJson, 0644)
+	err = os.WriteFile(filePath, outputJson, 0644)
 	if err != nil {
-		slog.Error("roaFilter error writing", "file", source)
+		logger.Error("roaFilter error writing", "error", err)
 		return
 	}
-	slog.Info("roaFilter wrote filtered ROA file")
+	logger.Info("roaFilter wrote filtered ROA file")
 }

@@ -81,7 +81,8 @@ Logs each time a prefix exceeds the defined `routeChangeCounter` within the defi
 To disable this module, add the following tag to the `MODULES` variable in the `Makefile`: `disable_mod_log`
 
 #### mod_roaFilter (Disabled by default)
-Filters a ROA file in JSON format to remove flapping prefixes and copies it to another location.
+Filters a ROA file in JSON format to remove flapping prefixes.
+The filtered prefixes are to be re-added by the external program updating the ROA file at regular intervals.
 See the command line help for required arguments.
 
 To enable this module, add the following tag to the `MODULES` variable in the `Makefile`: `mod_roaFilter`
