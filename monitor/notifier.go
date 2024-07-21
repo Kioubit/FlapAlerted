@@ -125,13 +125,13 @@ type Capabilities struct {
 }
 
 type UserParameters struct {
-	FlapPeriod             int
-	RouteChangeCounter     int
-	MinimumAge             int
-	KeepPathInfo           bool
-	KeepPathInfoActiveOnly bool
-	AddPath                bool
-	RelevantAsnPosition    int
+	FlapPeriod               int
+	RouteChangeCounter       int
+	MinimumAge               int
+	KeepPathInfo             bool
+	KeepPathInfoDetectedOnly bool
+	AddPath                  bool
+	RelevantAsnPosition      int
 }
 
 func GetCapabilities() Capabilities {
@@ -139,13 +139,13 @@ func GetCapabilities() Capabilities {
 		Version: version,
 		Modules: getModuleNameList(),
 		UserParameters: UserParameters{
-			FlapPeriod:             config.GlobalConf.FlapPeriod,
-			RouteChangeCounter:     config.GlobalConf.RouteChangeCounter,
-			KeepPathInfo:           config.GlobalConf.KeepPathInfo,
-			KeepPathInfoActiveOnly: config.GlobalConf.KeepPathInfoActiveOnly,
-			AddPath:                config.GlobalConf.UseAddPath,
-			RelevantAsnPosition:    config.GlobalConf.RelevantAsnPosition,
-			MinimumAge:             config.GlobalConf.MinimumAge,
+			FlapPeriod:               config.GlobalConf.FlapPeriod,
+			RouteChangeCounter:       config.GlobalConf.RouteChangeCounter,
+			KeepPathInfo:             config.GlobalConf.KeepPathInfo,
+			KeepPathInfoDetectedOnly: config.GlobalConf.KeepPathInfoDetectedOnly,
+			AddPath:                  config.GlobalConf.UseAddPath,
+			RelevantAsnPosition:      config.GlobalConf.RelevantAsnPosition,
+			MinimumAge:               config.GlobalConf.MinimumAge,
 		},
 	}
 }

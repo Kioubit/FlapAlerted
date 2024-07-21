@@ -24,11 +24,11 @@ Usage:
   -disableAddPath
         Disable BGP AddPath support. (Setting must be replicated in BGP daemon)
   -minimumAge int
-        Minimum age in seconds a prefix must be active to be listed. Has no effect if the routeChangeCounter is set to zero (default 540)
+        Minimum age in seconds a prefix must be active to be detected. Has no effect if the routeChangeCounter is set to zero (default 540)
   -noPathInfo
         Disable keeping path information. (only disable if memory usage is a concern)
-  -pathInfoAll
-        Keep path information for all instead of only active prefixes (increases memory usage)
+  -pathInfoDetectedOnly
+        Keep path information only for detected prefixes (decreases memory usage)
   -period int
         Interval in seconds within which the routeChangeCounter value is evaluated. Higher values increase memory consumption. (default 60)
   -routeChangeCounter int

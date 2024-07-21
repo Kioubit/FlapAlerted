@@ -211,14 +211,16 @@ func updateList(prefix netip.Prefix, asPath []common.AsPathList, notificationCha
 	// If the entry already exists
 
 	if !pathsEqual(obj.lastPath[getRelevantASN(cleanPath)], cleanPath) {
-		if (config.GlobalConf.KeepPathInfo && !config.GlobalConf.KeepPathInfoActiveOnly) || (config.GlobalConf.KeepPathInfo && obj.active) {
-			if len(obj.Paths) <= PathLimit {
-				searchPath := obj.Paths[pathToString(cleanPath)]
-				if searchPath == nil {
-					obj.Paths[pathToString(cleanPath)] = &PathInfo{Path: cleanPath, Count: 1}
-				} else {
-					s := obj.Paths[pathToString(cleanPath)]
-					s.Count = incrementUint64(s.Count)
+		if obj.active {
+			if (config.GlobalConf.KeepPathInfo && !config.GlobalConf.KeepPathInfoDetectedOnly) || (config.GlobalConf.KeepPathInfo && obj.meetsMinimumAge.Load()) {
+				if len(obj.Paths) <= PathLimit {
+					searchPath := obj.Paths[pathToString(cleanPath)]
+					if searchPath == nil {
+						obj.Paths[pathToString(cleanPath)] = &PathInfo{Path: cleanPath, Count: 1}
+					} else {
+						s := obj.Paths[pathToString(cleanPath)]
+						s.Count = incrementUint64(s.Count)
+					}
 				}
 			}
 		}
