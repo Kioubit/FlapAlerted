@@ -37,6 +37,18 @@ func main() {
 
 	flag.Parse()
 
+	// Support environment variables
+	flag.VisitAll(func(f *flag.Flag) {
+		env := os.Getenv(strings.ToUpper(f.Name))
+		if env != "" {
+			err := flag.Set(f.Name, env)
+			if err != nil {
+				fmt.Println("Invalid environment variable value for", strings.ToUpper(f.Name))
+				os.Exit(1)
+			}
+		}
+	})
+
 	conf := config.UserConfig{}
 	conf.RouteChangeCounter = *routeChangeCounter
 	conf.FlapPeriod = *flapPeriod

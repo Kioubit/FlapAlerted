@@ -97,3 +97,4 @@ You will need to have GO installed on your system. Then run `make release` and f
 #### Docker
 
 Clone this repository and run `docker build .` to generate a docker image.
+Environment variables can be used to specify the configuration options by capitalizing the command line flags. 
