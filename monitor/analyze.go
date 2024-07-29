@@ -355,6 +355,8 @@ func addStatSubscriber() chan statisticWrapper {
 	return c
 }
 
+var lastFlapSummaryList atomic.Pointer[[]flapSummary]
+
 func statTracker() {
 	for {
 		time.Sleep(5 * time.Second)
@@ -391,6 +393,8 @@ func statTracker() {
 				TotalCount: f.PathChangeCountTotal.Load(),
 			}
 		}
+
+		lastFlapSummaryList.Store(&jsFlapList)
 
 		newStatistic := statistic{
 			Time:          time.Now().Unix(),

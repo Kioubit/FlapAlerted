@@ -161,6 +161,9 @@ func GetStats() []statisticWrapper {
 			Sessions: -1,
 		}
 	}
+	if len(statList) > 0 {
+		result[len(statList)-1].List = *lastFlapSummaryList.Load()
+	}
 	return result
 }
 
