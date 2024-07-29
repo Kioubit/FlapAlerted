@@ -86,6 +86,10 @@ func main() {
 		os.Exit(1)
 	}
 
+	if conf.RouteChangeCounter == 0 {
+		conf.MinimumAge = 0
+	}
+
 	modules := monitor.GetRegisteredModuleNames()
 	if len(modules) != 0 {
 		slog.Info("Enabled", "modules", strings.Join(modules, ","))

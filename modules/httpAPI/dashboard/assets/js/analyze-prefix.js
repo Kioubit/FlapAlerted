@@ -1,3 +1,5 @@
+import "./chartjs/4.4.1/chart.umd.min.js";
+
 window.onload = () => {
     display();
 };

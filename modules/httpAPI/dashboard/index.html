@@ -7,6 +7,7 @@
           content="default-src 'none'; base-uri 'none'; form-action 'none'; style-src 'self'; style-src-elem 'self'; script-src 'self'; connect-src 'self'; img-src 'self';">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="assets/css/dashboard.css">
+    <script async type="module" src="assets/js/dashboard.js"></script>
 </head>
 
 <body>
@@ -22,7 +23,12 @@
     <div id="grid-container-main">
         <div id="justgage"></div>
         <div id="prefixTableBox">
-            <table id="prefixTable"></table>
+            <table id="prefixTable">
+                <thead><tr><th>Prefix</th><th>Duration</th><th>Route Changes</th></tr></thead>
+                <tbody id="prefixTableBody">
+                    <tr><td colspan="3" class="centerText">...</td></tr>
+                </tbody>
+            </table>
         </div>
     </div>
     <div id="grid-container-charts">
@@ -34,7 +40,7 @@
         </div>
     </div>
     <div class="footer">
-        <div>Connected BGP feeds: <span id="sessionCount">N/A</span></div>
+        <div>Connected BGP feeds: <span id="sessionCount">...</span></div>
         <div id="info"></div>
         <div>Average route changes value: 90th percentile average over the last 250 seconds, shown as overall route
             changes per second.
@@ -42,9 +48,5 @@
         <a href="https://github.com/Kioubit/FlapAlerted/" id="version"></a>
     </div>
 </div>
-<script src="assets/js/chartjs/4.4.1/chart.umd.min.js"></script>
-<script src="assets/js/justgage/1.7.0/raphael-2.3.0.min.js"></script>
-<script src="assets/js/justgage/1.7.0/justgage.min.js"></script>
-<script src="assets/js/dashboard.js"></script>
 </body>
 </html>

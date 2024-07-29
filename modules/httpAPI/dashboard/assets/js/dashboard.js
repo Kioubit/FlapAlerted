@@ -1,3 +1,7 @@
+import "./justgage/1.7.0/raphael-2.3.0.min.js"
+import "./justgage/1.7.0/justgage.min.js"
+import "./chartjs/4.4.1/chart.umd.min.js"
+
 const gauge = new JustGage({
     id: "justgage",
     value: 0,
@@ -78,32 +82,29 @@ const dataRouteChange = {
             pointRadius: 5,
             pointHitRadius: 10,
             data: [],
+        },{
+            label: "Route Changes (listed prefixes)",
+            fill: false,
+            lineTension: 0.1,
+            backgroundColor: "rgba(15,151,3,0.4)",
+            borderColor: "rgb(50,168,5)",
+            borderCapStyle: 'butt',
+            borderDash: [],
+            borderDashOffset: 0.0,
+            borderJoinStyle: 'miter',
+            pointBorderColor: "rgb(75,192,81)",
+            pointBackgroundColor: "#fff",
+            pointBorderWidth: 1,
+            pointHoverRadius: 5,
+            pointHoverBackgroundColor: "rgb(75,192,102)",
+            pointHoverBorderColor: "rgba(220,220,220,1)",
+            pointHoverBorderWidth: 2,
+            pointRadius: 5,
+            pointHitRadius: 10,
+            data: [],
         }
     ]
 };
-
-const listedPrefixDataset = {
-    label: "Route Changes (listed prefixes)",
-    fill: false,
-    lineTension: 0.1,
-    backgroundColor: "rgba(15,151,3,0.4)",
-    borderColor: "rgb(50,168,5)",
-    borderCapStyle: 'butt',
-    borderDash: [],
-    borderDashOffset: 0.0,
-    borderJoinStyle: 'miter',
-    pointBorderColor: "rgb(75,192,81)",
-    pointBackgroundColor: "#fff",
-    pointBorderWidth: 1,
-    pointHoverRadius: 5,
-    pointHoverBackgroundColor: "rgb(75,192,102)",
-    pointHoverBorderColor: "rgba(220,220,220,1)",
-    pointHoverBorderWidth: 2,
-    pointRadius: 5,
-    pointHitRadius: 10,
-    data: [],
-};
-
 
 const ctxFlapCount = document.getElementById('chartFlapCount').getContext('2d');
 const ctxRoute = document.getElementById('chartRoute').getContext('2d');
@@ -141,8 +142,8 @@ async function updateCapabilities() {
     versionBox.innerText = "FlapAlerted " + data.Version;
     if (data.UserParameters.RouteChangeCounter === 0) {
         infoBox.innerText = `Current settings: Displaying every BGP update received. Removing entries after ${data.UserParameters.FlapPeriod} seconds of inactivity.`;
+        dataFlapCount.datasets[1].hidden = true;
     } else {
-        dataRouteChange.datasets.push(listedPrefixDataset);
         infoBox.innerText = `Current settings: A route for a prefix needs to change at least ${data.UserParameters.RouteChangeCounter}  times in ${data.UserParameters.FlapPeriod} seconds and remain active for at least ${data.UserParameters.MinimumAge} seconds for it to be shown in the table.`;
     }
 }
@@ -171,17 +172,20 @@ function addToChart(liveChart, point, unixTime, dataInterval) {
 }
 
 
+getStats()
+updateCapabilities().catch((err) => {
+    console.log(err);
+})
+
 window.onload = () => {
-    updateCapabilities().catch((err) => {
-        console.log(err);
-    }).finally(() => {
-        getStats();
-        document.getElementById("loadingScreen").style.display = 'none';
-    });
+    document.getElementById("loadingScreen").style.display = 'none';
 };
 
+
+const prefixTable = document.getElementById("prefixTableBody");
+
 async function updateList(flapList) {
-    let prefixTableHtml = '<thead><tr><th>Prefix</th><th>Duration</th><th>Route Changes</th></tr></thead><tbody>';
+    let prefixTableHtml = '';
 
     if (flapList !== null) {
         flapList.sort((a, b) => b.TotalCount - a.TotalCount);
@@ -198,15 +202,15 @@ async function updateList(flapList) {
             }
         }
         if (flapList.length === 0) {
-            prefixTableHtml += '<tr><td colspan="3" class="centerText">Waiting for BGP flapping...</td></tr>';
+            prefixTableHtml += '<tr><td colspan="3" class="centerText">No flapping prefixes detected</td></tr>';
         }
     } else {
         prefixTableHtml += '<tr><td colspan="3" class="centerText"><b>Please wait</b></td></tr>';
     }
 
-    prefixTableHtml += "</tbody>";
-    document.getElementById("prefixTable").innerHTML = prefixTableHtml;
+    prefixTable.innerHTML = prefixTableHtml;
 }
+
 
 function getStats() {
     const evtSource = new EventSource("flaps/statStream");
