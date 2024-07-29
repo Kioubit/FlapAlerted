@@ -98,6 +98,14 @@ func GetActiveFlaps() []*Flap {
 	return getActiveFlapList()
 }
 
+func GetActiveFlapsSummary() []FlapSummary {
+	l := lastFlapSummaryList.Load()
+	if l == nil {
+		return make([]FlapSummary, 0)
+	}
+	return *l
+}
+
 type Metric struct {
 	ActiveFlapCount                int
 	ActiveFlapTotalPathChangeCount uint64
@@ -162,7 +170,10 @@ func GetStats() []statisticWrapper {
 		}
 	}
 	if len(statList) > 0 {
-		result[len(statList)-1].List = *lastFlapSummaryList.Load()
+		l := lastFlapSummaryList.Load()
+		if l != nil {
+			result[len(statList)-1].List = *l
+		}
 	}
 	return result
 }

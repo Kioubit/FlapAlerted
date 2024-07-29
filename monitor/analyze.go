@@ -321,11 +321,11 @@ func getActiveFlapList() []*Flap {
 // -----------------------------------------------------
 
 type statisticWrapper struct {
-	List     []flapSummary
+	List     []FlapSummary
 	Stats    statistic
 	Sessions int
 }
-type flapSummary struct {
+type FlapSummary struct {
 	Prefix     string
 	FirstSeen  int64
 	LastSeen   int64
@@ -355,7 +355,7 @@ func addStatSubscriber() chan statisticWrapper {
 	return c
 }
 
-var lastFlapSummaryList atomic.Pointer[[]flapSummary]
+var lastFlapSummaryList atomic.Pointer[[]FlapSummary]
 
 func statTracker() {
 	for {
@@ -384,9 +384,9 @@ func statTracker() {
 			aFlap = aFlap[:100]
 		}
 
-		jsFlapList := make([]flapSummary, len(aFlap))
+		jsFlapList := make([]FlapSummary, len(aFlap))
 		for i, f := range aFlap {
-			jsFlapList[i] = flapSummary{
+			jsFlapList[i] = FlapSummary{
 				Prefix:     f.Cidr,
 				FirstSeen:  f.FirstSeen,
 				LastSeen:   f.LastSeen.Load(),

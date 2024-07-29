@@ -44,16 +44,16 @@ func monitorFlap() {
 	for {
 		<-time.After(10 * time.Second)
 		FlapHistoryMapMu.Lock()
-		flapList := monitor.GetActiveFlaps()
+		flapList := monitor.GetActiveFlapsSummary()
 		for _, f := range flapList {
-			obj := FlapHistoryMap[f.Cidr]
+			obj := FlapHistoryMap[f.Prefix]
 			if obj == nil {
-				FlapHistoryMap[f.Cidr] = []uint64{f.PathChangeCountTotal.Load()}
+				FlapHistoryMap[f.Prefix] = []uint64{f.TotalCount}
 			} else {
-				if len(FlapHistoryMap[f.Cidr]) > 100 {
-					FlapHistoryMap[f.Cidr] = FlapHistoryMap[f.Cidr][1:]
+				if len(FlapHistoryMap[f.Prefix]) > 100 {
+					FlapHistoryMap[f.Prefix] = FlapHistoryMap[f.Prefix][1:]
 				}
-				FlapHistoryMap[f.Cidr] = append(FlapHistoryMap[f.Cidr], f.PathChangeCountTotal.Load())
+				FlapHistoryMap[f.Prefix] = append(FlapHistoryMap[f.Prefix], f.TotalCount)
 			}
 		}
 		FlapHistoryMapMu.Unlock()
@@ -65,11 +65,11 @@ func cleanupHistory() {
 		time.Sleep(1 * time.Duration(config.GlobalConf.FlapPeriod+5) * time.Second)
 		FlapHistoryMapMu.Lock()
 		newFlapHistoryMap := make(map[string][]uint64)
-		flapList := monitor.GetActiveFlaps()
+		flapList := monitor.GetActiveFlapsSummary()
 		for _, f := range flapList {
-			obj := FlapHistoryMap[f.Cidr]
+			obj := FlapHistoryMap[f.Prefix]
 			if obj != nil {
-				newFlapHistoryMap[f.Cidr] = obj
+				newFlapHistoryMap[f.Prefix] = obj
 			}
 		}
 		FlapHistoryMap = newFlapHistoryMap
@@ -138,26 +138,9 @@ func showCapabilities(w http.ResponseWriter, _ *http.Request) {
 }
 
 func getActiveFlaps(w http.ResponseWriter, _ *http.Request) {
-	type jsFlap struct {
-		Prefix     string
-		FirstSeen  int64
-		LastSeen   int64
-		TotalCount uint64
-	}
+	activeFlaps := monitor.GetActiveFlapsSummary()
 
-	var jsonFlapList = make([]jsFlap, 0)
-	activeFlaps := monitor.GetActiveFlaps()
-	for _, f := range activeFlaps {
-		instance := jsFlap{
-			Prefix:     f.Cidr,
-			FirstSeen:  f.FirstSeen,
-			LastSeen:   f.LastSeen.Load(),
-			TotalCount: f.PathChangeCountTotal.Load(),
-		}
-		jsonFlapList = append(jsonFlapList, instance)
-	}
-
-	b, err := json.Marshal(jsonFlapList)
+	b, err := json.Marshal(activeFlaps)
 	if err != nil {
 		slog.Warn("Failed to marshal list to JSON", "error", err)
 		w.WriteHeader(500)
