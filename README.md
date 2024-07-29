@@ -2,8 +2,8 @@
 
 <h3>Receives BGP Update messages by peering with your BGP daemon. Detects path changes and BGP flapping events.</h3>
 
-| Overview Page | Event details page |
-| ------------- | ------------------ |
+| Overview Page                                                                         | Event details page                                                                    |
+|---------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------|
 | ![a](https://github.com/user-attachments/assets/303d9aca-b4e3-4613-91ad-891ae16bf49d) | ![b](https://github.com/user-attachments/assets/860615e2-4116-429d-ab27-f8e5e70b69a0) |
 
 ### Setup notes
@@ -97,4 +97,6 @@ You will need to have GO installed on your system. Then run `make release` and f
 #### Docker
 
 Clone this repository and run `docker build .` to generate a docker image.
-Environment variables can be used to specify the configuration options by capitalizing the command line flags. 
+Environment variables can be used to specify the configuration options by capitalizing the command line flags and adding a `FA_` prefix to them.
+For instance, to set the ASN number, use the following environment variable: ``FA_ASN=<asn value>``
+

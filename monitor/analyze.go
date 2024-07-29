@@ -54,7 +54,7 @@ func StartMonitoring(conf config.UserConfig) {
 
 	go notificationHandler(notificationChannel, notificationEndChannel)
 	go processUpdates(updateChannel, notificationChannel)
-	go bgp.StartBGP(updateChannel)
+	go bgp.StartBGP(updateChannel, config.GlobalConf.BgpPort)
 	go statTracker()
 	cleanUpFlapList(notificationEndChannel)
 }

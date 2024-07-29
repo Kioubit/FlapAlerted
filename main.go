@@ -13,11 +13,11 @@ import (
 	"time"
 )
 
-var Version = "3.13"
+var Version = "v3.13.2"
 
 func main() {
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{})))
-	_, _ = fmt.Fprintln(os.Stderr, "FlapAlerted", "version", Version)
+	_, _ = fmt.Fprintln(os.Stderr, "FlapAlerted", Version)
 	monitor.SetVersion(Version)
 
 	routeChangeCounter := flag.Int("routeChangeCounter", 700, "Number of times a route path needs"+
@@ -33,6 +33,7 @@ func main() {
 		" in each path. Use of this parameter is required for special cases such as when connected to a route collector.")
 	minimumAge := flag.Int("minimumAge", 540, "Minimum age in seconds a prefix must be active to be detected."+
 		" Has no effect if the routeChangeCounter is set to zero")
+	bgpPort := flag.Int("bgpPort", 1790, "Port to listen on for incoming BGP connections")
 	enableDebug := flag.Bool("debug", false, "Enable debug mode (produces a lot of output)")
 
 	flag.Parse()
@@ -41,7 +42,7 @@ func main() {
 	flag.VisitAll(func(f *flag.Flag) {
 		env := os.Getenv(strings.ToUpper(f.Name))
 		if env != "" {
-			err := flag.Set(f.Name, env)
+			err := flag.Set("FA_"+f.Name, env)
 			if err != nil {
 				fmt.Println("Invalid environment variable value for", strings.ToUpper(f.Name))
 				os.Exit(1)
@@ -76,6 +77,12 @@ func main() {
 	conf.RouterID, err = netip.ParseAddr(*routerID)
 	if err != nil {
 		fmt.Println("Invalid Router ID:", err)
+		os.Exit(1)
+	}
+
+	conf.BgpPort = *bgpPort
+	if conf.BgpPort < 1 || conf.BgpPort > 65535 {
+		fmt.Println("Invalid BGP Port:", conf.BgpPort)
 		os.Exit(1)
 	}
 

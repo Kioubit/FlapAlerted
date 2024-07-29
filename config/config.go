@@ -15,4 +15,5 @@ type UserConfig struct {
 	RelevantAsnPosition      int
 	Debug                    bool
 	RouterID                 netip.Addr
+	BgpPort                  int
 }
