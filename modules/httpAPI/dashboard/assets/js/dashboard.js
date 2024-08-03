@@ -118,6 +118,10 @@ const liveFlapChart = new Chart(ctxFlapCount, {
                     },
                     tooltipFormat: 'HH:mm:ss'
                 },
+            },
+            y: {
+                suggestedMin: 0,
+                suggestedMax: 10,
             }
         },
         maintainAspectRatio: false,
@@ -140,6 +144,10 @@ const liveRouteChart = new Chart(ctxRoute, {
                     tooltipFormat: 'HH:mm:ss'
                 },
             },
+            y: {
+                suggestedMin: 0,
+                suggestedMax: 10,
+            }
         },
         maintainAspectRatio: false,
         plugins: {
