@@ -1,6 +1,7 @@
 import "./justgage/1.7.0/raphael-2.3.0.min.js"
 import "./justgage/1.7.0/justgage.min.js"
 import "./chartjs/4.4.1/chart.umd.min.js"
+import "./chartjs/chartjs-adapter-date-fns.bundle.min.js"
 
 const gauge = new JustGage({
     id: "justgage",
@@ -107,7 +108,19 @@ const liveFlapChart = new Chart(ctxFlapCount, {
     type: "line",
     data: dataFlapCount,
     options: {
-        maintainAspectRatio: false
+        scales: {
+            x: {
+                type: 'time',
+                time: {
+                    unit: 'minute',
+                    displayFormats: {
+                        minute: 'HH:mm:ss'
+                    },
+                    tooltipFormat: 'HH:mm:ss'
+                },
+            }
+        },
+        maintainAspectRatio: false,
     },
 });
 
@@ -116,6 +129,18 @@ const liveRouteChart = new Chart(ctxRoute, {
     type: "line",
     data: dataRouteChange,
     options: {
+        scales: {
+            x: {
+                type: 'time',
+                time: {
+                    unit: 'minute',
+                    displayFormats: {
+                        minute: 'HH:mm:ss'
+                    },
+                    tooltipFormat: 'HH:mm:ss'
+                },
+            },
+        },
         maintainAspectRatio: false,
         plugins: {
             tooltip: {
@@ -143,9 +168,6 @@ async function updateCapabilities() {
 }
 
 function addToChart(liveChart, point, unixTime, dataInterval) {
-    const now = new Date(unixTime * 1000);
-    const timeStamp = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0') +
-        ":" + String(now.getSeconds()).padStart(2, '0');
     let shifted = false;
     for (let i = 0; i < point.length; i++) {
         if (liveChart.data.datasets[i] === undefined) {
@@ -161,7 +183,7 @@ function addToChart(liveChart, point, unixTime, dataInterval) {
     if (shifted) {
         liveChart.data.labels.shift();
     }
-    liveChart.data.labels.push(timeStamp);
+    liveChart.data.labels.push(unixTime * 1000);
     liveChart.update();
 }
 
