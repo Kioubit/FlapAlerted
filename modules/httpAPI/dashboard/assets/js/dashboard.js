@@ -38,18 +38,16 @@ const dataFlapCount = {
         {
             label: "Count of active prefixes",
             fill: false,
-            lineTension: 0.1,
             backgroundColor: "rgba(255,47,5,0.4)",
             borderColor: "rgba(255,47,5,1)",
             borderCapStyle: 'butt',
-            borderDash: [],
             borderDashOffset: 0.0,
             borderJoinStyle: 'miter',
-            pointBorderColor: "rgba(75,192,192,1)",
+            pointBorderColor: "rgba(255,47,5,0.4)",
             pointBackgroundColor: "#fff",
             pointBorderWidth: 1,
             pointHoverRadius: 5,
-            pointHoverBackgroundColor: "rgba(75,192,192,1)",
+            pointHoverBackgroundColor: "rgba(255,47,5,1)",
             pointHoverBorderColor: "rgba(220,220,220,1)",
             pointHoverBorderWidth: 2,
             pointRadius: 5,
@@ -65,11 +63,9 @@ const dataRouteChange = {
         {
             label: "Route Changes",
             fill: false,
-            lineTension: 0.1,
             backgroundColor: "rgba(75,192,192,0.4)",
             borderColor: "rgba(75,192,192,1)",
             borderCapStyle: 'butt',
-            borderDash: [],
             borderDashOffset: 0.0,
             borderJoinStyle: 'miter',
             pointBorderColor: "rgba(75,192,192,1)",
@@ -85,18 +81,16 @@ const dataRouteChange = {
         },{
             label: "Route Changes (listed prefixes)",
             fill: false,
-            lineTension: 0.1,
             backgroundColor: "rgba(15,151,3,0.4)",
             borderColor: "rgb(50,168,5)",
             borderCapStyle: 'butt',
-            borderDash: [],
             borderDashOffset: 0.0,
             borderJoinStyle: 'miter',
-            pointBorderColor: "rgb(75,192,81)",
+            pointBorderColor: "rgb(50,168,5)",
             pointBackgroundColor: "#fff",
             pointBorderWidth: 1,
             pointHoverRadius: 5,
-            pointHoverBackgroundColor: "rgb(75,192,102)",
+            pointHoverBackgroundColor: "rgb(47,163,73)",
             pointHoverBorderColor: "rgba(220,220,220,1)",
             pointHoverBorderWidth: 2,
             pointRadius: 5,
@@ -141,10 +135,10 @@ async function updateCapabilities() {
     const infoBox = document.getElementById("info");
     versionBox.innerText = "FlapAlerted " + data.Version;
     if (data.UserParameters.RouteChangeCounter === 0) {
-        infoBox.innerText = `Current settings: Displaying every BGP update received. Removing entries after ${data.UserParameters.FlapPeriod} seconds of inactivity.`;
+        infoBox.innerText = `Displaying every BGP update received. Removing entries after ${data.UserParameters.FlapPeriod} seconds of inactivity.`;
         dataFlapCount.datasets[1].hidden = true;
     } else {
-        infoBox.innerText = `Current settings: A route for a prefix needs to change at least ${data.UserParameters.RouteChangeCounter}  times in ${data.UserParameters.FlapPeriod} seconds and remain active for at least ${data.UserParameters.MinimumAge} seconds for it to be shown in the table.`;
+        infoBox.innerText = `A route for a prefix needs to change at least ${data.UserParameters.RouteChangeCounter}  times in ${data.UserParameters.FlapPeriod} seconds and remain active for at least ${data.UserParameters.MinimumAge} seconds for it to be shown in the table.`;
     }
 }
 
@@ -177,10 +171,6 @@ updateCapabilities().catch((err) => {
     console.log(err);
 })
 
-window.onload = () => {
-    document.getElementById("loadingScreen").style.display = 'none';
-};
-
 
 const prefixTable = document.getElementById("prefixTableBody");
 
@@ -211,7 +201,7 @@ async function updateList(flapList) {
     prefixTable.innerHTML = prefixTableHtml;
 }
 
-
+const loadingScreen = document.getElementById("loadingScreen");
 function getStats() {
     const evtSource = new EventSource("flaps/statStream");
     const avgArray = [];
@@ -248,10 +238,12 @@ function getStats() {
         }
     });
     evtSource.onerror = (err) => {
+        loadingScreen.style.display = 'none';
         handleConnectionLost(true);
         console.log(err);
     };
     evtSource.onopen = () => {
+        loadingScreen.style.display = 'none';
         handleConnectionLost(false);
     };
 }

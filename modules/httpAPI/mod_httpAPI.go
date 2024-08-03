@@ -106,9 +106,11 @@ func getFlapHistory(w http.ResponseWriter, req *http.Request) {
 	}
 
 	FlapHistoryMapMu.RLock()
+	defer FlapHistoryMapMu.RUnlock()
 	result := FlapHistoryMap[cidr]
 	if result == nil {
-		result = make([]uint64, 0)
+		_, _ = w.Write([]byte("null"))
+		return
 	}
 
 	marshaled, err := json.Marshal(result)
@@ -117,7 +119,6 @@ func getFlapHistory(w http.ResponseWriter, req *http.Request) {
 	} else {
 		_, _ = w.Write(marshaled)
 	}
-	FlapHistoryMapMu.RUnlock()
 }
 
 func mainPageHandler() http.Handler {
@@ -161,10 +162,14 @@ func getPrefix(w http.ResponseWriter, r *http.Request) {
 	for _, f := range flaps {
 		if f.Cidr == prefix.String() {
 			f.RLock() // Needed to obtain paths
-			pathList := make([]monitor.PathInfo, 0, len(f.Paths))
-			for n := range f.Paths {
-				pathList = append(pathList, *f.Paths[n])
+			var pathList []monitor.PathInfo
+			if config.GlobalConf.KeepPathInfo {
+				pathList = make([]monitor.PathInfo, 0, len(f.Paths))
+				for n := range f.Paths {
+					pathList = append(pathList, *f.Paths[n])
+				}
 			}
+
 			js, err := json.Marshal(struct {
 				Prefix     string
 				FirstSeen  int64

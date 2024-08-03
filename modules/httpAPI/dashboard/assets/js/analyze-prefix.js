@@ -11,11 +11,9 @@ const dataRouteChangeCount = {
         {
             label: "Route Changes",
             fill: false,
-            lineTension: 0.1,
             backgroundColor: "rgba(75,192,192,0.4)",
             borderColor: "rgba(75,192,192,1)",
             borderCapStyle: 'butt',
-            borderDash: [],
             borderDashOffset: 0.0,
             borderJoinStyle: 'miter',
             pointBorderColor: "rgba(75,192,192,1)",
@@ -49,43 +47,50 @@ function display() {
         }
 
         const pJson = json["Paths"];
+        const pathMap = new Map();
 
-        let obj = [];
-        for (let i = 0; i < pJson.length; i++) {
-            let firstAsn = pJson[i].Path.Asn[0];
-            if (obj[firstAsn] == null) {
-                obj[firstAsn] = [pJson[i]];
-            } else {
-                obj[firstAsn].push(pJson[i]);
+        if (pJson === null) {
+            document.getElementById("informationText2").innerText = "This instance has been configured to not keep path information." +
+                " The path analysis tool is unavailable.";
+        } else if (pJson.length === 0) {
+            document.getElementById("informationText2").innerText = "No path data is available yet. Try refreshing later.";
+        } else {
+            for (let i = 0; i < pJson.length; i++) {
+                let firstAsn = pJson[i].Path.Asn[0];
+                const targetArray = pathMap.get(firstAsn)
+                if (targetArray === undefined) {
+                    pathMap.set(firstAsn, [pJson[i]]);
+                } else {
+                    targetArray.push(pJson[i]);
+                }
             }
         }
 
-        let htmlBundles = [];
-        Object.entries(obj).forEach(([_, value]) => {
+        const htmlBundles = [];
+        pathMap.forEach((value) => {
+            // For each path group
             let elementHTML = "";
             let totalCount = 0;
+            value.sort((a, b) => b.count - a.count)
             for (let c = 0; c < value.length; c++) {
-                let count = value[c].Count;
+                // For each path
+                const count = value[c].Count;
                 totalCount += count;
                 elementHTML += count + "&nbsp;&nbsp;";
                 for (let d = 0; d < value[c].Path.Asn.length; d++) {
-                    let sa = value[c].Path.Asn[d].toString();
-                    let saLen = sa.length;
-                    let gap = " ";
-                    while (saLen < 10) {
-                        gap = gap + "&nbsp;";
-                        saLen++;
-                    }
-                    let hexColor = stringToColor(sa);
-                    let r = parseInt(hexColor.slice(1, 3), 16);
-                    let g = parseInt(hexColor.slice(3, 5), 16);
-                    let b = parseInt(hexColor.slice(5, 7), 16);
-                    elementHTML += `<span style='background-color: rgba(${r},${g},${b},0.3);'>${gap}${sa}</span>`;
+                    // For each ASN in the path
+                    let single_asn = value[c].Path.Asn[d].toString();
+                    const hexColor = stringToColor(single_asn);
+                    single_asn = single_asn.padStart(10, " ");
+                    const r = parseInt(hexColor.slice(1, 3), 16);
+                    const g = parseInt(hexColor.slice(3, 5), 16);
+                    const b = parseInt(hexColor.slice(5, 7), 16);
+                    elementHTML += `<span style='background-color: rgba(${r},${g},${b},0.3);'>&nbsp;${single_asn}</span>`;
                 }
                 elementHTML += "<br>";
             }
             elementHTML += "<br>";
-            let htmlBundle = {html: elementHTML, count: totalCount};
+            const htmlBundle = {html: elementHTML, count: totalCount};
             htmlBundles.push(htmlBundle);
         });
         htmlBundles.sort((a, b) => b.count - a.count);
@@ -95,23 +100,9 @@ function display() {
             tableHtml += bundle.html;
         });
 
-        if (tableHtml === "") {
-            document.getElementById("informationText2").innerHTML = "No path data is available yet. Try refreshing later.";
-            (async () => {
-                try {
-                    const response = await fetch("../capabilities");
-                    const data = await response.json();
-                    if (!data["UserParameters"]["KeepPathInfo"]) {
-                        document.getElementById("informationText2").innerHTML = "This instance has been configured to not keep path information." +
-                            " The analysis tool is not available as a result";
-                    }
-                } catch (e) {
-                    console.log(e);
-                }
-            })();
-        } else {
-            document.getElementById("pathTable").innerHTML = tableHtml;
-        }
+
+        document.getElementById("pathTable").innerHTML = tableHtml;
+
 
         document.getElementById("prefixTitle").innerHTML = "Flap report for " + prefix;
         document.getElementById("loader").style.display = "none";
@@ -125,9 +116,15 @@ function display() {
 
         document.getElementById("informationText1").style.display = "block";
         document.getElementById("informationText2").style.display = "block";
-        document.getElementById("printButton").onclick = function () {
-            window.print();
-        };
+
+
+        const printButton = document.getElementById("printButton")
+        if (printButton !== null) {
+             printButton.onclick = () => {
+                 window.print();
+             };
+        }
+
     }).catch(function (error) {
         alert("Network error");
         console.log(error);
@@ -138,7 +135,7 @@ function display() {
         return response.json();
     }).then(function (json) {
         const dataIntervalSeconds = 10
-        if (json.length === 0) {
+        if (json === null) {
             return;
         }
         const RouteChangeChart = new Chart(ctxRouteCount, {
@@ -162,6 +159,9 @@ function display() {
             RouteChangeChart.resize();
         });
 
+        if (json.length === 0) {
+            return;
+        }
         const t = Date.now();
         const labels = [];
         const data = [];
