@@ -1,7 +1,7 @@
-import "./justgage/1.7.0/raphael-2.3.0.min.js"
-import "./justgage/1.7.0/justgage.min.js"
-import "./chartjs/4.4.1/chart.umd.min.js"
-import "./chartjs/chartjs-adapter-date-fns.bundle.min.js"
+import "./justgage/1.7.0/raphael-2.3.0.min.js";
+import "./justgage/1.7.0/justgage.min.js";
+import "./chartjs/4.4.1/chart.umd.min.js";
+import "./chartjs/chartjs-adapter-date-fns.bundle.min.js";
 
 const gauge = new JustGage({
     id: "justgage",
@@ -114,7 +114,7 @@ const liveFlapChart = new Chart(ctxFlapCount, {
                 time: {
                     unit: 'minute',
                     displayFormats: {
-                        minute: 'HH:mm:ss'
+                        minute: 'HH:mm'
                     },
                     tooltipFormat: 'HH:mm:ss'
                 },
@@ -139,7 +139,7 @@ const liveRouteChart = new Chart(ctxRoute, {
                 time: {
                     unit: 'minute',
                     displayFormats: {
-                        minute: 'HH:mm:ss'
+                        minute: 'HH:mm'
                     },
                     tooltipFormat: 'HH:mm:ss'
                 },
@@ -195,13 +195,6 @@ function addToChart(liveChart, point, unixTime, dataInterval) {
     liveChart.update();
 }
 
-
-getStats()
-updateCapabilities().catch((err) => {
-    console.log(err);
-})
-
-
 const prefixTable = document.getElementById("prefixTableBody");
 
 async function updateList(flapList) {
@@ -239,8 +232,8 @@ function getStats() {
         try {
             const js = JSON.parse(event.data);
 
-            const flapList = js["List"]
-            const stats = js["Stats"]
+            const flapList = js["List"];
+            const stats = js["Stats"];
             const sessionCount= js["Sessions"];
             if (sessionCount !== -1) {
                 document.getElementById("sessionCount").innerText = sessionCount;
@@ -319,3 +312,8 @@ function handleConnectionLost(lost) {
         document.getElementById('connectionLost').style.display = 'none';
     }
 }
+
+getStats();
+updateCapabilities().catch((err) => {
+    console.log(err);
+});

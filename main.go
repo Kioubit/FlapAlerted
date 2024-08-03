@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-var Version = "v3.13.4"
+var Version = "v3.13.5"
 
 func main() {
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{})))
@@ -40,11 +40,11 @@ func main() {
 
 	// Support environment variables
 	flag.VisitAll(func(f *flag.Flag) {
-		env := os.Getenv(strings.ToUpper("FA_" + f.Name))
+		env := os.Getenv("FA_" + strings.ToUpper(f.Name))
 		if env != "" {
 			err := flag.Set(f.Name, env)
 			if err != nil {
-				fmt.Println("Invalid value for the environment variable value", strings.ToUpper("FA_"+f.Name))
+				fmt.Println("Invalid value for the environment variable", "FA_"+strings.ToUpper(f.Name))
 				os.Exit(1)
 			}
 		}

@@ -56,8 +56,8 @@ function display() {
             document.getElementById("informationText2").innerText = "No path data is available yet. Try refreshing later.";
         } else {
             for (let i = 0; i < pJson.length; i++) {
-                let firstAsn = pJson[i].Path.Asn[0];
-                const targetArray = pathMap.get(firstAsn)
+                const firstAsn = pJson[i].Path.Asn[0];
+                const targetArray = pathMap.get(firstAsn);
                 if (targetArray === undefined) {
                     pathMap.set(firstAsn, [pJson[i]]);
                 } else {
@@ -70,12 +70,12 @@ function display() {
         pathMap.forEach((value) => {
             // For each path group
             let elementHTML = "";
-            let totalCount = 0;
-            value.sort((a, b) => b.count - a.count)
+            let pathGroupTotalCount = 0;
+            value.sort((a, b) => b.Count - a.Count);
             for (let c = 0; c < value.length; c++) {
                 // For each path
                 const count = value[c].Count;
-                totalCount += count;
+                pathGroupTotalCount += count;
                 elementHTML += count + "&nbsp;&nbsp;";
                 for (let d = 0; d < value[c].Path.Asn.length; d++) {
                     // For each ASN in the path
@@ -90,7 +90,7 @@ function display() {
                 elementHTML += "<br>";
             }
             elementHTML += "<br>";
-            const htmlBundle = {html: elementHTML, count: totalCount};
+            const htmlBundle = {html: elementHTML, count: pathGroupTotalCount};
             htmlBundles.push(htmlBundle);
         });
         htmlBundles.sort((a, b) => b.count - a.count);
@@ -118,7 +118,7 @@ function display() {
         document.getElementById("informationText2").style.display = "block";
 
 
-        const printButton = document.getElementById("printButton")
+        const printButton = document.getElementById("printButton");
         if (printButton !== null) {
              printButton.onclick = () => {
                  window.print();
@@ -134,7 +134,7 @@ function display() {
     fetch("../flaps/active/history?cidr=" + prefix).then(function (response) {
         return response.json();
     }).then(function (json) {
-        const dataIntervalSeconds = 10
+        const dataIntervalSeconds = 10;
         if (json === null) {
             return;
         }
