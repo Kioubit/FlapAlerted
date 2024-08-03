@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-var Version = "v3.13.3"
+var Version = "v3.13.4"
 
 func main() {
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{})))
