@@ -9,8 +9,7 @@
 ### Setup notes
 
 The program will listen on port 1790 for incoming BGP sessions (passive mode - no outgoing connections).
-Peering multiple nodes with a single instance of the program is supported. It is recommended to adjust
-the `routeChangeCounter` and `minimumAge` parameters (see usage) to produce the desired result.
+It is recommended to adjust the `routeChangeCounter` and `minimumAge` parameters (see usage) to produce the desired result.
 
 ### Usage
 ```
