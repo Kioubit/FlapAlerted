@@ -87,6 +87,10 @@
     overflow-x: auto;
 }
 
+.noDisplay {
+    display: none;
+}
+
 #chartRouteCount-container {
     position: relative;
     height: 12em;

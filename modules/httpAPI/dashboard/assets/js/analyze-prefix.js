@@ -138,6 +138,7 @@ function display() {
         if (json === null) {
             return;
         }
+        document.getElementById('chartRouteCount-outerContainer').classList.remove("noDisplay");
         const RouteChangeChart = new Chart(ctxRouteCount, {
             type: "line",
             data: dataRouteChangeCount,
