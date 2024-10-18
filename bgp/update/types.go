@@ -108,7 +108,7 @@ type MPReachNLRI struct {
 	AFI           AFI
 	SAFI          SAFI
 	NextHopLength uint8
-	NextHop       netip.Addr
+	NextHop       []netip.Addr
 	Reserved      uint8
 	NLRI          []prefix
 }

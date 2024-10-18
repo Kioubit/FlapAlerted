@@ -174,18 +174,29 @@ func parseMultiProtocolReachableNLRI(a pathAttribute) (pathAttributeBody, error)
 		return nil, err
 	}
 
-	if result.AFI == AFI4 {
-		ip := [4]byte{}
-		if err := binary.Read(r, binary.BigEndian, &ip); err != nil {
-			return nil, err
+	result.NextHop = make([]netip.Addr, 0)
+
+	afiReader := io.LimitReader(r, int64(result.NextHopLength))
+	for {
+		if result.AFI == AFI4 {
+			ip := [4]byte{}
+			if err := binary.Read(afiReader, binary.BigEndian, &ip); err != nil {
+				if errors.Is(err, io.EOF) {
+					break
+				}
+				return nil, err
+			}
+			result.NextHop = append(result.NextHop, netip.AddrFrom4(ip))
+		} else {
+			ip := [16]byte{}
+			if err := binary.Read(afiReader, binary.BigEndian, &ip); err != nil {
+				if errors.Is(err, io.EOF) {
+					break
+				}
+				return nil, err
+			}
+			result.NextHop = append(result.NextHop, netip.AddrFrom16(ip))
 		}
-		result.NextHop = netip.AddrFrom4(ip)
-	} else {
-		ip := [16]byte{}
-		if err := binary.Read(r, binary.BigEndian, &ip); err != nil {
-			return nil, err
-		}
-		result.NextHop = netip.AddrFrom16(ip)
 	}
 
 	if err := binary.Read(r, binary.BigEndian, &result.Reserved); err != nil {
