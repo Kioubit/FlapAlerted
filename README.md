@@ -68,6 +68,7 @@ Provides the following http API endpoints on port `8699`:
 - `/flaps/active/history?cidr=<cidr value>`
 - `/flaps/metrics/json`
 - `/flaps/metrics/prometheus`
+- `/flaps/avgRouteChanges90`
 
 It also provides a user interface (on the same port) at path:
 - `/`

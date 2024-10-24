@@ -3,6 +3,9 @@ package monitor
 import (
 	"FlapAlerted/config"
 	"log/slog"
+	"math"
+	"sort"
+	"strconv"
 )
 
 type Module struct {
@@ -109,6 +112,7 @@ func GetActiveFlapsSummary() []FlapSummary {
 type Metric struct {
 	ActiveFlapCount                int
 	ActiveFlapTotalPathChangeCount uint64
+	AverageRouteChanges90          string
 }
 
 func GetMetric() Metric {
@@ -119,10 +123,13 @@ func GetMetric() Metric {
 		activeFlapCount = stats[len(stats)-1].Stats.Active
 		pathChangeCount = stats[len(stats)-1].Stats.Changes
 	}
+	avg := GetAverageRouteChanges90()
+	avgStr := strconv.FormatFloat(avg, 'f', 2, 64)
 
 	return Metric{
 		ActiveFlapCount:                activeFlapCount,
 		ActiveFlapTotalPathChangeCount: pathChangeCount,
+		AverageRouteChanges90:          avgStr,
 	}
 }
 
@@ -180,4 +187,33 @@ func GetStats() []statisticWrapper {
 
 func SubscribeToStats() chan statisticWrapper {
 	return addStatSubscriber()
+}
+
+func GetAverageRouteChanges90() float64 {
+	stats := GetStats()
+	changesList := make([]uint64, len(stats))
+	for i, stat := range stats {
+		changesList[i] = stat.Stats.Changes
+	}
+	sort.Slice(changesList, func(i, j int) bool { return changesList[i] < changesList[j] })
+	cutLength := int(math.Ceil(float64(len(changesList)) * 0.90))
+	changesList = changesList[:cutLength]
+
+	if len(changesList) == 0 {
+		return 0
+	}
+
+	var sum uint64 = 0
+	for _, u := range changesList {
+		sum = addUint64(sum, u)
+	}
+	avg := float64(sum) / float64(len(changesList))
+	return avg / 5 // Data collected for 5 seconds
+}
+
+func addUint64(left, right uint64) uint64 {
+	if left > math.MaxUint64-right {
+		return math.MaxUint64
+	}
+	return left + right
 }

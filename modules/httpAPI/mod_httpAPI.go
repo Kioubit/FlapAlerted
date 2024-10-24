@@ -89,6 +89,7 @@ func startComplete() {
 	http.HandleFunc("/flaps/active/history", getFlapHistory)
 
 	if !*limitedHttpAPI {
+		http.HandleFunc("/flaps/avgRouteChanges90", getAvgRouteChanges)
 		http.HandleFunc("/flaps/active/compact", getActiveFlaps)
 		http.HandleFunc("/flaps/metrics/json", metrics)
 		http.HandleFunc("/flaps/metrics/prometheus", prometheus)
@@ -97,6 +98,12 @@ func startComplete() {
 	if err != nil {
 		slog.Error("["+moduleName+"] Error starting HTTP api server", "error", err)
 	}
+}
+
+func getAvgRouteChanges(w http.ResponseWriter, _ *http.Request) {
+	avg := monitor.GetAverageRouteChanges90()
+	avgStr := strconv.FormatFloat(avg, 'f', 2, 64)
+	_, _ = w.Write([]byte(avgStr))
 }
 
 func getFlapHistory(w http.ResponseWriter, req *http.Request) {
@@ -215,6 +222,10 @@ func prometheus(w http.ResponseWriter, _ *http.Request) {
 	output += fmt.Sprintln("# HELP active_flap_route_change_count Number of path changes caused by actively flapping prefixes")
 	output += fmt.Sprintln("# TYPE active_flap_route_change_count gauge")
 	output += fmt.Sprintln("active_flap_route_change_count", metric.ActiveFlapTotalPathChangeCount)
+
+	output += fmt.Sprintln("# HELP average_route_changes_90 90th percentile average of route changes over the last 250 seconds, as overall route changes per second")
+	output += fmt.Sprintln("# TYPE average_route_changes_90 gauge")
+	output += fmt.Sprintln("average_route_changes_90", metric.AverageRouteChanges90)
 
 	_, _ = w.Write([]byte(output))
 }
