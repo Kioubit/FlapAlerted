@@ -176,6 +176,10 @@ func parseMultiProtocolReachableNLRI(a pathAttribute) (pathAttributeBody, error)
 
 	afiReader := io.LimitReader(r, int64(result.NextHopLength))
 
+	if result.NextHopLength == 0 {
+		result.NextHop = make([]netip.Addr, 0)
+	}
+
 	if result.AFI == AFI4 {
 		result.NextHop = make([]netip.Addr, 0, result.NextHopLength/4)
 		ip := [4]byte{}
