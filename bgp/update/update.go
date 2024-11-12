@@ -19,6 +19,9 @@ func ParseMsgUpdate(r io.Reader, defaultAFI AFI, addPathEnabled bool) (msg Msg, 
 	// Reader for withdrawn routes list
 	wR := io.LimitReader(r, int64(msg.WithdrawnRoutesLength))
 	msg.WithdrawnRoutesList, err = parsePrefixList(wR, defaultAFI, addPathEnabled)
+	if err != nil {
+		return Msg{}, err
+	}
 
 	if err := binary.Read(r, binary.BigEndian, &msg.TotalPathAttributeLength); err != nil {
 		return Msg{}, err
