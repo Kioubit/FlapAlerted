@@ -23,13 +23,13 @@ var moduleName = "mod_httpAPI"
 //go:embed dashboard/*
 var dashboardContent embed.FS
 
-var limitedHttpAPI *bool
-var httpAPIPort *int
+var limitedHttpAPI bool
+var httpAPIPort int
 
 func init() {
-	limitedHttpAPI = flag.Bool("limitedHttpApi", false, "Disable http API endpoints not needed for"+
+	limitedHttpAPI = *flag.Bool("limitedHttpApi", false, "Disable http API endpoints not needed for"+
 		" the user interface")
-	httpAPIPort = flag.Int("httpApiPort", 8699, "Port for the http api")
+	httpAPIPort = *flag.Int("httpApiPort", 8699, "Port for the http api")
 
 	monitor.RegisterModule(&monitor.Module{
 		Name:            moduleName,
@@ -82,19 +82,26 @@ func startComplete() {
 	go cleanupHistory()
 	go streamServe()
 
-	http.Handle("/", mainPageHandler())
-	http.HandleFunc("/capabilities", showCapabilities)
-	http.HandleFunc("/flaps/prefix", getPrefix)
-	http.HandleFunc("/flaps/statStream", getStatisticStream)
-	http.HandleFunc("/flaps/active/history", getFlapHistory)
+	mux := http.NewServeMux()
+	mux.Handle("/", mainPageHandler())
+	mux.HandleFunc("/capabilities", showCapabilities)
+	mux.HandleFunc("/flaps/prefix", getPrefix)
+	mux.HandleFunc("/flaps/statStream", getStatisticStream)
+	mux.HandleFunc("/flaps/active/history", getFlapHistory)
 
-	if !*limitedHttpAPI {
-		http.HandleFunc("/flaps/avgRouteChanges90", getAvgRouteChanges)
-		http.HandleFunc("/flaps/active/compact", getActiveFlaps)
-		http.HandleFunc("/flaps/metrics/json", metrics)
-		http.HandleFunc("/flaps/metrics/prometheus", prometheus)
+	if !limitedHttpAPI {
+		mux.HandleFunc("/flaps/avgRouteChanges90", getAvgRouteChanges)
+		mux.HandleFunc("/flaps/active/compact", getActiveFlaps)
+		mux.HandleFunc("/flaps/metrics/json", metrics)
+		mux.HandleFunc("/flaps/metrics/prometheus", prometheus)
 	}
-	err := http.ListenAndServe(":"+strconv.Itoa(*httpAPIPort), nil)
+
+	s := &http.Server{
+		Addr:              ":" + strconv.Itoa(httpAPIPort),
+		ReadHeaderTimeout: 10 * time.Second,
+		Handler:           mux,
+	}
+	err := s.ListenAndServe()
 	if err != nil {
 		slog.Error("["+moduleName+"] Error starting HTTP api server", "error", err)
 	}

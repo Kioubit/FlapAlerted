@@ -45,7 +45,7 @@ func ParseMsgUpdate(r io.Reader, defaultAFI AFI, addPathEnabled bool) (msg Msg, 
 			return Msg{}, err
 		}
 
-		var bodyLength uint16 = 0
+		var bodyLength uint16
 		if attribute.Flags.isExtendedLength() {
 			var length uint16
 			if err := binary.Read(aR, binary.BigEndian, &length); err != nil {
