@@ -175,12 +175,12 @@ func getPrefix(w http.ResponseWriter, r *http.Request) {
 	flaps := monitor.GetActiveFlaps()
 	for _, f := range flaps {
 		if f.Cidr == prefix.String() {
-			f.RLock() // Needed to obtain paths
+			f.RLock() // Needed to get paths
 			var pathList []monitor.PathInfo
 			if config.GlobalConf.KeepPathInfo {
-				pathList = make([]monitor.PathInfo, 0, len(f.Paths))
-				for n := range f.Paths {
-					pathList = append(pathList, *f.Paths[n])
+				pathList = make([]monitor.PathInfo, 0, f.Paths.Length())
+				for _, v := range f.Paths.All() {
+					pathList = append(pathList, *v)
 				}
 			}
 

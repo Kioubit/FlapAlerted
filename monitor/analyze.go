@@ -20,12 +20,12 @@ const PathLimit = 1000
 
 type Flap struct {
 	sync.RWMutex
-	Cidr                 string // Read only
+	Cidr                 string // Read-only
 	lastPath             map[string]common.AsPathList
-	Paths                map[string]*PathInfo
+	Paths                *PathTracker
 	pathChangeCount      uint64
 	PathChangeCountTotal atomic.Uint64 // Atomic only for reads
-	FirstSeen            int64         // Read only
+	FirstSeen            int64         // Read-only
 	LastSeen             atomic.Int64  // Atomic only for reads
 	meetsMinimumAge      atomic.Bool
 	notifiedOnce         atomic.Bool
@@ -176,11 +176,11 @@ func updateList(prefix netip.Prefix, asPath []common.AsPathList, notificationCha
 			FirstSeen:       currentTime,
 			pathChangeCount: 0,
 			lastPath:        make(map[string]common.AsPathList),
-			Paths:           make(map[string]*PathInfo),
+			Paths:           NewPathTracker(),
 		}
 		newFlap.LastSeen.Store(currentTime)
 		if config.GlobalConf.KeepPathInfo {
-			newFlap.Paths[pathToString(cleanPath)] = &PathInfo{Path: cleanPath, Count: 1}
+			newFlap.Paths.Set(pathToString(cleanPath), &PathInfo{Path: cleanPath, Count: 1})
 		}
 		newFlap.lastPath[getRelevantASN(cleanPath)] = cleanPath
 		flapMap[cidr] = newFlap
@@ -213,14 +213,15 @@ func updateList(prefix netip.Prefix, asPath []common.AsPathList, notificationCha
 	if !pathsEqual(obj.lastPath[getRelevantASN(cleanPath)], cleanPath) {
 		if obj.active {
 			if (config.GlobalConf.KeepPathInfo && !config.GlobalConf.KeepPathInfoDetectedOnly) || (config.GlobalConf.KeepPathInfo && obj.meetsMinimumAge.Load()) {
-				if len(obj.Paths) <= PathLimit {
-					searchPath := obj.Paths[pathToString(cleanPath)]
-					if searchPath == nil {
-						obj.Paths[pathToString(cleanPath)] = &PathInfo{Path: cleanPath, Count: 1}
-					} else {
-						s := obj.Paths[pathToString(cleanPath)]
-						s.Count = incrementUint64(s.Count)
+				searchPath := obj.Paths.Get(pathToString(cleanPath))
+				if searchPath == nil {
+					if obj.Paths.Length() >= PathLimit {
+						obj.Paths.DeleteOldest()
 					}
+					obj.Paths.Set(pathToString(cleanPath), &PathInfo{Path: cleanPath, Count: 1})
+				} else {
+					s := obj.Paths.Get(pathToString(cleanPath))
+					s.Count = incrementUint64(s.Count)
 				}
 			}
 		}
