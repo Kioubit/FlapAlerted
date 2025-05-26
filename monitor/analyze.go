@@ -213,15 +213,16 @@ func updateList(prefix netip.Prefix, asPath []common.AsPathList, notificationCha
 	if !pathsEqual(obj.lastPath[getRelevantASN(cleanPath)], cleanPath) {
 		if obj.active {
 			if (config.GlobalConf.KeepPathInfo && !config.GlobalConf.KeepPathInfoDetectedOnly) || (config.GlobalConf.KeepPathInfo && obj.meetsMinimumAge.Load()) {
-				searchPath := obj.Paths.Get(pathToString(cleanPath))
-				if searchPath == nil {
+				stringPath := pathToString(cleanPath)
+				foundPath := obj.Paths.Get(stringPath)
+				if foundPath == nil {
 					if obj.Paths.Length() >= PathLimit {
-						obj.Paths.DeleteOldest()
+						obj.Paths.DeleteLeastValuable()
 					}
-					obj.Paths.Set(pathToString(cleanPath), &PathInfo{Path: cleanPath, Count: 1})
+					obj.Paths.Set(stringPath, &PathInfo{Path: cleanPath, Count: 1})
 				} else {
-					s := obj.Paths.Get(pathToString(cleanPath))
-					s.Count = incrementUint64(s.Count)
+					foundPath.Count = incrementUint64(foundPath.Count)
+					obj.Paths.Update(stringPath)
 				}
 			}
 		}

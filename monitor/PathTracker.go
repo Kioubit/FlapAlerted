@@ -1,6 +1,9 @@
 package monitor
 
-import "container/list"
+import (
+	"container/list"
+	"math"
+)
 
 type PathTracker struct {
 	paths map[string]*list.Element
@@ -10,6 +13,12 @@ type PathTracker struct {
 type pathEntry struct {
 	key  string
 	info *PathInfo
+}
+
+func (pt *PathTracker) Update(key string) {
+	if elem, exists := pt.paths[key]; exists {
+		pt.order.MoveToBack(elem)
+	}
 }
 
 func (pt *PathTracker) Set(key string, info *PathInfo) {
@@ -24,19 +33,39 @@ func (pt *PathTracker) Set(key string, info *PathInfo) {
 }
 
 func (pt *PathTracker) Get(key string) *PathInfo {
-	return pt.paths[key].Value.(*PathInfo)
+	if elem, exists := pt.paths[key]; exists {
+		return elem.Value.(*pathEntry).info
+	} else {
+		return nil
+	}
 }
 
 func (pt *PathTracker) Length() int {
 	return len(pt.paths)
 }
 
-func (pt *PathTracker) DeleteOldest() {
+func (pt *PathTracker) DeleteLeastValuable() {
 	if pt.order.Len() == 0 {
 		return
 	}
-	front := pt.order.Front()
-	entry := pt.order.Remove(front).(*pathEntry)
+
+	var toDelete = pt.order.Front()
+	var minCount uint64 = math.MaxUint64
+
+	steps := 0
+	for elem := pt.order.Front(); elem != nil && steps < 50; elem = elem.Next() {
+		entry := elem.Value.(*pathEntry)
+		entryCount := entry.info.Count
+
+		if entryCount < minCount {
+			minCount = entryCount
+			toDelete = elem
+		}
+
+		steps++
+	}
+
+	entry := pt.order.Remove(toDelete).(*pathEntry)
 	delete(pt.paths, entry.key)
 }
 
