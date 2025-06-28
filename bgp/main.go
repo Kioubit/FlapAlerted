@@ -30,6 +30,7 @@ func StartBGP(updateChannel chan update.Msg, bgpPort int) {
 		conn, err := listener.Accept()
 		if err != nil {
 			slog.Error("Failed to accept TCP connection", "error", err.Error())
+			continue
 		}
 
 		logger := slog.With("remote", conn.RemoteAddr())
