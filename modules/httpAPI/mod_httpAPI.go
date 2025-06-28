@@ -23,13 +23,13 @@ var moduleName = "mod_httpAPI"
 //go:embed dashboard/*
 var dashboardContent embed.FS
 
-var limitedHttpAPI bool
-var httpAPIPort int
+var limitedHttpAPI *bool
+var httpAPIListenAddress *string
 
 func init() {
-	limitedHttpAPI = *flag.Bool("limitedHttpApi", false, "Disable http API endpoints not needed for"+
+	limitedHttpAPI = flag.Bool("limitedHttpApi", false, "Disable http API endpoints not needed for"+
 		" the user interface")
-	httpAPIPort = *flag.Int("httpApiPort", 8699, "Port for the http api")
+	httpAPIListenAddress = flag.String("httpAPIListenAddress", ":8699", "Listen address for the http api")
 
 	monitor.RegisterModule(&monitor.Module{
 		Name:            moduleName,
@@ -89,7 +89,7 @@ func startComplete() {
 	mux.HandleFunc("/flaps/statStream", getStatisticStream)
 	mux.HandleFunc("/flaps/active/history", getFlapHistory)
 
-	if !limitedHttpAPI {
+	if !*limitedHttpAPI {
 		mux.HandleFunc("/flaps/avgRouteChanges90", getAvgRouteChanges)
 		mux.HandleFunc("/flaps/active/compact", getActiveFlaps)
 		mux.HandleFunc("/flaps/metrics/json", metrics)
@@ -97,7 +97,7 @@ func startComplete() {
 	}
 
 	s := &http.Server{
-		Addr:              ":" + strconv.Itoa(httpAPIPort),
+		Addr:              *httpAPIListenAddress,
 		ReadHeaderTimeout: 10 * time.Second,
 		Handler:           mux,
 	}

@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"net"
 	"os"
-	"strconv"
 	"sync"
 )
 
@@ -17,8 +16,8 @@ import (
 // "BGP Support for Four-Octet Autonomous System (AS) Number Space" https://datatracker.ietf.org/doc/html/rfc6793
 // "Capabilities Advertisement with BGP-4" https://datatracker.ietf.org/doc/html/rfc3392
 
-func StartBGP(updateChannel chan update.Msg, bgpPort int) {
-	listener, err := net.Listen("tcp", ":"+strconv.Itoa(bgpPort))
+func StartBGP(updateChannel chan update.Msg, bgpListenAddress string) {
+	listener, err := net.Listen("tcp", bgpListenAddress)
 	if err != nil {
 		slog.Error("Failed to start BGP listener", "error", err)
 		os.Exit(1)
