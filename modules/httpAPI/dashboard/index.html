@@ -7,26 +7,37 @@
           content="default-src 'none'; base-uri 'none'; form-action 'none'; style-src 'self'; style-src-elem 'self'; script-src 'self'; connect-src 'self'; img-src 'self';">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="assets/css/dashboard.css">
-    <script async type="module" src="assets/js/dashboard.js"></script>
+    <script type="module" src="assets/js/dashboard.js"></script>
 </head>
 
 <body>
 <div id="loadingScreen">
     <div class="loader"></div>
 </div>
-<h2 id="mainHeading" class="mt-0">FlapAlerted</h2>
-<h3 class="mt-0" id="dataInfo">Live Data</h3>
+
 <div id="mainContainer">
-    <div id="connectionLost">
-        <p id="connectLostText">Connection lost</p>
+    <h2 id="mainHeading">FlapAlerted</h2>
+    <div class="error" id="connectionLost">
+        <p>Connection lost</p>
+    </div>
+    <div class="error" id="noBGPFeeds">
+        <p>No BGP feeds are connected to this instance</p>
     </div>
     <div id="grid-container-main">
         <div id="justgage"></div>
         <div id="prefixTableBox">
             <table id="prefixTable">
-                <thead><tr><th>Prefix</th><th>Duration</th><th>Route Changes</th></tr></thead>
+                <thead>
+                <tr>
+                    <th>Prefix</th>
+                    <th>Duration</th>
+                    <th>Route Changes</th>
+                </tr>
+                </thead>
                 <tbody id="prefixTableBody">
-                    <tr><td colspan="3" class="centerText">...</td></tr>
+                <tr>
+                    <td colspan="3" class="centerText">...</td>
+                </tr>
                 </tbody>
             </table>
         </div>
@@ -40,12 +51,22 @@
         </div>
     </div>
     <div class="footer">
-        <div><u>Connected BGP feeds</u>: <span id="sessionCount">...</span></div>
-        <div><u>Current settings</u>: <span  id="info">N/A</span></div>
-        <div><u>Average route changes value</u>: 90th percentile average over the last 250 seconds, shown as overall route
-            changes per second.
+        <div class="footer-grid">
+            <div>
+                <div class="footer-label">Current settings</div>
+                <div class="footer-value"><span id="info">N/A</span></div>
+            </div>
+            <div>
+                <div class="footer-label">Average route changes value</div>
+                <div class="footer-value">90th percentile average over the last 250 seconds, shown as overall route changes per second.</div>
+            </div>
+            <div>
+                <div class="footer-label">Info</div>
+                <div>Connected BGP feeds:&nbsp;<span class="footer-value" id="sessionCount">...</span></div>
+                <div>
+                    <a href="https://github.com/Kioubit/FlapAlerted/" title="Source Code">FlapAlerted<span id="version"></span></a></div>
+            </div>
         </div>
-        <a href="https://github.com/Kioubit/FlapAlerted/" id="version"></a>
     </div>
 </div>
 </body>

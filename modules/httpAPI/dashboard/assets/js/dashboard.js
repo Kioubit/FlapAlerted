@@ -1,7 +1,12 @@
-import "./justgage/1.7.0/raphael-2.3.0.min.js";
-import "./justgage/1.7.0/justgage.min.js";
-import "./chartjs/4.4.1/chart.umd.min.js";
-import "./chartjs/chartjs-adapter-date-fns.bundle.min.js";
+await Promise.all([
+    import("./justgage/1.7.0/raphael-2.3.0.min.js"),
+    import("./chartjs/4.5.0/chart.umd.min.js")
+]);
+
+await Promise.all([
+    import("./justgage/1.7.0/justgage.min.js"),
+    import("./chartjs/chartjs-adapter-date-fns.bundle.min.js")
+]);
 
 const gauge = new JustGage({
     id: "justgage",
@@ -79,7 +84,7 @@ const dataRouteChange = {
             pointRadius: 5,
             pointHitRadius: 10,
             data: [],
-        },{
+        }, {
             label: "Route Changes (listed prefixes)",
             fill: false,
             backgroundColor: "rgba(15,151,3,0.4)",
@@ -165,8 +170,8 @@ async function updateCapabilities() {
     const response = await fetch("capabilities");
     const data = await response.json();
     const versionBox = document.getElementById("version");
+    versionBox.innerText = " " + data.Version;
     const infoBox = document.getElementById("info");
-    versionBox.innerText = "FlapAlerted " + data.Version;
     if (data.UserParameters.RouteChangeCounter === 0) {
         infoBox.innerText = `Displaying every BGP update received. Removing entries after ${data.UserParameters.FlapPeriod} seconds of inactivity.`;
         dataFlapCount.datasets[1].hidden = true;
@@ -181,7 +186,7 @@ function addToChart(liveChart, point, unixTime, dataInterval) {
         if (liveChart.data.datasets[i] === undefined) {
             continue;
         }
-        liveChart.data.datasets[i].data.push((point[i]/dataInterval));
+        liveChart.data.datasets[i].data.push((point[i] / dataInterval));
 
         if (liveChart.data.datasets[i].data.length > 50) {
             shifted = true;
@@ -204,46 +209,55 @@ async function updateList(flapList) {
         flapList.sort((a, b) => b.TotalCount - a.TotalCount);
 
         for (let i = 0; i < flapList.length; i++) {
-            let duration = toTimeElapsed(flapList[i].LastSeen - flapList[i].FirstSeen);
-            prefixTableHtml += "<tr>";
-            prefixTableHtml += "<td><a target=\"_blank\" href='analyze/?prefix=" + encodeURIComponent(flapList[i].Prefix) + "'>" + flapList[i].Prefix + "</a></td>";
-            prefixTableHtml += "<td>" + duration + "</td>";
-            prefixTableHtml += "<td>" + truncateRouteChanges(flapList[i].TotalCount) + "</td>";
-            prefixTableHtml += "</tr>";
+            const duration = toTimeElapsed(flapList[i].LastSeen - flapList[i].FirstSeen);
+            prefixTableHtml += `<tr>`;
+            prefixTableHtml += `<td><a target="_blank" href='analyze/?prefix=${encodeURIComponent(flapList[i].Prefix)}'>${flapList[i].Prefix}</a></td>`;
+            prefixTableHtml += `<td>${duration}</td>`;
+            prefixTableHtml += `<td>${truncateRouteChanges(flapList[i].TotalCount)}</td>`;
+            prefixTableHtml += `</tr>`;
             if (i >= 100) {
                 break;
             }
         }
         if (flapList.length === 0) {
-            prefixTableHtml += '<tr><td colspan="3" class="centerText">No flapping prefixes detected</td></tr>';
+            prefixTableHtml = '<tr><td colspan="3" class="centerText">No flapping prefixes detected</td></tr>';
         }
     } else {
-        prefixTableHtml += '<tr><td colspan="3" class="centerText"><b>Please wait</b></td></tr>';
+        prefixTableHtml = '<tr><td colspan="3" class="centerText"><b>Please wait</b></td></tr>';
     }
 
     prefixTable.innerHTML = prefixTableHtml;
 }
 
 const loadingScreen = document.getElementById("loadingScreen");
+
 function getStats() {
-    const evtSource = new EventSource("flaps/statStream");
     const avgArray = [];
+    const sessionCountElem = document.getElementById("sessionCount");
+    const noBGPFeedsElem = document.getElementById("noBGPFeeds");
+    const evtSource = new EventSource("flaps/statStream");
     evtSource.addEventListener("u", (event) => {
         try {
             const js = JSON.parse(event.data);
 
             const flapList = js["List"];
             const stats = js["Stats"];
-            const sessionCount= js["Sessions"];
+            const sessionCount = js["Sessions"];
             if (sessionCount !== -1) {
-                document.getElementById("sessionCount").innerText = sessionCount;
+                sessionCountElem.innerText = sessionCount;
+            }
+
+            if (sessionCount === 0) {
+                noBGPFeedsElem.style.display = "block";
+            } else {
+                noBGPFeedsElem.style.display = "none";
             }
 
             updateList(flapList).then();
 
 
-            addToChart(liveRouteChart, [stats["Changes"], stats["ListedChanges"]], stats["Time"],5);
-            addToChart(liveFlapChart, [stats["Active"]], stats["Time"],1);
+            addToChart(liveRouteChart, [stats["Changes"], stats["ListedChanges"]], stats["Time"], 5);
+            addToChart(liveFlapChart, [stats["Active"]], stats["Time"], 1);
 
             avgArray.push(stats["Changes"]);
             if (avgArray.length > 50) {
