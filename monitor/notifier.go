@@ -1,6 +1,7 @@
 package monitor
 
 import (
+	"FlapAlerted/bgp"
 	"FlapAlerted/config"
 	"log/slog"
 	"math"
@@ -113,6 +114,7 @@ type Metric struct {
 	ActiveFlapCount                int
 	ActiveFlapTotalPathChangeCount uint64
 	AverageRouteChanges90          string
+	Sessions                       int
 }
 
 func GetMetric() Metric {
@@ -130,6 +132,7 @@ func GetMetric() Metric {
 		ActiveFlapCount:                activeFlapCount,
 		ActiveFlapTotalPathChangeCount: pathChangeCount,
 		AverageRouteChanges90:          avgStr,
+		Sessions:                       bgp.GetSessionCount(),
 	}
 }
 

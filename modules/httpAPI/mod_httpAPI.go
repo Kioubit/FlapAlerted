@@ -234,5 +234,9 @@ func prometheus(w http.ResponseWriter, _ *http.Request) {
 	output += fmt.Sprintln("# TYPE average_route_changes_90 gauge")
 	output += fmt.Sprintln("average_route_changes_90", metric.AverageRouteChanges90)
 
+	output += fmt.Sprintln("# HELP sessions Number of connected BGP feeds")
+	output += fmt.Sprintln("# TYPE sessions gauge")
+	output += fmt.Sprintln("sessions", metric.Sessions)
+
 	_, _ = w.Write([]byte(output))
 }
