@@ -37,6 +37,9 @@ func logFlapEnd(f *monitor.Flap) {
 }
 
 func runScript(path string, f *monitor.Flap) {
+	if path == "" {
+		return
+	}
 	eventJSON, err := json.Marshal(f)
 	if err != nil {
 		logger.Error("Marshalling flap information failed", "error", err.Error())
