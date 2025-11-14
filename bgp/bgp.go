@@ -15,9 +15,9 @@ import (
 )
 
 func newBGPConnection(logger *slog.Logger, conn net.Conn, defaultAFI update.AFI,
-	addPathEnabled bool, asn uint32, routerID netip.Addr, updateChannel chan update.Msg) error {
+	addPathEnabled bool, asn uint32, routerID netip.Addr, updateChannel chan update.Msg) (err error, wasEstablished bool) {
 	const ownHoldTime = 240
-	err := conn.SetDeadline(time.Now().Add(ownHoldTime * time.Second))
+	err = conn.SetDeadline(time.Now().Add(ownHoldTime * time.Second))
 	if err != nil {
 		logger.Warn("Failed to set connection deadline", "error", err)
 	}
@@ -58,25 +58,25 @@ func newBGPConnection(logger *slog.Logger, conn net.Conn, defaultAFI update.AFI,
 		},
 	)
 	if err != nil {
-		return fmt.Errorf("error marshalling OPEN message %w", err)
+		return fmt.Errorf("error marshalling OPEN message %w", err), false
 	}
 	_, err = conn.Write(openMessage)
 	if err != nil {
-		return fmt.Errorf("error writing OPEN message %w", err)
+		return fmt.Errorf("error writing OPEN message %w", err), false
 	}
 
 	// Read peer OPEN message
 	msg, r, err := common.ReadMessage(conn)
 	if err != nil {
-		return fmt.Errorf("error reading OPEN message from peer %w", err)
+		return fmt.Errorf("error reading OPEN message from peer %w", err), false
 	}
 	if msg.Header.BgpType != common.MsgOpen {
-		return fmt.Errorf("unexpected message of type '%s', expected open", msg.Header.BgpType)
+		return fmt.Errorf("unexpected message of type '%s', expected open", msg.Header.BgpType), false
 	}
 
 	msg.Body, err = open.ParseMsgOpen(r)
 	if err != nil {
-		return fmt.Errorf("error parsing peer OPEN message %w", err)
+		return fmt.Errorf("error parsing peer OPEN message %w", err), false
 	}
 
 	hasMultiProtocolIPv4 := false
@@ -126,32 +126,32 @@ func newBGPConnection(logger *slog.Logger, conn net.Conn, defaultAFI update.AFI,
 	remoteRouterID := msg.Body.(open.Msg).RouterID
 
 	if !hasFourByteAsn {
-		return fmt.Errorf("four byte ASNs not supported by peer")
+		return fmt.Errorf("four byte ASNs not supported by peer"), false
 	}
 	if remoteASN != asn {
-		return fmt.Errorf("remote ASN (%d) does not match the set asn (%d)", remoteASN, asn)
+		return fmt.Errorf("remote ASN (%d) does not match the set asn (%d)", remoteASN, asn), false
 	}
 
 	if !hasMultiProtocolIPv4 && !hasMultiProtocolIPv6 {
-		return fmt.Errorf("multiprotocol capbility is not supported by peer")
+		return fmt.Errorf("multiprotocol capbility is not supported by peer"), false
 	}
 
 	if addPathEnabled && (!hasAddPathIPv6 || !hasAddPathIPv4) {
-		return fmt.Errorf("addPath is not supported by peer")
+		return fmt.Errorf("addPath is not supported by peer"), false
 	}
 
 	keepAliveBytes, _ := GetKeepAlive()
 	_, err = conn.Write(keepAliveBytes)
 	if err != nil {
-		return fmt.Errorf("error writing keep alive message %w", err)
+		return fmt.Errorf("error writing keep alive message %w", err), false
 	}
 
 	msg, _, err = common.ReadMessage(conn)
 	if err != nil {
-		return fmt.Errorf("error reading KEEPALIVE message from peer %w", err)
+		return fmt.Errorf("error reading KEEPALIVE message from peer %w", err), false
 	}
 	if msg.Header.BgpType != common.MsgKeepAlive {
-		return fmt.Errorf("unexpected message of type '%s', expected keepalive", msg.Header.BgpType)
+		return fmt.Errorf("unexpected message of type '%s', expected keepalive", msg.Header.BgpType), false
 	}
 
 	logger.Info("BGP session established", "routerID", remoteRouterID)
@@ -169,9 +169,9 @@ func newBGPConnection(logger *slog.Logger, conn net.Conn, defaultAFI update.AFI,
 
 	err = handleIncoming(logger, conn, defaultAFI, addPathEnabled, updateChannel, keepAliveChan)
 	if err != nil {
-		return err
+		return err, true
 	}
-	return nil
+	return nil, true
 }
 
 func keepAliveHandler(logger *slog.Logger, in chan bool, conn net.Conn, holdTime int) {

@@ -36,13 +36,15 @@ func StartBGP(updateChannel chan update.Msg, bgpListenAddress string) {
 		logger.Info("New connection")
 
 		go func() {
-			err := newBGPConnection(logger, conn, update.AFI4, config.GlobalConf.UseAddPath, config.GlobalConf.Asn,
+			err, wasEstablished := newBGPConnection(logger, conn, update.AFI4, config.GlobalConf.UseAddPath, config.GlobalConf.Asn,
 				config.GlobalConf.RouterID, updateChannel)
 			if err != nil {
 				logger.Error("connection encountered an error", "error", err.Error())
 			}
 			_ = conn.Close()
-			sessionCount(false)
+			if wasEstablished {
+				sessionCount(false)
+			}
 		}()
 	}
 }
