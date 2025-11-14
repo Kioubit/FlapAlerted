@@ -1,0 +1,49 @@
+//go:build !disable_mod_script
+
+package script
+
+import (
+	"FlapAlerted/monitor"
+	"encoding/json"
+	"flag"
+	"log/slog"
+	"os"
+	"os/exec"
+)
+
+var moduleName = "mod_script"
+var scriptFileStart *string
+var scriptFileEnd *string
+
+func init() {
+	scriptFileStart = flag.String("detection-script-start", "", "Optional path to script to run when a flap event is detected (start)")
+	scriptFileEnd = flag.String("detection-script-end", "", "Optional path to script to run when a flap event is detected (end)")
+
+	monitor.RegisterModule(&monitor.Module{
+		Name:            moduleName,
+		CallbackOnce:    logFlapStart,
+		CallbackOnceEnd: logFlapEnd,
+	})
+}
+
+var logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{}))
+
+func logFlapStart(f *monitor.Flap) {
+	runScript(*scriptFileStart, f)
+}
+
+func logFlapEnd(f *monitor.Flap) {
+	runScript(*scriptFileEnd, f)
+}
+
+func runScript(path string, f *monitor.Flap) {
+	eventJSON, err := json.Marshal(f)
+	if err != nil {
+		logger.Error("Marshalling flap information failed", err.Error())
+		return
+	}
+	err = exec.Command(path, string(eventJSON)).Run()
+	if err != nil {
+		logger.Error("Error executing script", path, err.Error())
+	}
+}

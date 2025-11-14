@@ -80,6 +80,15 @@ Logs each time a prefix exceeds the defined `routeChangeCounter` within the defi
 
 To disable this module, add the following tag to the `MODULES` variable in the `Makefile`: `disable_mod_log`
 
+#### mod_script (Enabled by default)
+The mod_script module allows executing custom scripts when BGP flap events are detected. Scripts can be triggered at both the start and end of flap events.
+
+Command Line Arguments:
+- `-detection-script-start`: Path to script executed when a flap event starts
+- `-detection-script-end`: Path to script executed when a flap event ends
+
+The scripts receive flap event data as a JSON string via command line argument
+
 #### mod_roaFilter (Disabled by default)
 Filters a ROA file in JSON format to remove flapping prefixes.
 The filtered prefixes are to be re-added by the external program updating the ROA file at regular intervals.
