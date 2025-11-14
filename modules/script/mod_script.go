@@ -39,11 +39,11 @@ func logFlapEnd(f *monitor.Flap) {
 func runScript(path string, f *monitor.Flap) {
 	eventJSON, err := json.Marshal(f)
 	if err != nil {
-		logger.Error("Marshalling flap information failed", err.Error())
+		logger.Error("Marshalling flap information failed", "error", err.Error())
 		return
 	}
 	err = exec.Command(path, string(eventJSON)).Run()
 	if err != nil {
-		logger.Error("Error executing script", path, err.Error())
+		logger.Error("Error executing script", "path", path, "error", err.Error())
 	}
 }
