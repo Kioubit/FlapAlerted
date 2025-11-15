@@ -8,11 +8,13 @@ await Promise.all([
     import("./chartjs/chartjs-adapter-date-fns.bundle.min.js")
 ]);
 
+
+let gageMaxValue = 200;
 const gauge = new JustGage({
     id: "justgage",
     value: 0,
     min: 0,
-    max: 200,
+    max: gageMaxValue,
     label: "Average Route Changes",
     decimals: 2,
     gaugeWidthScale: 0.2,
@@ -178,6 +180,7 @@ async function updateCapabilities() {
     } else {
         infoBox.innerText = `A route for a prefix needs to change at least ${data.UserParameters.RouteChangeCounter}  times in ${data.UserParameters.FlapPeriod} seconds and remain active for at least ${data.UserParameters.MinimumAge} seconds for it to be shown in the table.`;
     }
+    gageMaxValue = data.gageMaxValue;
 }
 
 function addToChart(liveChart, point, unixTime, dataInterval) {
@@ -268,7 +271,7 @@ function getStats() {
             percentile = percentile.slice(0, Math.ceil(percentile.length * 0.90));
             const sum = percentile.reduce((s, a) => s + a, 0);
             const avg = sum / percentile.length;
-            gauge.refresh(avg / 5);
+            gauge.refresh(avg / 5, gageMaxValue);
 
         } catch (err) {
             console.log(err);
