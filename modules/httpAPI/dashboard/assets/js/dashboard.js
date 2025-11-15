@@ -153,7 +153,7 @@ const liveRouteChart = new Chart(ctxRoute, {
             },
             y: {
                 suggestedMin: 0,
-                suggestedMax: 10,
+                suggestedMax: 15,
             }
         },
         maintainAspectRatio: false,
