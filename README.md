@@ -87,7 +87,8 @@ Command Line Arguments:
 - `-detection-script-start`: Path to script executed when a flap event starts
 - `-detection-script-end`: Path to script executed when a flap event ends
 
-The scripts receive flap event data as a JSON string via command line argument
+The scripts receive flap event data as a JSON string via command line argument.
+To disable this module, add the following tag to the `MODULES` variable in the `Makefile`: `disable_mod_script`
 
 #### mod_roaFilter (Disabled by default)
 Filters a ROA file in JSON format to remove flapping prefixes.
