@@ -85,10 +85,13 @@ func parseCapabilityParameter(r io.Reader) (result CapabilityList, err error) {
 		if err := binary.Read(r, binary.BigEndian, &p.CapabilityLength); err != nil {
 			return result, err
 		}
+
+		cr := io.LimitReader(r, int64(p.CapabilityLength))
+
 		switch p.CapabilityCode {
 		case CapabilityCodeFourByteASN:
 			t := FourByteASNCapability{}
-			if err := binary.Read(r, binary.BigEndian, &t); err != nil {
+			if err := binary.Read(cr, binary.BigEndian, &t); err != nil {
 				return result, err
 			}
 			p.CapabilityValue = t
@@ -96,7 +99,7 @@ func parseCapabilityParameter(r io.Reader) (result CapabilityList, err error) {
 			list := make(AddPathCapabilityList, 0)
 			for {
 				t := AddPathCapability{}
-				if err := binary.Read(r, binary.BigEndian, &t); err != nil {
+				if err := binary.Read(cr, binary.BigEndian, &t); err != nil {
 					if errors.Is(err, io.EOF) {
 						break
 					}
@@ -107,14 +110,14 @@ func parseCapabilityParameter(r io.Reader) (result CapabilityList, err error) {
 			p.CapabilityValue = list
 		case CapabilityCodeMultiProtocol:
 			t := MultiProtocolCapability{}
-			if err := binary.Read(r, binary.BigEndian, &t); err != nil {
+			if err := binary.Read(cr, binary.BigEndian, &t); err != nil {
 				return result, err
 			}
 			p.CapabilityValue = t
 		default:
 			t := UnknownCapability{}
 			t.Value = make([]byte, p.CapabilityLength)
-			if err := binary.Read(r, binary.BigEndian, &t.Value); err != nil {
+			if err := binary.Read(cr, binary.BigEndian, &t.Value); err != nil {
 				return result, err
 			}
 			p.CapabilityValue = t
