@@ -40,7 +40,11 @@ func main() {
 
 	// Support environment variables
 	flag.VisitAll(func(f *flag.Flag) {
-		env := os.Getenv("FA_" + strings.ToUpper(f.Name))
+		var env string
+		env = os.Getenv("FA_" + strings.ToUpper(f.Name))
+		if env == "" {
+			env = os.Getenv("FA_" + f.Name)
+		}
 		if env != "" {
 			err := flag.Set(f.Name, env)
 			if err != nil {

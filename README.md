@@ -35,7 +35,8 @@ Usage:
   -routerID string
         BGP Router ID for this program (default "0.0.0.51")
 ```
-
+#### Using environment variables
+Environment variables can configure options by prefixing `FA_` to any command-line flag name (optionally in uppercase). For example, set the ASN number with `FA_ASN=<asn>` or the router ID using `FA_routerID=<router id>`.
 ### Example BIRD bgp daemon configuration
 ```
 protocol bgp FLAPALERTED {
@@ -63,6 +64,7 @@ The program supports additional modules that can be customized at build-time.
 Provides the following http API endpoints on port `8699`:
 
 - `/capabilities`
+- `/sessions`
 - `/flaps/active/compact`
 - `/flaps/prefix?prefix=<cidr value>`
 - `/flaps/active/history?cidr=<cidr value>`
@@ -103,11 +105,8 @@ To enable this module, add the following tag to the `MODULES` variable in the `M
 
 #### Manually
 
-You will need to have GO installed on your system. Then run `make release` and find the binary in the `bin/` directory.
+Install Go, then build using `make release`. The binary will be placed in the `bin/` directory.
 
 #### Docker
 
 Clone this repository and run `docker build .` to generate a docker image.
-Environment variables can be used to specify the configuration options by capitalizing the command line flags and adding a `FA_` prefix to them.
-For instance, to set the ASN number, use the following environment variable: ``FA_ASN=<asn value>``
-

@@ -16,8 +16,8 @@ var scriptFileStart *string
 var scriptFileEnd *string
 
 func init() {
-	scriptFileStart = flag.String("detection-script-start", "", "Optional path to script to run when a flap event is detected (start)")
-	scriptFileEnd = flag.String("detection-script-end", "", "Optional path to script to run when a flap event is detected (end)")
+	scriptFileStart = flag.String("detectionScriptStart", "", "Optional path to script to run when a flap event is detected (start)")
+	scriptFileEnd = flag.String("detectionScriptEnd", "", "Optional path to script to run when a flap event is detected (end)")
 
 	monitor.RegisterModule(&monitor.Module{
 		Name:            moduleName,
