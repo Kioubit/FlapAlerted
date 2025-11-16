@@ -118,29 +118,33 @@ func (a AddPathCapabilityList) MarshalBinary() ([]byte, error) {
 }
 
 func (c AddPathCapability) MarshalBinary() ([]byte, error) {
-	var b bytes.Buffer
-	if err := binary.Write(&b, binary.BigEndian, &c); err != nil {
-		return nil, err
-	}
-	return b.Bytes(), nil
+	return marshalStructValueCapability(c)
 }
 
 func (c FourByteASNCapability) MarshalBinary() ([]byte, error) {
-	var b bytes.Buffer
-	if err := binary.Write(&b, binary.BigEndian, &c); err != nil {
-		return nil, err
-	}
-	return b.Bytes(), nil
+	return marshalStructValueCapability(c)
 }
 
 func (c MultiProtocolCapability) MarshalBinary() ([]byte, error) {
-	var b bytes.Buffer
-	if err := binary.Write(&b, binary.BigEndian, &c); err != nil {
-		return nil, err
-	}
-	return b.Bytes(), nil
+	return marshalStructValueCapability(c)
+}
+
+func (c ExtendedMessageCapability) MarshalBinary() ([]byte, error) {
+	return []byte{}, nil
 }
 
 func (c UnknownCapability) MarshalBinary() ([]byte, error) {
 	return c.Value, nil
+}
+
+type structValueCapability interface {
+	AddPathCapability | FourByteASNCapability | MultiProtocolCapability
+}
+
+func marshalStructValueCapability[T structValueCapability](c T) ([]byte, error) {
+	var b bytes.Buffer
+	if err := binary.Write(&b, binary.BigEndian, &c); err != nil {
+		return nil, err
+	}
+	return b.Bytes(), nil
 }

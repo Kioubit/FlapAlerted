@@ -56,6 +56,10 @@ func newBGPConnection(logger *slog.Logger, conn net.Conn, defaultAFI update.AFI,
 				},
 			},
 		},
+		open.CapabilityOptionalParameter{
+			CapabilityCode:  open.CapabilityCodeExtendedMessage,
+			CapabilityValue: open.ExtendedMessageCapability{},
+		},
 	)
 	if err != nil {
 		return fmt.Errorf("error marshalling OPEN message %w", err), false

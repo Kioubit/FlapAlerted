@@ -114,6 +114,9 @@ func parseCapabilityParameter(r io.Reader) (result CapabilityList, err error) {
 				return result, err
 			}
 			p.CapabilityValue = t
+		case CapabilityCodeExtendedMessage:
+			t := ExtendedMessageCapability{}
+			p.CapabilityValue = t
 		default:
 			t := UnknownCapability{}
 			t.Value = make([]byte, p.CapabilityLength)

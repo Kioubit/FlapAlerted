@@ -45,9 +45,10 @@ type CapabilityOptionalParameter struct {
 type CapabilityCode uint8
 
 const (
-	CapabilityCodeMultiProtocol CapabilityCode = 1
-	CapabilityCodeFourByteASN   CapabilityCode = 65
-	CapabilityCodeAddPath       CapabilityCode = 69
+	CapabilityCodeMultiProtocol   CapabilityCode = 1
+	CapabilityCodeFourByteASN     CapabilityCode = 65
+	CapabilityCodeAddPath         CapabilityCode = 69
+	CapabilityCodeExtendedMessage CapabilityCode = 6
 )
 
 type CapabilityValue interface {
@@ -62,6 +63,14 @@ type AddPathCapability struct {
 	TXRX AddPathTXRX
 }
 
+type AddPathTXRX uint8
+
+const (
+	ReceiveOnly    AddPathTXRX = 1
+	SendOnly       AddPathTXRX = 2
+	SendAndReceive AddPathTXRX = 3
+)
+
 type FourByteASNCapability struct {
 	ASN uint32
 }
@@ -72,14 +81,8 @@ type MultiProtocolCapability struct {
 	SAFI     update.SAFI
 }
 
+type ExtendedMessageCapability struct{}
+
 type UnknownCapability struct {
 	Value []byte
 }
-
-type AddPathTXRX uint8
-
-const (
-	ReceiveOnly    AddPathTXRX = 1
-	SendOnly       AddPathTXRX = 2
-	SendAndReceive AddPathTXRX = 3
-)
