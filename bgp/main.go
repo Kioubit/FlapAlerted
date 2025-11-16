@@ -3,10 +3,12 @@ package bgp
 import (
 	"FlapAlerted/bgp/update"
 	"FlapAlerted/config"
+	"encoding/json"
 	"log/slog"
 	"net"
 	"os"
 	"sync"
+	"time"
 )
 
 /*
@@ -47,32 +49,59 @@ func StartBGP(updateChannel chan update.Msg, bgpListenAddress string) {
 			}
 			_ = conn.Close()
 			if wasEstablished {
-				sessionCount(false)
+				removeSession(conn)
 			}
 		}()
 	}
 }
 
-// Established session counter
+// Established session tracker
 var (
-	SessionCounter     int
-	SessionCounterLock sync.RWMutex
+	SessionTracker     = make(map[net.Conn]trackedSession)
+	SessionTrackerLock sync.RWMutex
 )
 
-func sessionCount(add bool) {
-	SessionCounterLock.Lock()
-	defer SessionCounterLock.Unlock()
-	if add {
-		SessionCounter++
-	} else {
-		if SessionCounter > 0 {
-			SessionCounter--
-		}
+type trackedSession struct {
+	Remote   string
+	RouterID string
+	Hostname string
+	Time     int64
+}
+
+func addSession(conn net.Conn, routerId string, hostname string) {
+	newSession := trackedSession{
+		Remote:   conn.RemoteAddr().String(),
+		RouterID: routerId,
+		Hostname: hostname,
+		Time:     time.Now().Unix(),
 	}
+	SessionTrackerLock.Lock()
+	defer SessionTrackerLock.Unlock()
+	SessionTracker[conn] = newSession
+}
+
+func removeSession(conn net.Conn) {
+	SessionTrackerLock.Lock()
+	defer SessionTrackerLock.Unlock()
+	delete(SessionTracker, conn)
 }
 
 func GetSessionCount() int {
-	SessionCounterLock.RLock()
-	defer SessionCounterLock.RUnlock()
-	return SessionCounter
+	SessionTrackerLock.RLock()
+	defer SessionTrackerLock.RUnlock()
+	return len(SessionTracker)
+}
+
+func GetSessionInfoJson() (string, error) {
+	SessionTrackerLock.RLock()
+	defer SessionTrackerLock.RUnlock()
+	var sessions = make([]trackedSession, 0)
+	for _, session := range SessionTracker {
+		sessions = append(sessions, session)
+	}
+	result, err := json.Marshal(sessions)
+	if err != nil {
+		return "", err
+	}
+	return string(result), nil
 }

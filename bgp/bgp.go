@@ -99,6 +99,7 @@ func newBGPConnection(logger *slog.Logger, conn net.Conn, defaultAFI update.AFI,
 	hasAddPathIPv6 := false
 	hasFourByteAsn := false
 	var remoteASN uint32 = 0
+	var remoteHostname = ""
 	for _, p := range msg.Body.(open.Msg).OptionalParameters {
 		for _, t := range p.ParameterValue.(open.CapabilityList).List {
 			switch v := t.CapabilityValue.(type) {
@@ -129,7 +130,8 @@ func newBGPConnection(logger *slog.Logger, conn net.Conn, defaultAFI update.AFI,
 					hasMultiProtocolIPv6 = true
 				}
 			case open.HostnameCapability:
-				logger = logger.With("hostname", slog.StringValue(v.Hostname+v.DomainName))
+				remoteHostname = v.Hostname + v.DomainName
+				logger = logger.With("hostname", remoteHostname)
 			}
 		}
 	}
@@ -185,7 +187,7 @@ func newBGPConnection(logger *slog.Logger, conn net.Conn, defaultAFI update.AFI,
 	}
 
 	logger.Info("BGP session established", "routerID", remoteRouterID)
-	sessionCount(true)
+	addSession(conn, routerID.String(), remoteHostname)
 
 	// From this point on the hold timer will manage the connection deadline
 	err = conn.SetDeadline(time.Time{})
