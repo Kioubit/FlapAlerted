@@ -3,7 +3,7 @@ FROM golang:1.23.2-bookworm AS build
 WORKDIR /go/src/project/
 COPY . /go/src/project/
 
-RUN make release
+RUN make release MODULES="disable_mod_script"
 
 FROM scratch
 WORKDIR /

@@ -67,7 +67,7 @@ func callWebHook(URL string, f *monitor.Flap) {
 		return
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("User-Agent", "flapalerted")
+	req.Header.Set("User-Agent", "FlapAlerted-Webhook")
 	resp, err := httpClient.Do(req)
 	if err != nil {
 		logger.Error("Failed to send webhook", "error", err, "url", URL)

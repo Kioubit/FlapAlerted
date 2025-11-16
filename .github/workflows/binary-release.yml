@@ -21,7 +21,7 @@ jobs:
         with:
           go-version-file: 'go.mod'
       - name: Build binaries
-        run: make release-all
+        run: make release-all MODULES="disable_mod_webhook"
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
