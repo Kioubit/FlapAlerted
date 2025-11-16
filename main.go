@@ -105,6 +105,5 @@ func main() {
 		"Detecting a flap if the route to a prefix changes within %d seconds at least %d time(s)"+
 			" and remains active for at least %d seconds", conf.FlapPeriod, conf.RouteChangeCounter, conf.MinimumAge))
 
-	slog.Info("Started")
 	monitor.StartMonitoring(conf)
 }
