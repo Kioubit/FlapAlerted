@@ -238,3 +238,71 @@ a:hover {
 .sessionsTableContainer {
     overflow-x: auto;
 }
+
+/* View Toggle Button - positioned below footer in normal view */
+.view-toggle {
+    display: block;
+    margin: 1rem auto;
+    padding: 0.5rem 1rem;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-size: 0.875rem;
+    transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.view-toggle:hover {
+    background: #1d4ed8;
+    transform: translateY(-1px);
+}
+
+/* Gauge Only View - Hide non-essential elements */
+.gauge-only #grid-container-charts,
+.gauge-only #prefixTableBox,
+.gauge-only .footer,
+.gauge-only #mainHeading,
+.gauge-only .error,
+.gauge-only #sessionCountLink {
+    display: none !important;
+}
+
+/* Center the gauge in gauge-only mode */
+.gauge-only #grid-container-main {
+    grid-template-columns: 1fr !important;
+    place-items: center;
+    min-height: 100vh;
+    margin: 0;
+    gap: 0;
+    padding: 2rem;
+}
+
+.gauge-only #justgage {
+    height: 28em !important;
+    width: 100%;
+    max-width: 32em;
+}
+
+/* Toggle button in gauge-only mode - fixed position */
+.gauge-only .view-toggle {
+    position: fixed;
+    bottom: 1rem;
+    right: 1rem;
+    margin: 0;
+    z-index: 1000;
+    background: rgba(37, 99, 235, 0.9);
+    backdrop-filter: blur(4px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+@media screen and (max-width: 800px) {
+    .view-toggle {
+        margin: 1rem auto;
+    }
+
+    .gauge-only #justgage {
+        height: 20em !important;
+        max-width: 24em;
+    }
+}

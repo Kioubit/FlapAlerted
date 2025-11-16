@@ -388,3 +388,21 @@ updateCapabilities().catch((err) => {
         }
     };
 }
+
+
+// Gauge-only view toggle
+const gaugeOnlyToggle = document.getElementById('gaugeOnlyToggle');
+if (gaugeOnlyToggle) {
+    // Load saved preference
+    const isGaugeOnly = localStorage.getItem('gaugeOnlyView') === 'true';
+    if (isGaugeOnly) {
+        document.body.classList.add('gauge-only');
+        gaugeOnlyToggle.textContent = 'Full View';
+    }
+
+    gaugeOnlyToggle.addEventListener('click', () => {
+        const currentlyGaugeOnly = document.body.classList.toggle('gauge-only');
+        gaugeOnlyToggle.textContent = currentlyGaugeOnly ? 'Full View' : 'Gauge Only View';
+        localStorage.setItem('gaugeOnlyView', currentlyGaugeOnly);
+    });
+}
