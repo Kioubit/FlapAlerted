@@ -1,12 +1,6 @@
-await Promise.all([
-    import("./justgage/1.7.0/raphael-2.3.0.min.js"),
-    import("./chartjs/4.5.0/chart.umd.min.js")
-]);
-
-await Promise.all([
-    import("./justgage/1.7.0/justgage.min.js"),
-    import("./chartjs/chartjs-adapter-date-fns.bundle.min.js")
-]);
+import {JustGage} from "./justgage/2.0.1/justgage.esm.js";
+import "./chartjs/4.5.0/chart.umd.min.js";
+import "./chartjs/chartjs-adapter-date-fns.bundle.min.js";
 
 
 let gageMaxValue = 200;
