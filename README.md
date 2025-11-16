@@ -86,8 +86,8 @@ To disable this module, add the following tag to the `MODULES` variable in the `
 The mod_script module allows executing custom scripts when BGP flap events are detected. Scripts can be triggered at both the start and end of flap events.
 
 Command Line Arguments:
-- `-detection-script-start`: Path to script executed when a flap event starts
-- `-detection-script-end`: Path to script executed when a flap event ends
+- `-detectionScriptStart`: Path to script executed when a flap event starts
+- `-detectionScriptEnd`: Path to script executed when a flap event ends
 
 The scripts receive flap event data as a JSON string via command line argument.
 
