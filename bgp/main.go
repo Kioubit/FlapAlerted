@@ -17,6 +17,7 @@ import (
 - "BGP Support for Four-Octet Autonomous System (AS) Number Space" https://datatracker.ietf.org/doc/html/rfc6793
 - "Capabilities Advertisement with BGP-4" https://datatracker.ietf.org/doc/html/rfc3392
 - "Extended Message Support for BGP" https://datatracker.ietf.org/doc/html/rfc8654
+- "Hostname Capability for BGP" https://datatracker.ietf.org/doc/html/draft-walton-bgp-hostname-capability-02
 */
 
 func StartBGP(updateChannel chan update.Msg, bgpListenAddress string) {

@@ -3,6 +3,7 @@ package open
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"net/netip"
 )
 
@@ -131,6 +132,27 @@ func (c MultiProtocolCapability) MarshalBinary() ([]byte, error) {
 
 func (c ExtendedMessageCapability) MarshalBinary() ([]byte, error) {
 	return []byte{}, nil
+}
+
+func (c HostnameCapability) MarshalBinary() ([]byte, error) {
+	var b bytes.Buffer
+	writeString := func(s string) error {
+		if len(s) > 255 {
+			return fmt.Errorf("hostname capability string too long: %d", len(s))
+		}
+		if err := binary.Write(&b, binary.BigEndian, uint8(len(s))); err != nil {
+			return err
+		}
+		_, err := b.Write([]byte(s))
+		return err
+	}
+	if err := writeString(c.Hostname); err != nil {
+		return []byte{}, err
+	}
+	if err := writeString(c.DomainName); err != nil {
+		return []byte{}, err
+	}
+	return b.Bytes(), nil
 }
 
 func (c UnknownCapability) MarshalBinary() ([]byte, error) {

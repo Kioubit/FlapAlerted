@@ -49,6 +49,7 @@ const (
 	CapabilityCodeFourByteASN     CapabilityCode = 65
 	CapabilityCodeAddPath         CapabilityCode = 69
 	CapabilityCodeExtendedMessage CapabilityCode = 6
+	CapabilityCodeHostname        CapabilityCode = 73
 )
 
 type CapabilityValue interface {
@@ -82,6 +83,11 @@ type MultiProtocolCapability struct {
 }
 
 type ExtendedMessageCapability struct{}
+
+type HostnameCapability struct {
+	Hostname   string
+	DomainName string
+}
 
 type UnknownCapability struct {
 	Value []byte

@@ -117,6 +117,24 @@ func parseCapabilityParameter(r io.Reader) (result CapabilityList, err error) {
 		case CapabilityCodeExtendedMessage:
 			t := ExtendedMessageCapability{}
 			p.CapabilityValue = t
+		case CapabilityCodeHostname:
+			t := HostnameCapability{}
+			readString := func() (string, error) {
+				var length uint8
+				if err := binary.Read(r, binary.BigEndian, &length); err != nil {
+					return "", err
+				}
+				buf := make([]byte, length)
+				_, err := io.ReadFull(r, buf)
+				return string(buf), err
+			}
+			if t.Hostname, err = readString(); err != nil {
+				return result, err
+			}
+			if t.DomainName, err = readString(); err != nil {
+				return result, err
+			}
+			p.CapabilityValue = t
 		default:
 			t := UnknownCapability{}
 			t.Value = make([]byte, p.CapabilityLength)

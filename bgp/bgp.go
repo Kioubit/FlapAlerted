@@ -61,6 +61,12 @@ func newBGPConnection(logger *slog.Logger, conn net.Conn, defaultAFI update.AFI,
 			CapabilityCode:  open.CapabilityCodeExtendedMessage,
 			CapabilityValue: open.ExtendedMessageCapability{},
 		},
+		open.CapabilityOptionalParameter{
+			CapabilityCode: open.CapabilityCodeHostname,
+			CapabilityValue: open.HostnameCapability{
+				Hostname: "flapalerted",
+			},
+		},
 	)
 	if err != nil {
 		return fmt.Errorf("error marshalling OPEN message %w", err), false
@@ -122,6 +128,8 @@ func newBGPConnection(logger *slog.Logger, conn net.Conn, defaultAFI update.AFI,
 				case update.AFI6:
 					hasMultiProtocolIPv6 = true
 				}
+			case open.HostnameCapability:
+				logger = logger.With("hostname", slog.StringValue(v.Hostname+v.DomainName))
 			}
 		}
 	}
