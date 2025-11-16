@@ -26,7 +26,7 @@ func init() {
 	})
 }
 
-var logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{}))
+var logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{})).With("module", moduleName)
 
 func logFlapStart(f *monitor.Flap) {
 	runScript(*scriptFileStart, f)

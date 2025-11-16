@@ -13,6 +13,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/netip"
+	"os"
 	"strconv"
 	"sync"
 	"time"
@@ -38,6 +39,8 @@ func init() {
 		OnStartComplete: startComplete,
 	})
 }
+
+var logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{})).With("module", moduleName)
 
 var FlapHistoryMap = make(map[string][]uint64)
 var FlapHistoryMapMu sync.RWMutex
@@ -106,7 +109,7 @@ func startComplete() {
 	}
 	err := s.ListenAndServe()
 	if err != nil {
-		slog.Error("["+moduleName+"] Error starting HTTP api server", "error", err)
+		logger.Error("["+moduleName+"] Error starting HTTP api server", "error", err)
 	}
 }
 
@@ -157,7 +160,7 @@ func showCapabilities(w http.ResponseWriter, _ *http.Request) {
 
 	b, err := json.Marshal(fullCaps)
 	if err != nil {
-		slog.Warn("JSON marshal failed for showCapabilities", "error", err)
+		logger.Warn("JSON marshal failed for showCapabilities", "error", err)
 		w.WriteHeader(500)
 		return
 	}
@@ -169,7 +172,7 @@ func getActiveFlaps(w http.ResponseWriter, _ *http.Request) {
 
 	b, err := json.Marshal(activeFlaps)
 	if err != nil {
-		slog.Warn("Failed to marshal list to JSON", "error", err)
+		logger.Warn("Failed to marshal list to JSON", "error", err)
 		w.WriteHeader(500)
 		return
 	}
@@ -211,7 +214,7 @@ func getPrefix(w http.ResponseWriter, r *http.Request) {
 			})
 			if err != nil {
 				w.WriteHeader(500)
-				slog.Warn("Failed to marshal prefix to JSON", "error", err)
+				logger.Warn("Failed to marshal prefix to JSON", "error", err)
 				_, _ = w.Write([]byte("Internal error"))
 			} else {
 				_, _ = w.Write(js)

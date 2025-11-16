@@ -19,7 +19,7 @@ func init() {
 	})
 }
 
-var logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{}))
+var logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{})).With("module", moduleName)
 
 func logFlapStart(f *monitor.Flap) {
 	logger.Info("event", "type", "start", "prefix", f.Cidr, "first_seen", time.Unix(f.FirstSeen, 0), "total_path_changes", f.PathChangeCountTotal.Load())

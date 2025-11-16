@@ -25,13 +25,15 @@ func init() {
 	})
 }
 
+var logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{})).With("module", moduleName)
+
 func change(f *monitor.Flap) {
 	// Continue filtering already filtered file
 	filter(*roaJsonFile, f.Cidr)
 }
 
 func filter(filePath string, cidr string) {
-	logger := slog.With("file", filePath, "prefix", cidr)
+	logger = logger.With("file", filePath, "prefix", cidr)
 	if filePath == "" {
 		logger.Error("roaFilter no roaJson file specified")
 		return
