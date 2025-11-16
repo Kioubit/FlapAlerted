@@ -8,7 +8,6 @@ import (
 	"log/slog"
 	"math"
 	"net/netip"
-	"os"
 	"slices"
 	"strconv"
 	"sync"
@@ -39,10 +38,6 @@ type PathInfo struct {
 
 func StartMonitoring(conf config.UserConfig) {
 	config.GlobalConf = conf
-	if config.GlobalConf.RelevantAsnPosition < 0 {
-		slog.Error("Invalid RelevantAsnPosition value", "position", config.GlobalConf.RelevantAsnPosition)
-		os.Exit(1)
-	}
 
 	updateChannel := make(chan update.Msg, 10000)
 	notificationChannel := make(chan *Flap, 20)

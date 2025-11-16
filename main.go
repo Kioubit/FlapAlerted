@@ -101,7 +101,7 @@ func main() {
 		slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug, AddSource: true})))
 	}
 
-	slog.Info("Program started", "parameters", fmt.Sprintf(
+	slog.Info("Started", "parameters", fmt.Sprintf(
 		"Detecting a flap if the route to a prefix changes within %d seconds at least %d time(s)"+
 			" and remains active for at least %d seconds", conf.FlapPeriod, conf.RouteChangeCounter, conf.MinimumAge))
 

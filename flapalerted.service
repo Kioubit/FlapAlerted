@@ -1,0 +1,17 @@
+[Unit]
+Description=FlapAlerted
+Documentation=https://github.com/Kioubit/FlapAlerted
+After=network.target
+
+[Service]
+DynamicUser=true
+NoNewPrivileges=true
+ProtectSystem=strict
+RestrictNamespaces=true
+
+ExecStart=/usr/local/bin/FlapAlerted -asn 4242423914
+Restart=always
+RestartSec=10s
+
+[Install]
+WantedBy=multi-user.target

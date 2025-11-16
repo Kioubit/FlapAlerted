@@ -39,7 +39,7 @@ Usage:
 Environment variables can configure options by prefixing `FA_` to any command-line flag name (optionally in uppercase). For example, set the ASN number with `FA_ASN=<asn>` or the router ID using `FA_routerID=<router id>`.
 ### Example BIRD bgp daemon configuration
 ```
-protocol bgp FLAPALERTED {
+protocol bgp flapalerted {
     local fdcf:8538:9ad5:1111::3 as 4242423914; # This address cannot be ::1, it must be another address assigned to the host
     neighbor ::1 as 4242423914 port 1790;
 
