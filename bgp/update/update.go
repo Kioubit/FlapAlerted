@@ -321,7 +321,8 @@ func (u Msg) GetAsPaths() ([]common.AsPathList, error) {
 }
 
 func (p prefix) ToNetCidr() netip.Prefix {
-	if p.AFI == AFI6 {
+	switch p.AFI {
+	case AFI6:
 		needBytes := 16 - len(p.Prefix)
 		if needBytes < 0 {
 			return netip.MustParsePrefix("::/0")
@@ -329,7 +330,7 @@ func (p prefix) ToNetCidr() netip.Prefix {
 		toAppend := make([]byte, needBytes)
 		addr := netip.AddrFrom16([16]byte(append(p.Prefix, toAppend...)))
 		return netip.PrefixFrom(addr, int(p.LengthBits))
-	} else if p.AFI == AFI4 {
+	case AFI4:
 		needBytes := 4 - len(p.Prefix)
 		if needBytes < 0 {
 			return netip.MustParsePrefix("0.0.0.0/0")

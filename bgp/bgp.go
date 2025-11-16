@@ -101,11 +101,12 @@ func newBGPConnection(logger *slog.Logger, conn net.Conn, defaultAFI update.AFI,
 				hasFourByteAsn = true
 			case open.AddPathCapabilityList:
 				for _, ac := range v {
-					if ac.AFI == update.AFI4 {
+					switch ac.AFI {
+					case update.AFI4:
 						if ac.TXRX != open.ReceiveOnly {
 							hasAddPathIPv4 = true
 						}
-					} else if ac.AFI == update.AFI6 {
+					case update.AFI6:
 						if ac.TXRX != open.ReceiveOnly {
 							hasAddPathIPv6 = true
 						}
@@ -115,9 +116,10 @@ func newBGPConnection(logger *slog.Logger, conn net.Conn, defaultAFI update.AFI,
 				if v.SAFI != update.UNICAST {
 					continue
 				}
-				if v.AFI == update.AFI4 {
+				switch v.AFI {
+				case update.AFI4:
 					hasMultiProtocolIPv4 = true
-				} else if v.AFI == update.AFI6 {
+				case update.AFI6:
 					hasMultiProtocolIPv6 = true
 				}
 			}
@@ -246,7 +248,7 @@ func handleIncoming(logger *slog.Logger, conn io.Reader, defaultAFI update.AFI, 
 			if err != nil {
 				return fmt.Errorf("failed parsing NOTIFICATION message %w", err)
 			}
-			logger.Debug("BGP notification", notificationMsg)
+			logger.Debug("BGP notification", "message", notificationMsg)
 			if notificationMsg.ErrorCode != notification.Cease {
 				return notificationMsg
 			}
