@@ -5,4 +5,5 @@ import (
 	_ "FlapAlerted/modules/log"
 	_ "FlapAlerted/modules/roaFilter"
 	_ "FlapAlerted/modules/script"
+	_ "FlapAlerted/modules/webhook"
 )
