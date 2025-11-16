@@ -9,12 +9,15 @@ import (
 	"sync"
 )
 
-// RFCs implemented
-// "A Border Gateway Protocol 4 (BGP-4)" https://datatracker.ietf.org/doc/html/rfc4271
-// "Multiprotocol Extensions for BGP-4" https://datatracker.ietf.org/doc/html/rfc4760
-// "Advertisement of Multiple Paths in BGP" https://datatracker.ietf.org/doc/html/rfc7911
-// "BGP Support for Four-Octet Autonomous System (AS) Number Space" https://datatracker.ietf.org/doc/html/rfc6793
-// "Capabilities Advertisement with BGP-4" https://datatracker.ietf.org/doc/html/rfc3392
+/*
+- RFCs implemented:
+- "A Border Gateway Protocol 4 (BGP-4)" https://datatracker.ietf.org/doc/html/rfc4271
+- "Multiprotocol Extensions for BGP-4" https://datatracker.ietf.org/doc/html/rfc4760
+- "Advertisement of Multiple Paths in BGP" https://datatracker.ietf.org/doc/html/rfc7911
+- "BGP Support for Four-Octet Autonomous System (AS) Number Space" https://datatracker.ietf.org/doc/html/rfc6793
+- "Capabilities Advertisement with BGP-4" https://datatracker.ietf.org/doc/html/rfc3392
+- "Extended Message Support for BGP" https://datatracker.ietf.org/doc/html/rfc8654
+*/
 
 func StartBGP(updateChannel chan update.Msg, bgpListenAddress string) {
 	listener, err := net.Listen("tcp", bgpListenAddress)

@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"io"
+	"strconv"
 )
 
 type BgpMessage struct {
@@ -65,7 +66,7 @@ func (m msgType) String() string {
 	case MsgKeepAlive:
 		return "KEEPALIVE"
 	}
-	return "UNKNOWN"
+	return "UNKNOWN: " + strconv.Itoa(int(m))
 }
 
 var bgpMarker = []byte{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}

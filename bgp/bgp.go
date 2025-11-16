@@ -2,6 +2,7 @@ package bgp
 
 import (
 	"FlapAlerted/bgp/common"
+	"FlapAlerted/bgp/notification"
 	"FlapAlerted/bgp/open"
 	"FlapAlerted/bgp/update"
 	"bufio"
@@ -75,6 +76,9 @@ func newBGPConnection(logger *slog.Logger, conn net.Conn, defaultAFI update.AFI,
 		return fmt.Errorf("error reading OPEN message from peer %w", err), false
 	}
 	if msg.Header.BgpType != common.MsgOpen {
+		if nMsg, err := notification.GetNotification(notification.FiniteStateMachineError, 0, []byte{}); err == nil {
+			_, _ = conn.Write(nMsg)
+		}
 		return fmt.Errorf("unexpected message of type '%s', expected open", msg.Header.BgpType), false
 	}
 
@@ -130,17 +134,29 @@ func newBGPConnection(logger *slog.Logger, conn net.Conn, defaultAFI update.AFI,
 	remoteRouterID := msg.Body.(open.Msg).RouterID
 
 	if !hasFourByteAsn {
+		if nMsg, err := notification.GetNotification(notification.OpenMessageError, notification.OpenUnsupportedOptionalParameter, []byte{}); err == nil {
+			_, _ = conn.Write(nMsg)
+		}
 		return fmt.Errorf("four byte ASNs not supported by peer"), false
 	}
 	if remoteASN != asn {
+		if nMsg, err := notification.GetNotification(notification.OpenMessageError, notification.OpenBadPeerAS, []byte{}); err == nil {
+			_, _ = conn.Write(nMsg)
+		}
 		return fmt.Errorf("remote ASN (%d) does not match the set asn (%d)", remoteASN, asn), false
 	}
 
 	if !hasMultiProtocolIPv4 && !hasMultiProtocolIPv6 {
+		if nMsg, err := notification.GetNotification(notification.OpenMessageError, notification.OpenUnsupportedOptionalParameter, []byte{}); err == nil {
+			_, _ = conn.Write(nMsg)
+		}
 		return fmt.Errorf("multiprotocol capbility is not supported by peer"), false
 	}
 
 	if addPathEnabled && (!hasAddPathIPv6 || !hasAddPathIPv4) {
+		if nMsg, err := notification.GetNotification(notification.OpenMessageError, notification.OpenUnsupportedOptionalParameter, []byte{}); err == nil {
+			_, _ = conn.Write(nMsg)
+		}
 		return fmt.Errorf("addPath is not supported by peer"), false
 	}
 
@@ -175,6 +191,7 @@ func newBGPConnection(logger *slog.Logger, conn net.Conn, defaultAFI update.AFI,
 	if err != nil {
 		return err, true
 	}
+	logger.Info("BGP Connection closed", "routerID", remoteRouterID)
 	return nil, true
 }
 
@@ -225,7 +242,15 @@ func handleIncoming(logger *slog.Logger, conn io.Reader, defaultAFI update.AFI, 
 		}
 		switch msg.Header.BgpType {
 		case common.MsgNotification:
-			return errors.New("bgp notification")
+			notificationMsg, err := notification.ParseMsgNotification(r)
+			if err != nil {
+				return fmt.Errorf("failed parsing NOTIFICATION message %w", err)
+			}
+			logger.Debug("BGP notification", notificationMsg)
+			if notificationMsg.ErrorCode != notification.Cease {
+				return notificationMsg
+			}
+			return nil
 		case common.MsgKeepAlive:
 			logger.Debug("Received keepalive message")
 			select {
