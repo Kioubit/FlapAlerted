@@ -182,3 +182,59 @@ a {
 a:hover {
     color: var(--accent-color);
 }
+
+.SessionsDialog-closeButton {
+    float: right;
+    margin-bottom: 10px;
+}
+
+.SessionsDialog-loading {
+    text-align: center;
+    padding: 20px;
+}
+
+.SessionsDialog-spinner {
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #3498db;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    animation: SessionsDialog-spin 1s linear infinite;
+    margin: 15px auto;
+}
+
+@keyframes SessionsDialog-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.SessionsDialog-table {
+    width: 100%;
+    border-collapse: collapse;
+    display: none;
+}
+
+.SessionsDialog-headerRow {
+    background: #f0f0f0;
+}
+
+.SessionsDialog-headerCell {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+}
+
+.SessionsDialog-bodyCell {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+}
+
+.SessionsDialog-error {
+    color: red;
+    display: none;
+}
+
+.sessionsTableContainer {
+    overflow-x: auto;
+}

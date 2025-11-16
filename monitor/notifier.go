@@ -220,3 +220,7 @@ func addUint64(left, right uint64) uint64 {
 	}
 	return left + right
 }
+
+func GetSessionInfoJson() (string, error) {
+	return bgp.GetSessionInfoJson()
+}

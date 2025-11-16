@@ -62,12 +62,37 @@
             </div>
             <div>
                 <div class="footer-label">Info</div>
-                <div>Connected BGP feeds:&nbsp;<span class="footer-value" id="sessionCount">...</span></div>
+                <div>Connected BGP feeds:&nbsp;<span class="footer-value" id="sessionCount">...</span> <button id="sessionCountLink">View</button></div>
                 <div>
                     <a href="https://github.com/Kioubit/FlapAlerted/" title="Source Code">FlapAlerted<span id="version"></span></a></div>
             </div>
         </div>
     </div>
 </div>
+<dialog id="sessionsDialog">
+    <button id="closeSessionsDialog" class="SessionsDialog-closeButton">Close</button>
+    <h2>Established Sessions</h2>
+
+    <div id="sessionsLoading" class="SessionsDialog-loading">
+        <p>Loading sessions...</p>
+        <div class="SessionsDialog-spinner"></div>
+    </div>
+
+    <div id="sessionsTableContainer">
+        <table id="sessionsTable" class="SessionsDialog-table">
+            <thead>
+            <tr class="SessionsDialog-headerRow">
+                <th class="SessionsDialog-headerCell">Remote</th>
+                <th class="SessionsDialog-headerCell">Router ID</th>
+                <th class="SessionsDialog-headerCell">Hostname</th>
+                <th class="SessionsDialog-headerCell">Time Elapsed</th>
+            </tr>
+            </thead>
+            <tbody id="sessionsTableBody"></tbody>
+        </table>
+    </div>
+
+    <p id="sessionsError" class="SessionsDialog-error"></p>
+</dialog>
 </body>
 </html>

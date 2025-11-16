@@ -334,3 +334,63 @@ getStats();
 updateCapabilities().catch((err) => {
     console.log(err);
 });
+
+{
+    const dialog = document.getElementById('sessionsDialog');
+    const loading = document.getElementById('sessionsLoading');
+    const table = document.getElementById('sessionsTable');
+    const tbody = document.getElementById('sessionsTableBody');
+    const error = document.getElementById('sessionsError');
+
+    document.getElementById('closeSessionsDialog')?.addEventListener('click', () => {
+        dialog.close();
+    });
+
+    document.getElementById("sessionCountLink").onclick = async (ev) => {
+        ev.preventDefault()
+        loading.style.display = 'block';
+        table.style.display = 'none';
+        error.style.display = 'none';
+        tbody.innerHTML = '';
+
+        dialog.showModal();
+
+        try {
+            const response = await fetch('sessions');
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const data = await response.json();
+
+            const now = Math.floor(Date.now() / 1000);
+            const fragment = document.createDocumentFragment();
+
+            data.forEach(entry => {
+                const row = document.createElement('tr');
+
+                // Create cells with proper styling
+                const cells = [
+                    entry.Remote,
+                    entry.RouterID,
+                    entry.Hostname || 'N/A',
+                    toTimeElapsed(now - entry.Time)
+                ];
+
+                cells.forEach(text => {
+                    const cell = document.createElement('td');
+                    cell.textContent = text;
+                    cell.style.cssText = 'border: 1px solid #ddd; padding: 8px; text-align: left;';
+                    row.appendChild(cell);
+                });
+
+                fragment.appendChild(row);
+            });
+
+            tbody.appendChild(fragment);
+            loading.style.display = 'none';
+            table.style.display = 'table';
+        } catch (err) {
+            loading.style.display = 'none';
+            error.textContent = `Error loading sessions: ${err.message}`;
+            error.style.display = 'block';
+        }
+    };
+}

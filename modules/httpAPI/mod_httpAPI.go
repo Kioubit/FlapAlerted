@@ -90,6 +90,7 @@ func startComplete() {
 	mux.HandleFunc("/flaps/prefix", getPrefix)
 	mux.HandleFunc("/flaps/statStream", getStatisticStream)
 	mux.HandleFunc("/flaps/active/history", getFlapHistory)
+	mux.HandleFunc("/sessions", getBgpSessions)
 
 	if !*limitedHttpAPI {
 		mux.HandleFunc("/flaps/avgRouteChanges90", getAvgRouteChanges)
@@ -250,4 +251,13 @@ func prometheus(w http.ResponseWriter, _ *http.Request) {
 	output += fmt.Sprintln("sessions", metric.Sessions)
 
 	_, _ = w.Write([]byte(output))
+}
+
+func getBgpSessions(w http.ResponseWriter, _ *http.Request) {
+	info, err := monitor.GetSessionInfoJson()
+	if err != nil {
+		w.WriteHeader(500)
+		return
+	}
+	_, _ = w.Write([]byte(info))
 }
