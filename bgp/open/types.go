@@ -50,6 +50,7 @@ const (
 	CapabilityCodeAddPath         CapabilityCode = 69
 	CapabilityCodeExtendedMessage CapabilityCode = 6
 	CapabilityCodeHostname        CapabilityCode = 73
+	CapabilityCodeExtendedNextHop CapabilityCode = 5
 )
 
 type CapabilityValue interface {
@@ -87,6 +88,14 @@ type ExtendedMessageCapability struct{}
 type HostnameCapability struct {
 	Hostname   string
 	DomainName string
+}
+
+type ExtendedNextHopCapabilityList []ExtendedNextHopCapability
+
+type ExtendedNextHopCapability struct {
+	AFI        update.AFI
+	SAFI       update.SAFI
+	NextHopAFI update.AFI
 }
 
 type UnknownCapability struct {

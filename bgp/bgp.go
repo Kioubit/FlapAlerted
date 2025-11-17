@@ -67,6 +67,16 @@ func newBGPConnection(logger *slog.Logger, conn net.Conn, defaultAFI update.AFI,
 				Hostname: "flapalerted",
 			},
 		},
+		open.CapabilityOptionalParameter{
+			CapabilityCode: open.CapabilityCodeExtendedNextHop,
+			CapabilityValue: open.ExtendedNextHopCapabilityList{
+				open.ExtendedNextHopCapability{
+					AFI:        update.AFI4,
+					SAFI:       update.UNICAST,
+					NextHopAFI: update.AFI6,
+				},
+			},
+		},
 	)
 	if err != nil {
 		return fmt.Errorf("error marshalling OPEN message %w", err), false

@@ -155,6 +155,32 @@ func (c HostnameCapability) MarshalBinary() ([]byte, error) {
 	return b.Bytes(), nil
 }
 
+func (c ExtendedNextHopCapabilityList) MarshalBinary() ([]byte, error) {
+	b := make([]byte, 0)
+	for _, cap := range c {
+		m, err := cap.MarshalBinary()
+		if err != nil {
+			return nil, err
+		}
+		b = append(b, m...)
+	}
+	return b, nil
+}
+
+func (c ExtendedNextHopCapability) MarshalBinary() ([]byte, error) {
+	var b bytes.Buffer
+	if err := binary.Write(&b, binary.BigEndian, uint16(c.AFI)); err != nil {
+		return nil, err
+	}
+	if err := binary.Write(&b, binary.BigEndian, uint16(c.SAFI)); err != nil {
+		return nil, err
+	}
+	if err := binary.Write(&b, binary.BigEndian, uint16(c.NextHopAFI)); err != nil {
+		return nil, err
+	}
+	return b.Bytes(), nil
+}
+
 func (c UnknownCapability) MarshalBinary() ([]byte, error) {
 	return c.Value, nil
 }
