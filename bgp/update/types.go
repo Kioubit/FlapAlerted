@@ -64,10 +64,11 @@ type prefix struct {
 }
 
 type pathAttribute struct {
-	Flags          pathAttributeFlags
-	TypeCode       pathAttributeType
-	Body           []byte
-	addPathEnabled bool // Added
+	Flags                pathAttributeFlags
+	TypeCode             pathAttributeType
+	Body                 []byte
+	addPathEnabled       bool // Added
+	hasExtendedNextHopV4 bool //Added
 }
 
 type pathAttributeFlags byte

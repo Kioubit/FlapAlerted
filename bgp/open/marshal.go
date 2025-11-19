@@ -155,10 +155,10 @@ func (c HostnameCapability) MarshalBinary() ([]byte, error) {
 	return b.Bytes(), nil
 }
 
-func (c ExtendedNextHopCapabilityList) MarshalBinary() ([]byte, error) {
+func (e ExtendedNextHopCapabilityList) MarshalBinary() ([]byte, error) {
 	b := make([]byte, 0)
-	for _, cap := range c {
-		m, err := cap.MarshalBinary()
+	for _, c := range e {
+		m, err := c.MarshalBinary()
 		if err != nil {
 			return nil, err
 		}
@@ -168,6 +168,8 @@ func (c ExtendedNextHopCapabilityList) MarshalBinary() ([]byte, error) {
 }
 
 func (c ExtendedNextHopCapability) MarshalBinary() ([]byte, error) {
+	// The SAFI field in this capability is 2 octets in contrast to the regular SAFI field, thus
+	// necessitating individual handling of the fields
 	var b bytes.Buffer
 	if err := binary.Write(&b, binary.BigEndian, uint16(c.AFI)); err != nil {
 		return nil, err

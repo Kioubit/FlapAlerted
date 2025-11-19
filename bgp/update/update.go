@@ -10,7 +10,7 @@ import (
 	"net/netip"
 )
 
-func ParseMsgUpdate(r io.Reader, defaultAFI AFI, addPathEnabled bool) (msg Msg, err error) {
+func ParseMsgUpdate(r io.Reader, defaultAFI AFI, addPathEnabled bool, hasExtendedNextHopV4 bool) (msg Msg, err error) {
 	msg = Msg{}
 	if err := binary.Read(r, binary.BigEndian, &msg.WithdrawnRoutesLength); err != nil {
 		return Msg{}, err
@@ -35,6 +35,7 @@ func ParseMsgUpdate(r io.Reader, defaultAFI AFI, addPathEnabled bool) (msg Msg, 
 	for {
 		attribute := pathAttribute{}
 		attribute.addPathEnabled = addPathEnabled
+		attribute.hasExtendedNextHopV4 = hasExtendedNextHopV4
 		if err := binary.Read(aR, binary.BigEndian, &attribute.Flags); err != nil {
 			if errors.Is(err, io.EOF) {
 				break
@@ -183,7 +184,15 @@ func parseMultiProtocolReachableNLRI(a pathAttribute) (pathAttributeBody, error)
 		result.NextHop = make([]netip.Addr, 0)
 	}
 
-	if result.AFI == AFI4 {
+	// Extended next hops
+	nextHopAfi := result.AFI
+	if a.hasExtendedNextHopV4 && nextHopAfi == AFI4 {
+		if result.NextHopLength == 16 || result.NextHopLength == 32 {
+			nextHopAfi = AFI6
+		}
+	}
+
+	if nextHopAfi == AFI4 {
 		result.NextHop = make([]netip.Addr, 0, result.NextHopLength/4)
 		ip := [4]byte{}
 		for {

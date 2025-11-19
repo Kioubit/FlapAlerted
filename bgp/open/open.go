@@ -2,6 +2,7 @@ package open
 
 import (
 	"FlapAlerted/bgp/common"
+	"FlapAlerted/bgp/update"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -135,6 +136,29 @@ func parseCapabilityParameter(r io.Reader) (result CapabilityList, err error) {
 				return result, err
 			}
 			p.CapabilityValue = t
+		case CapabilityCodeExtendedNextHop:
+			list := make(ExtendedNextHopCapabilityList, 0)
+			for {
+				t := ExtendedNextHopCapability{}
+				// The SAFI field in this capability is 2 octets in contrast to the regular SAFI field, thus
+				// necessitating individual handling of the fields
+				if err := binary.Read(cr, binary.BigEndian, &t.AFI); err != nil {
+					if errors.Is(err, io.EOF) {
+						break
+					}
+					return result, err
+				}
+				safi := [2]byte{}
+				if err := binary.Read(cr, binary.BigEndian, &safi); err != nil {
+					return result, err
+				}
+				t.SAFI = update.SAFI(binary.BigEndian.Uint16(safi[:]))
+				if err := binary.Read(cr, binary.BigEndian, &t.NextHopAFI); err != nil {
+					return result, err
+				}
+				list = append(list, t)
+			}
+			p.CapabilityValue = list
 		default:
 			t := UnknownCapability{}
 			t.Value = make([]byte, p.CapabilityLength)

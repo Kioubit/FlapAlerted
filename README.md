@@ -47,6 +47,7 @@ protocol bgp flapalerted {
         add paths on;
         export all;
         import none;
+        extended next hop on;
     };
 
     ipv6 {

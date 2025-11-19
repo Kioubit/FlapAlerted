@@ -108,6 +108,7 @@ func newBGPConnection(logger *slog.Logger, conn net.Conn, defaultAFI update.AFI,
 	hasAddPathIPv4 := false
 	hasAddPathIPv6 := false
 	hasFourByteAsn := false
+	hasExtendedNextHopV4 := false
 	var remoteASN uint32 = 0
 	var remoteHostname = ""
 	for _, p := range msg.Body.(open.Msg).OptionalParameters {
@@ -142,6 +143,12 @@ func newBGPConnection(logger *slog.Logger, conn net.Conn, defaultAFI update.AFI,
 			case open.HostnameCapability:
 				remoteHostname = v.Hostname + v.DomainName
 				logger = logger.With("hostname", remoteHostname)
+			case open.ExtendedNextHopCapabilityList:
+				for _, ec := range v {
+					if ec.AFI == update.AFI4 && ec.NextHopAFI == update.AFI6 && ec.SAFI == update.UNICAST {
+						hasExtendedNextHopV4 = true
+					}
+				}
 			}
 		}
 	}
@@ -188,12 +195,20 @@ func newBGPConnection(logger *slog.Logger, conn net.Conn, defaultAFI update.AFI,
 		return fmt.Errorf("error writing keep alive message %w", err), false
 	}
 
-	msg, _, err = common.ReadMessage(conn)
+	msg, r, err = common.ReadMessage(conn)
 	if err != nil {
 		return fmt.Errorf("error reading KEEPALIVE message from peer %w", err), false
 	}
 	if msg.Header.BgpType != common.MsgKeepAlive {
-		return fmt.Errorf("unexpected message of type '%s', expected keepalive", msg.Header.BgpType), false
+		if msg.Header.BgpType == common.MsgNotification {
+			notificationMsg, err := notification.ParseMsgNotification(r)
+			if err != nil {
+				return fmt.Errorf("error parsing notification message %w", err), false
+			}
+			return fmt.Errorf("peer reported an error %s", notificationMsg), false
+		} else {
+			return fmt.Errorf("unexpected message of type '%s', expected keepalive", msg.Header.BgpType), false
+		}
 	}
 
 	logger.Info("BGP session established", "routerID", remoteRouterID)
@@ -209,7 +224,7 @@ func newBGPConnection(logger *slog.Logger, conn net.Conn, defaultAFI update.AFI,
 	defer close(keepAliveChan)
 	keepAliveHandler(logger, keepAliveChan, conn, applicableHoldTime)
 
-	err = handleIncoming(logger, conn, defaultAFI, addPathEnabled, updateChannel, keepAliveChan)
+	err = handleIncoming(logger, conn, defaultAFI, addPathEnabled, hasExtendedNextHopV4, updateChannel, keepAliveChan)
 	if err != nil {
 		return err, true
 	}
@@ -255,7 +270,7 @@ func keepAliveHandler(logger *slog.Logger, in chan bool, conn net.Conn, holdTime
 	}()
 }
 
-func handleIncoming(logger *slog.Logger, conn io.Reader, defaultAFI update.AFI, addPathEnabled bool, updateChannel chan update.Msg, keepAliveChan chan bool) error {
+func handleIncoming(logger *slog.Logger, conn io.Reader, defaultAFI update.AFI, addPathEnabled bool, hasExtendedNextHopV4 bool, updateChannel chan update.Msg, keepAliveChan chan bool) error {
 	conn = bufio.NewReader(conn)
 	for {
 		msg, r, err := common.ReadMessage(conn)
@@ -287,7 +302,7 @@ func handleIncoming(logger *slog.Logger, conn io.Reader, defaultAFI update.AFI, 
 			case keepAliveChan <- true:
 			default:
 			}
-			msg.Body, err = update.ParseMsgUpdate(r, defaultAFI, addPathEnabled)
+			msg.Body, err = update.ParseMsgUpdate(r, defaultAFI, addPathEnabled, hasExtendedNextHopV4)
 			if err != nil {
 				return fmt.Errorf("failed parsing UPDATE message %w", err)
 			}
