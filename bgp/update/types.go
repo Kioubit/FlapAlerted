@@ -1,8 +1,7 @@
 package update
 
 import (
-	"encoding/json"
-	"log/slog"
+	"FlapAlerted/bgp/common"
 	"net/netip"
 )
 
@@ -14,61 +13,17 @@ type Msg struct {
 	NetworkLayerReachabilityInformation []prefix
 }
 
-func (u Msg) LogValue() slog.Value {
-	k, err := json.Marshal(u)
-	if err != nil {
-		return slog.StringValue("Failed to marshal update to JSON: " + err.Error())
-	}
-
-	asPath, err := u.GetAsPaths()
-	if err != nil {
-		slog.Warn("error getting ASPath", "error", err)
-	}
-
-	nlRi, foundNlRi, err := u.GetMpReachNLRI()
-	if err != nil {
-		slog.Warn("error getting MpReachNLRI", "error", err)
-	}
-	prefixList := make([]string, 0)
-	if foundNlRi {
-		for i := range nlRi.NLRI {
-			prefixList = append(prefixList, nlRi.NLRI[i].ToNetCidr().String())
-		}
-	}
-
-	for _, information := range u.NetworkLayerReachabilityInformation {
-		prefixList = append(prefixList, information.ToNetCidr().String())
-	}
-
-	return slog.GroupValue(
-		slog.Attr{
-			Key:   "full",
-			Value: slog.StringValue(string(k)),
-		},
-		slog.Attr{
-			Key:   "asPath",
-			Value: slog.AnyValue(asPath),
-		},
-		slog.Attr{
-			Key:   "prefixes",
-			Value: slog.AnyValue(prefixList),
-		},
-	)
-}
-
 type prefix struct {
-	AFI        AFI // Added
+	AFI        common.AFI // Added
 	PathID     uint32
 	LengthBits uint8
 	Prefix     []byte
 }
 
 type pathAttribute struct {
-	Flags                pathAttributeFlags
-	TypeCode             pathAttributeType
-	Body                 []byte
-	addPathEnabled       bool // Added
-	hasExtendedNextHopV4 bool //Added
+	Flags    pathAttributeFlags
+	TypeCode pathAttributeType
+	Body     []byte
 }
 
 type pathAttributeFlags byte
@@ -91,23 +46,9 @@ const (
 	AsSequence pathSegmentType = 2
 )
 
-type AFI uint16
-
-const (
-	AFI4 AFI = 1
-	AFI6 AFI = 2
-)
-
-type SAFI uint8
-
-const (
-	UNICAST   SAFI = 1
-	MULTICAST SAFI = 2
-)
-
 type MPReachNLRI struct {
-	AFI           AFI
-	SAFI          SAFI
+	AFI           common.AFI
+	SAFI          common.SAFI
 	NextHopLength uint8
 	NextHop       []netip.Addr
 	Reserved      uint8
@@ -115,8 +56,8 @@ type MPReachNLRI struct {
 }
 
 type MPUnReachNLRI struct {
-	AFI       AFI
-	SAFI      SAFI
+	AFI       common.AFI
+	SAFI      common.SAFI
 	Withdrawn []prefix
 }
 

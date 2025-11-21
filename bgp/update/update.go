@@ -10,7 +10,7 @@ import (
 	"net/netip"
 )
 
-func ParseMsgUpdate(r io.Reader, defaultAFI AFI, addPathEnabled bool, hasExtendedNextHopV4 bool) (msg Msg, err error) {
+func ParseMsgUpdate(r io.Reader, defaultAFI common.AFI, addPathEnabled bool) (msg Msg, err error) {
 	msg = Msg{}
 	if err := binary.Read(r, binary.BigEndian, &msg.WithdrawnRoutesLength); err != nil {
 		return Msg{}, err
@@ -34,8 +34,6 @@ func ParseMsgUpdate(r io.Reader, defaultAFI AFI, addPathEnabled bool, hasExtende
 
 	for {
 		attribute := pathAttribute{}
-		attribute.addPathEnabled = addPathEnabled
-		attribute.hasExtendedNextHopV4 = hasExtendedNextHopV4
 		if err := binary.Read(aR, binary.BigEndian, &attribute.Flags); err != nil {
 			if errors.Is(err, io.EOF) {
 				break
@@ -76,7 +74,7 @@ func ParseMsgUpdate(r io.Reader, defaultAFI AFI, addPathEnabled bool, hasExtende
 	return msg, nil
 }
 
-func parsePrefixList(r io.Reader, afi AFI, addPathEnabled bool) ([]prefix, error) {
+func parsePrefixList(r io.Reader, afi common.AFI, addPathEnabled bool) ([]prefix, error) {
 	prefixList := make([]prefix, 0)
 	for {
 		p := prefix{}
@@ -132,7 +130,7 @@ func (f pathAttributeFlags) isExtendedLength() bool {
 	return isBitSet(byte(f), 4)
 }
 
-func parseMultiProtocolUnreachableNLRI(a pathAttribute) (pathAttributeBody, error) {
+func parseMultiProtocolUnreachableNLRI(a pathAttribute, session *common.LocalSession) (pathAttributeBody, error) {
 	if !a.Flags.isWellKnown() {
 		return originAttribute{}, errors.New("well-known flag not set")
 	}
@@ -145,19 +143,19 @@ func parseMultiProtocolUnreachableNLRI(a pathAttribute) (pathAttributeBody, erro
 		return nil, err
 	}
 
-	if (result.AFI != AFI4 && result.AFI != AFI6) || result.SAFI != UNICAST {
+	if (result.AFI != common.AFI4 && result.AFI != common.AFI6) || result.SAFI != common.UNICAST {
 		return nil, errors.New("unknown <AFI,SAFI> combination")
 	}
 
 	var err error
-	result.Withdrawn, err = parsePrefixList(r, result.AFI, a.addPathEnabled)
+	result.Withdrawn, err = parsePrefixList(r, result.AFI, session.AddPathEnabled)
 	if err != nil {
 		return nil, err
 	}
 	return result, nil
 }
 
-func parseMultiProtocolReachableNLRI(a pathAttribute) (pathAttributeBody, error) {
+func parseMultiProtocolReachableNLRI(a pathAttribute, session *common.LocalSession) (pathAttributeBody, error) {
 	if !a.Flags.isWellKnown() {
 		return nil, errors.New("well-known flag not set")
 	}
@@ -170,7 +168,7 @@ func parseMultiProtocolReachableNLRI(a pathAttribute) (pathAttributeBody, error)
 		return nil, err
 	}
 
-	if (result.AFI != AFI4 && result.AFI != AFI6) || result.SAFI != UNICAST {
+	if (result.AFI != common.AFI4 && result.AFI != common.AFI6) || result.SAFI != common.UNICAST {
 		return nil, errors.New("unknown <AFI,SAFI> combination")
 	}
 
@@ -186,13 +184,13 @@ func parseMultiProtocolReachableNLRI(a pathAttribute) (pathAttributeBody, error)
 
 	// Extended next hops
 	nextHopAfi := result.AFI
-	if a.hasExtendedNextHopV4 && nextHopAfi == AFI4 {
+	if session.HasExtendedNextHopV4 && nextHopAfi == common.AFI4 {
 		if result.NextHopLength == 16 || result.NextHopLength == 32 {
-			nextHopAfi = AFI6
+			nextHopAfi = common.AFI6
 		}
 	}
 
-	if nextHopAfi == AFI4 {
+	if nextHopAfi == common.AFI4 {
 		result.NextHop = make([]netip.Addr, 0, result.NextHopLength/4)
 		ip := [4]byte{}
 		for {
@@ -223,7 +221,7 @@ func parseMultiProtocolReachableNLRI(a pathAttribute) (pathAttributeBody, error)
 	}
 
 	var err error
-	result.NLRI, err = parsePrefixList(r, result.AFI, a.addPathEnabled)
+	result.NLRI, err = parsePrefixList(r, result.AFI, session.AddPathEnabled)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing prefixList %w", err)
 	}
@@ -269,16 +267,16 @@ func parseAsPathAttribute(a pathAttribute) (pathAttributeBody, error) {
 	return result, nil
 }
 
-func (a pathAttribute) GetAttribute() (pathAttributeBody, error) {
+func (a pathAttribute) GetAttribute(session *common.LocalSession) (pathAttributeBody, error) {
 	switch a.TypeCode {
 	case OriginAttr:
 		return parseOriginAttribute(a)
 	case AsPathAttr:
 		return parseAsPathAttribute(a)
 	case MultiProtocolReachableNLRIAttr:
-		return parseMultiProtocolReachableNLRI(a)
+		return parseMultiProtocolReachableNLRI(a, session)
 	case MultiProtocolUnreachableNLRIAttr:
-		return parseMultiProtocolUnreachableNLRI(a)
+		return parseMultiProtocolUnreachableNLRI(a, session)
 	}
 	return nil, fmt.Errorf("unknown attribute code %d", a.TypeCode)
 }
@@ -287,10 +285,10 @@ func isBitSet(b byte, pos int) bool {
 	return (b & (1 << pos)) != 0
 }
 
-func (u Msg) GetMpReachNLRI() (MPReachNLRI, bool, error) {
+func (u Msg) GetMpReachNLRI(session *common.LocalSession) (MPReachNLRI, bool, error) {
 	for _, a := range u.PathAttributes {
 		if a.TypeCode == MultiProtocolReachableNLRIAttr {
-			target, err := a.GetAttribute()
+			target, err := a.GetAttribute(session)
 			if err != nil {
 				return MPReachNLRI{}, false, err
 			}
@@ -300,10 +298,10 @@ func (u Msg) GetMpReachNLRI() (MPReachNLRI, bool, error) {
 	return MPReachNLRI{}, false, nil
 }
 
-func (u Msg) GetMpUnReachNLRI() (MPUnReachNLRI, bool, error) {
+func (u Msg) GetMpUnReachNLRI(session *common.LocalSession) (MPUnReachNLRI, bool, error) {
 	for _, a := range u.PathAttributes {
 		if a.TypeCode == MultiProtocolUnreachableNLRIAttr {
-			target, err := a.GetAttribute()
+			target, err := a.GetAttribute(session)
 			if err != nil {
 				return MPUnReachNLRI{}, false, err
 			}
@@ -313,25 +311,29 @@ func (u Msg) GetMpUnReachNLRI() (MPUnReachNLRI, bool, error) {
 	return MPUnReachNLRI{}, false, nil
 }
 
-func (u Msg) GetAsPaths() ([]common.AsPathList, error) {
-	paths := make([]common.AsPathList, 0)
+func (u Msg) GetAsPath(session *common.LocalSession) (common.AsPath, error) {
+	path := make([]uint32, 0)
 	for _, a := range u.PathAttributes {
-		if a.TypeCode == AsPathAttr {
-			attribute, err := a.GetAttribute()
+		switch a.TypeCode {
+		case AsPathAttr:
+			attribute, err := a.GetAttribute(session)
 			if err != nil {
-				return nil, err
+				return common.AsPath{}, err
 			}
 			if attribute.(asPathAttribute).PathSegmentType == AsSequence {
-				paths = append(paths, common.AsPathList{Asn: attribute.(asPathAttribute).Value})
+				path = append(path, attribute.(asPathAttribute).Value...)
 			}
 		}
 	}
-	return paths, nil
+	if len(path) == 0 {
+		path = append(path, session.Asn)
+	}
+	return path, nil
 }
 
 func (p prefix) ToNetCidr() netip.Prefix {
 	switch p.AFI {
-	case AFI6:
+	case common.AFI6:
 		needBytes := 16 - len(p.Prefix)
 		if needBytes < 0 {
 			return netip.MustParsePrefix("::/0")
@@ -339,7 +341,7 @@ func (p prefix) ToNetCidr() netip.Prefix {
 		toAppend := make([]byte, needBytes)
 		addr := netip.AddrFrom16([16]byte(append(p.Prefix, toAppend...)))
 		return netip.PrefixFrom(addr, int(p.LengthBits))
-	case AFI4:
+	case common.AFI4:
 		needBytes := 4 - len(p.Prefix)
 		if needBytes < 0 {
 			return netip.MustParsePrefix("0.0.0.0/0")

@@ -34,22 +34,22 @@ func init() {
 
 	monitor.RegisterModule(&monitor.Module{
 		Name:            moduleName,
-		CallbackOnce:    logFlapStart,
+		CallbackStart:   logFlapStart,
 		CallbackOnceEnd: logFlapEnd,
 	})
 }
 
 var logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{})).With("module", moduleName)
 
-func logFlapStart(f *monitor.Flap) {
+func logFlapStart(f monitor.FlapEvent) {
 	callWebHook(*webhookUrlStart, f)
 }
 
-func logFlapEnd(f *monitor.Flap) {
+func logFlapEnd(f monitor.FlapEvent) {
 	callWebHook(*webhookUrlEnd, f)
 }
 
-func callWebHook(URL string, f *monitor.Flap) {
+func callWebHook(URL string, f monitor.FlapEvent) {
 	if URL == "" {
 		return
 	}

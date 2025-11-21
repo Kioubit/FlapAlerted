@@ -1,19 +1,16 @@
 package monitor
 
 import (
-	"FlapAlerted/bgp"
+	"FlapAlerted/bgp/common"
 	"FlapAlerted/config"
 	"log/slog"
-	"math"
-	"sort"
 	"strconv"
 )
 
 type Module struct {
 	Name            string
-	Callback        func(*Flap)
-	CallbackOnce    func(*Flap)
-	CallbackOnceEnd func(*Flap)
+	CallbackStart   func(event FlapEvent)
+	CallbackOnceEnd func(event FlapEvent)
 	OnStartComplete func()
 }
 
@@ -25,11 +22,11 @@ var (
 	version string
 )
 
-func notificationHandler(c, cEnd chan *Flap) {
+func notificationHandler(c, cEnd chan FlapEvent) {
 	modulesStarted = true
 	moduleCallbackStartComplete()
 	for {
-		var f *Flap
+		var f FlapEvent
 		endNotification := false
 		select {
 		case f = <-c:
@@ -38,25 +35,13 @@ func notificationHandler(c, cEnd chan *Flap) {
 		}
 		for _, m := range moduleList {
 			if endNotification {
-				if !f.notifiedOnce.Load() {
-					continue
-				}
 				if m.CallbackOnceEnd != nil {
 					go m.CallbackOnceEnd(f)
 				}
 				continue
 			}
-			if m.Callback != nil {
-				go m.Callback(f)
-			}
-			if m.CallbackOnce != nil {
-				if !f.meetsMinimumAge.Load() {
-					continue
-				}
-				if !f.notifiedOnce.CompareAndSwap(false, true) {
-					continue
-				}
-				go m.CallbackOnce(f)
+			if m.CallbackStart != nil {
+				go m.CallbackStart(f)
 			}
 		}
 	}
@@ -98,8 +83,9 @@ func SetVersion(v string) {
 	version = v
 }
 
-func GetActiveFlaps() []*Flap {
-	return getActiveFlapList()
+func GetActiveFlaps() []FlapEvent {
+	active, _ := GetActiveFlapList()
+	return active
 }
 
 func GetActiveFlapsSummary() []FlapSummary {
@@ -132,7 +118,7 @@ func GetMetric() Metric {
 		ActiveFlapCount:                activeFlapCount,
 		ActiveFlapTotalPathChangeCount: pathChangeCount,
 		AverageRouteChanges90:          avgStr,
-		Sessions:                       bgp.GetSessionCount(),
+		Sessions:                       common.GetSessionCount(),
 	}
 }
 
@@ -143,13 +129,11 @@ type Capabilities struct {
 }
 
 type UserParameters struct {
-	FlapPeriod               int
-	RouteChangeCounter       int
-	MinimumAge               int
-	KeepPathInfo             bool
-	KeepPathInfoDetectedOnly bool
-	AddPath                  bool
-	RelevantAsnPosition      int
+	RouteChangeCounter   int
+	OverThresholdTarget  int
+	UnderThresholdTarget int
+	KeepPathInfo         bool
+	AddPath              bool
 }
 
 func GetCapabilities() Capabilities {
@@ -157,70 +141,11 @@ func GetCapabilities() Capabilities {
 		Version: version,
 		Modules: getModuleNameList(),
 		UserParameters: UserParameters{
-			FlapPeriod:               config.GlobalConf.FlapPeriod,
-			RouteChangeCounter:       config.GlobalConf.RouteChangeCounter,
-			KeepPathInfo:             config.GlobalConf.KeepPathInfo,
-			KeepPathInfoDetectedOnly: config.GlobalConf.KeepPathInfoDetectedOnly,
-			AddPath:                  config.GlobalConf.UseAddPath,
-			RelevantAsnPosition:      config.GlobalConf.RelevantAsnPosition,
-			MinimumAge:               config.GlobalConf.MinimumAge,
+			RouteChangeCounter:   config.GlobalConf.RouteChangeCounter,
+			OverThresholdTarget:  config.GlobalConf.OverThresholdTarget,
+			UnderThresholdTarget: config.GlobalConf.UnderThresholdTarget,
+			KeepPathInfo:         config.GlobalConf.KeepPathInfo,
+			AddPath:              config.GlobalConf.UseAddPath,
 		},
 	}
-}
-
-func GetStats() []statisticWrapper {
-	statListLock.RLock()
-	defer statListLock.RUnlock()
-	result := make([]statisticWrapper, len(statList))
-	for i := range statList {
-		result[i] = statisticWrapper{
-			List:     nil,
-			Stats:    statList[i],
-			Sessions: -1,
-		}
-	}
-	if len(statList) > 0 {
-		l := lastFlapSummaryList.Load()
-		if l != nil {
-			result[len(statList)-1].List = *l
-		}
-	}
-	return result
-}
-
-func SubscribeToStats() chan statisticWrapper {
-	return addStatSubscriber()
-}
-
-func GetAverageRouteChanges90() float64 {
-	stats := GetStats()
-	changesList := make([]uint64, len(stats))
-	for i, stat := range stats {
-		changesList[i] = stat.Stats.Changes
-	}
-	sort.Slice(changesList, func(i, j int) bool { return changesList[i] < changesList[j] })
-	cutLength := int(math.Ceil(float64(len(changesList)) * 0.90))
-	changesList = changesList[:cutLength]
-
-	if len(changesList) == 0 {
-		return 0
-	}
-
-	var sum uint64 = 0
-	for _, u := range changesList {
-		sum = addUint64(sum, u)
-	}
-	avg := float64(sum) / float64(len(changesList))
-	return avg / 5 // Data collected for 5 seconds
-}
-
-func addUint64(left, right uint64) uint64 {
-	if left > math.MaxUint64-right {
-		return math.MaxUint64
-	}
-	return left + right
-}
-
-func GetSessionInfoJson() (string, error) {
-	return bgp.GetSessionInfoJson()
 }

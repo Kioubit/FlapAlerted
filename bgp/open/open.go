@@ -2,7 +2,6 @@ package open
 
 import (
 	"FlapAlerted/bgp/common"
-	"FlapAlerted/bgp/update"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -152,7 +151,7 @@ func parseCapabilityParameter(r io.Reader) (result CapabilityList, err error) {
 				if err := binary.Read(cr, binary.BigEndian, &safi); err != nil {
 					return result, err
 				}
-				t.SAFI = update.SAFI(binary.BigEndian.Uint16(safi[:]))
+				t.SAFI = common.SAFI(binary.BigEndian.Uint16(safi[:]))
 				if err := binary.Read(cr, binary.BigEndian, &t.NextHopAFI); err != nil {
 					return result, err
 				}

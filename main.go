@@ -22,17 +22,12 @@ func main() {
 
 	routeChangeCounter := flag.Int("routeChangeCounter", 700, "Number of times a route path needs"+
 		" to change to list a prefix. Use '0' to show all route changes.")
-	flapPeriod := flag.Int("period", 60, "Interval in seconds within which the"+
-		" routeChangeCounter value is evaluated. Higher values increase memory consumption.")
 	asn := flag.Int("asn", 0, "Your ASN number")
+	overThresholdTarget := flag.Int("overThresholdTarget", 10, "Number of consecutive intervals with rate at or above the routeChangeCounter to trigger an event")
+	underThresholdTarget := flag.Int("underThresholdTarget", 10, "Number of consecutive intervals with rate below routeChangeCounter to remove an event")
 	routerID := flag.String("routerID", "0.0.0.51", "BGP Router ID for this program")
-	noPathInfo := flag.Bool("noPathInfo", false, "Disable keeping path information. (only disable if memory usage is a concern)")
-	pathInfoDetectedOnly := flag.Bool("pathInfoDetectedOnly", false, "Keep path information only for detected prefixes (decreases memory usage)")
+	noPathInfo := flag.Bool("noPathInfo", false, "Disable keeping path information")
 	disableAddPath := flag.Bool("disableAddPath", false, "Disable BGP AddPath support. (Setting must be replicated in BGP daemon)")
-	relevantAsnPosition := flag.Int("asnPosition", -1, "The position of the last static ASN (and for which to keep separate state for)"+
-		" in each path. Use of this parameter is required for special cases such as when connected to a route collector.")
-	minimumAge := flag.Int("minimumAge", 540, "Minimum age in seconds a prefix must be active to be detected."+
-		" Has no effect if the routeChangeCounter is set to zero")
 	bgpListenAddress := flag.String("bgpListenAddress", ":1790", "Address to listen on for incoming BGP connections")
 	enableDebug := flag.Bool("debug", false, "Enable debug mode (produces a lot of output)")
 
@@ -56,20 +51,11 @@ func main() {
 
 	conf := config.UserConfig{}
 	conf.RouteChangeCounter = *routeChangeCounter
-	conf.FlapPeriod = *flapPeriod
-	conf.MinimumAge = *minimumAge
+	conf.OverThresholdTarget = *overThresholdTarget
+	conf.UnderThresholdTarget = *underThresholdTarget
 	conf.Asn = uint32(*asn)
 	conf.KeepPathInfo = !*noPathInfo
-	conf.KeepPathInfoDetectedOnly = *pathInfoDetectedOnly
 	conf.UseAddPath = !*disableAddPath
-	conf.RelevantAsnPosition = *relevantAsnPosition
-	if conf.RelevantAsnPosition == -1 {
-		if conf.UseAddPath {
-			conf.RelevantAsnPosition = 1
-		} else {
-			conf.RelevantAsnPosition = 0
-		}
-	}
 	conf.Debug = *enableDebug
 	conf.BgpListenAddress = *bgpListenAddress
 
@@ -78,15 +64,16 @@ func main() {
 		os.Exit(1)
 	}
 
+	if conf.RouteChangeCounter == 0 {
+		conf.OverThresholdTarget = 0
+		conf.UnderThresholdTarget = 0
+	}
+
 	var err error
 	conf.RouterID, err = netip.ParseAddr(*routerID)
 	if err != nil {
 		fmt.Println("Invalid Router ID:", err)
 		os.Exit(1)
-	}
-
-	if conf.RouteChangeCounter == 0 {
-		conf.MinimumAge = 0
 	}
 
 	modules := monitor.GetRegisteredModuleNames()
@@ -102,8 +89,10 @@ func main() {
 	}
 
 	slog.Info("Started", "parameters", fmt.Sprintf(
-		"Detecting a flap if the route to a prefix changes within %d seconds at least %d time(s)"+
-			" and remains active for at least %d seconds", conf.FlapPeriod, conf.RouteChangeCounter, conf.MinimumAge))
+		"Detecting flaps: trigger alert after %d consecutive 60s intervals with >= %d route changes; "+
+			"end alert after %d consecutive 60s intervals with < %d route changes",
+		conf.OverThresholdTarget, conf.RouteChangeCounter,
+		conf.UnderThresholdTarget, conf.RouteChangeCounter))
 
 	monitor.StartMonitoring(conf)
 }

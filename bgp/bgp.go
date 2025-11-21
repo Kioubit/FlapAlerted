@@ -4,55 +4,55 @@ import (
 	"FlapAlerted/bgp/common"
 	"FlapAlerted/bgp/notification"
 	"FlapAlerted/bgp/open"
+	"FlapAlerted/bgp/table"
 	"FlapAlerted/bgp/update"
 	"bufio"
+	"context"
 	"errors"
 	"fmt"
 	"io"
 	"log/slog"
 	"net"
-	"net/netip"
 	"time"
 )
 
-func newBGPConnection(logger *slog.Logger, conn net.Conn, defaultAFI update.AFI,
-	addPathEnabled bool, asn uint32, routerID netip.Addr, updateChannel chan update.Msg) (err error, wasEstablished bool) {
+func newBGPConnection(ctx context.Context, logger *slog.Logger, conn net.Conn, session *common.LocalSession, updateChannel chan table.SessionUpdateMessage) (err error, wasEstablished bool) {
 	const ownHoldTime = 240
 	err = conn.SetDeadline(time.Now().Add(ownHoldTime * time.Second))
 	if err != nil {
 		logger.Warn("Failed to set connection deadline", "error", err)
 	}
 
-	openMessage, err := open.GetOpen(ownHoldTime, routerID,
+	openMessage, err := open.GetOpen(ownHoldTime, session.RouterID,
 		open.CapabilityOptionalParameter{
 			CapabilityCode:  open.CapabilityCodeFourByteASN,
-			CapabilityValue: open.FourByteASNCapability{ASN: asn},
+			CapabilityValue: open.FourByteASNCapability{ASN: session.Asn},
 		},
 		open.CapabilityOptionalParameter{
 			CapabilityCode: open.CapabilityCodeMultiProtocol,
 			CapabilityValue: open.MultiProtocolCapability{
-				AFI:  update.AFI4,
-				SAFI: update.UNICAST,
+				AFI:  common.AFI4,
+				SAFI: common.UNICAST,
 			},
 		},
 		open.CapabilityOptionalParameter{
 			CapabilityCode: open.CapabilityCodeMultiProtocol,
 			CapabilityValue: open.MultiProtocolCapability{
-				AFI:  update.AFI6,
-				SAFI: update.UNICAST,
+				AFI:  common.AFI6,
+				SAFI: common.UNICAST,
 			},
 		},
 		open.CapabilityOptionalParameter{
 			CapabilityCode: open.CapabilityCodeAddPath,
 			CapabilityValue: open.AddPathCapabilityList{
 				open.AddPathCapability{
-					AFI:  update.AFI4,
-					SAFI: update.UNICAST,
+					AFI:  common.AFI4,
+					SAFI: common.UNICAST,
 					TXRX: open.ReceiveOnly,
 				},
 				open.AddPathCapability{
-					AFI:  update.AFI6,
-					SAFI: update.UNICAST,
+					AFI:  common.AFI6,
+					SAFI: common.UNICAST,
 					TXRX: open.ReceiveOnly,
 				},
 			},
@@ -71,9 +71,9 @@ func newBGPConnection(logger *slog.Logger, conn net.Conn, defaultAFI update.AFI,
 			CapabilityCode: open.CapabilityCodeExtendedNextHop,
 			CapabilityValue: open.ExtendedNextHopCapabilityList{
 				open.ExtendedNextHopCapability{
-					AFI:        update.AFI4,
-					SAFI:       update.UNICAST,
-					NextHopAFI: update.AFI6,
+					AFI:        common.AFI4,
+					SAFI:       common.UNICAST,
+					NextHopAFI: common.AFI6,
 				},
 			},
 		},
@@ -120,24 +120,24 @@ func newBGPConnection(logger *slog.Logger, conn net.Conn, defaultAFI update.AFI,
 			case open.AddPathCapabilityList:
 				for _, ac := range v {
 					switch ac.AFI {
-					case update.AFI4:
+					case common.AFI4:
 						if ac.TXRX != open.ReceiveOnly {
 							hasAddPathIPv4 = true
 						}
-					case update.AFI6:
+					case common.AFI6:
 						if ac.TXRX != open.ReceiveOnly {
 							hasAddPathIPv6 = true
 						}
 					}
 				}
 			case open.MultiProtocolCapability:
-				if v.SAFI != update.UNICAST {
+				if v.SAFI != common.UNICAST {
 					continue
 				}
 				switch v.AFI {
-				case update.AFI4:
+				case common.AFI4:
 					hasMultiProtocolIPv4 = true
-				case update.AFI6:
+				case common.AFI6:
 					hasMultiProtocolIPv6 = true
 				}
 			case open.HostnameCapability:
@@ -145,14 +145,14 @@ func newBGPConnection(logger *slog.Logger, conn net.Conn, defaultAFI update.AFI,
 				logger = logger.With("hostname", remoteHostname)
 			case open.ExtendedNextHopCapabilityList:
 				for _, ec := range v {
-					if ec.AFI == update.AFI4 && ec.NextHopAFI == update.AFI6 && ec.SAFI == update.UNICAST {
+					if ec.AFI == common.AFI4 && ec.NextHopAFI == common.AFI6 && ec.SAFI == common.UNICAST {
 						hasExtendedNextHopV4 = true
 					}
 				}
 			}
 		}
 	}
-
+	session.HasExtendedNextHopV4 = hasExtendedNextHopV4
 	peerHoldTime := msg.Body.(open.Msg).HoldTime.GetApplicableSeconds()
 	applicableHoldTime := ownHoldTime
 	if peerHoldTime < ownHoldTime {
@@ -168,11 +168,11 @@ func newBGPConnection(logger *slog.Logger, conn net.Conn, defaultAFI update.AFI,
 		}
 		return fmt.Errorf("four byte ASNs not supported by peer"), false
 	}
-	if remoteASN != asn {
+	if remoteASN != session.Asn {
 		if nMsg, err := notification.GetNotification(notification.OpenMessageError, notification.OpenBadPeerAS, []byte{}); err == nil {
 			_, _ = conn.Write(nMsg)
 		}
-		return fmt.Errorf("remote ASN (%d) does not match the set asn (%d)", remoteASN, asn), false
+		return fmt.Errorf("remote ASN (%d) does not match the set asn (%d)", remoteASN, session.Asn), false
 	}
 
 	if !hasMultiProtocolIPv4 && !hasMultiProtocolIPv6 {
@@ -182,7 +182,7 @@ func newBGPConnection(logger *slog.Logger, conn net.Conn, defaultAFI update.AFI,
 		return fmt.Errorf("multiprotocol capbility is not supported by peer"), false
 	}
 
-	if addPathEnabled && (!hasAddPathIPv6 || !hasAddPathIPv4) {
+	if session.AddPathEnabled && (!hasAddPathIPv6 || !hasAddPathIPv4) {
 		if nMsg, err := notification.GetNotification(notification.OpenMessageError, notification.OpenUnsupportedOptionalParameter, []byte{}); err == nil {
 			_, _ = conn.Write(nMsg)
 		}
@@ -212,7 +212,7 @@ func newBGPConnection(logger *slog.Logger, conn net.Conn, defaultAFI update.AFI,
 	}
 
 	logger.Info("BGP session established", "routerID", remoteRouterID)
-	addSession(conn, remoteRouterID.String(), remoteHostname)
+	common.AddSession(conn, remoteRouterID.String(), remoteHostname, session)
 
 	// From this point on the hold timer will manage the connection deadline
 	err = conn.SetDeadline(time.Time{})
@@ -224,7 +224,7 @@ func newBGPConnection(logger *slog.Logger, conn net.Conn, defaultAFI update.AFI,
 	defer close(keepAliveChan)
 	keepAliveHandler(logger, keepAliveChan, conn, applicableHoldTime)
 
-	err = handleIncoming(logger, conn, defaultAFI, addPathEnabled, hasExtendedNextHopV4, updateChannel, keepAliveChan)
+	err = handleIncoming(ctx, logger, conn, session, updateChannel, keepAliveChan)
 	if err != nil {
 		return err, true
 	}
@@ -270,9 +270,16 @@ func keepAliveHandler(logger *slog.Logger, in chan bool, conn net.Conn, holdTime
 	}()
 }
 
-func handleIncoming(logger *slog.Logger, conn io.Reader, defaultAFI update.AFI, addPathEnabled bool, hasExtendedNextHopV4 bool, updateChannel chan update.Msg, keepAliveChan chan bool) error {
+func handleIncoming(ctx context.Context, logger *slog.Logger, conn io.Reader, session *common.LocalSession, updateChannel chan table.SessionUpdateMessage, keepAliveChan chan bool) error {
 	conn = bufio.NewReader(conn)
 	for {
+		select {
+		case <-ctx.Done():
+			err := context.Cause(ctx)
+			return err
+		default:
+		}
+
 		msg, r, err := common.ReadMessage(conn)
 		if err != nil {
 			return err
@@ -302,11 +309,14 @@ func handleIncoming(logger *slog.Logger, conn io.Reader, defaultAFI update.AFI, 
 			case keepAliveChan <- true:
 			default:
 			}
-			msg.Body, err = update.ParseMsgUpdate(r, defaultAFI, addPathEnabled, hasExtendedNextHopV4)
+			msg.Body, err = update.ParseMsgUpdate(r, session.DefaultAFI, session.AddPathEnabled)
 			if err != nil {
 				return fmt.Errorf("failed parsing UPDATE message %w", err)
 			}
-			updateChannel <- msg.Body.(update.Msg)
+			updateChannel <- table.SessionUpdateMessage{
+				Msg:     msg.Body.(update.Msg),
+				Session: session,
+			}
 		}
 
 		// Discard any unread bytes

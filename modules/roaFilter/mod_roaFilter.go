@@ -20,16 +20,16 @@ func init() {
 	roaJsonFile = flag.String("roaJson", "", "File path of source ROA JSON")
 
 	monitor.RegisterModule(&monitor.Module{
-		Name:         moduleName,
-		CallbackOnce: change,
+		Name:          moduleName,
+		CallbackStart: change,
 	})
 }
 
 var logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{})).With("module", moduleName)
 
-func change(f *monitor.Flap) {
+func change(f monitor.FlapEvent) {
 	// Continue filtering already filtered file
-	filter(*roaJsonFile, f.Cidr)
+	filter(*roaJsonFile, f.Prefix.String())
 }
 
 func filter(filePath string, cidr string) {

@@ -9,31 +9,29 @@
 ### Setup notes
 
 The program will listen on port 1790 for incoming BGP sessions (passive mode - no outgoing connections).
-It is recommended to adjust the `routeChangeCounter` and `minimumAge` parameters (see usage) to produce the desired result.
+It is recommended to adjust the `routeChangeCounter` and `overThresholdTarget` parameters (see usage) to produce the desired result.
 
 ### Usage
 ```
 Usage:
   -asn int
-        Your ASN number
-  -asnPosition int
-        The position of the last static ASN (and for which to keep separate state for) in each path. Use of this parameter is required for special cases such as when connected to a route collector. (default -1)
+    	Your ASN number
+  -bgpListenAddress string
+    	Address to listen on for incoming BGP connections (default ":1790")
   -debug
-        Enable debug mode (produces a lot of output)
+    	Enable debug mode (produces a lot of output)
   -disableAddPath
-        Disable BGP AddPath support. (Setting must be replicated in BGP daemon)
-  -minimumAge int
-        Minimum age in seconds a prefix must be active to be detected. Has no effect if the routeChangeCounter is set to zero (default 540)
+    	Disable BGP AddPath support. (Setting must be replicated in BGP daemon)
   -noPathInfo
-        Disable keeping path information. (only disable if memory usage is a concern)
-  -pathInfoDetectedOnly
-        Keep path information only for detected prefixes (decreases memory usage)
-  -period int
-        Interval in seconds within which the routeChangeCounter value is evaluated. Higher values increase memory consumption. (default 60)
+    	Disable keeping path information
+  -overThresholdTarget int
+    	Number of consecutive intervals with rate at or above the routeChangeCounter to trigger an event (default 10)
   -routeChangeCounter int
-        Number of times a route path needs to change to list a prefix. Use '0' to show all route changes. (default 700)
+    	Number of times a route path needs to change to list a prefix. Use '0' to show all route changes. (default 700)
   -routerID string
-        BGP Router ID for this program (default "0.0.0.51")
+    	BGP Router ID for this program (default "0.0.0.51")
+  -underThresholdTarget int
+    	Number of consecutive intervals with rate below routeChangeCounter to remove an event (default 10)
 ```
 #### Using environment variables
 Environment variables can configure options by prefixing `FA_` to any command-line flag name (optionally in uppercase). For example, set the ASN number with `FA_ASN=<asn>` or the router ID using `FA_routerID=<router id>`.

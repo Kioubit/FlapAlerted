@@ -47,6 +47,7 @@ function display() {
         }
 
         const pJson = json["Paths"];
+        // pathMap contains path objects with the key being their first ASN
         const pathMap = new Map();
 
         if (pJson === null) {
@@ -56,7 +57,7 @@ function display() {
             document.getElementById("informationText2").innerText = "No path data is available yet. Try refreshing later.";
         } else {
             for (let i = 0; i < pJson.length; i++) {
-                const firstAsn = pJson[i].Path.Asn[0];
+                const firstAsn = pJson[i].Path[0];
                 const targetArray = pathMap.get(firstAsn);
                 if (targetArray === undefined) {
                     pathMap.set(firstAsn, [pJson[i]]);
@@ -71,15 +72,18 @@ function display() {
             // For each path group
             let elementHTML = "";
             let pathGroupTotalCount = 0;
+            value.forEach(item => {
+                item.Count = item.AnnouncementCount + item.WithdrawalCount;
+            });
             value.sort((a, b) => b.Count - a.Count);
             for (let c = 0; c < value.length; c++) {
                 // For each path
                 const count = value[c].Count;
                 pathGroupTotalCount += count;
-                elementHTML += count + "&nbsp;&nbsp;";
-                for (let d = 0; d < value[c].Path.Asn.length; d++) {
+                elementHTML += `${count} (${value[c].AnnouncementCount}/${value[c].WithdrawalCount}) &nbsp;&nbsp;`;
+                for (let d = 0; d < value[c].Path.length; d++) {
                     // For each ASN in the path
-                    let single_asn = value[c].Path.Asn[d].toString();
+                    let single_asn = value[c].Path[d].toString();
                     const hexColor = stringToColor(single_asn);
                     single_asn = single_asn.padStart(10, " ");
                     const r = parseInt(hexColor.slice(1, 3), 16);
@@ -111,8 +115,8 @@ function display() {
 
         document.getElementById("pathChangeDisplay").innerText = json.TotalCount;
         document.getElementById("fistSeenDisplay").innerText = timeConverter(json.FirstSeen);
-        document.getElementById("lastSeenDisplay").innerText = timeConverter(json.LastSeen);
-        document.getElementById("durationDisplay").innerText = toTimeElapsed(json.LastSeen - json.FirstSeen);
+        //document.getElementById("lastSeenDisplay").innerText = timeConverter(json.LastSeen);
+        document.getElementById("durationDisplay").innerText = toTimeElapsed(Math.floor(Date.now() / 1000)- json.FirstSeen);
 
         document.getElementById("informationText1").style.display = "block";
         document.getElementById("informationText2").style.display = "block";
@@ -131,10 +135,10 @@ function display() {
     });
 
 
-    fetch("../flaps/active/history?cidr=" + prefix).then(function (response) {
+    fetch("../flaps/active/history?cidr=" + encodeURIComponent(prefix)).then(function (response) {
         return response.json();
     }).then(function (json) {
-        const dataIntervalSeconds = 10;
+        const dataIntervalSeconds = 60;
         if (json === null) {
             return;
         }
@@ -143,6 +147,11 @@ function display() {
             type: "line",
             data: dataRouteChangeCount,
             options: {
+                scales: {
+                    y: {
+                        suggestedMin: 0,
+                    }
+                },
                 maintainAspectRatio: false,
                 plugins: {
                     tooltip: {
@@ -166,15 +175,13 @@ function display() {
         const t = Date.now();
         const labels = [];
         const data = [];
-        let previousValue = json[0];
         for (let i = 1; i < json.length; i++) {
-            // Timestamps are within an accuracy of about 10 seconds
+            // Timestamps are within an accuracy of about 60 seconds
             const ts = new Date(t - (10000 * (json.length - i)));
             const timeStamp = String(ts.getHours()).padStart(2, '0') + ':' +
                 String(ts.getMinutes()).padStart(2, '0') + ":" + String(ts.getSeconds()).padStart(2, '0');
             labels.push(timeStamp);
-            data.push(((json[i] - previousValue)/dataIntervalSeconds));
-            previousValue = json[i];
+            data.push(json[i]);
         }
         if (data.length === 0 ) {
             return;

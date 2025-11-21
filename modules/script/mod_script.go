@@ -21,22 +21,22 @@ func init() {
 
 	monitor.RegisterModule(&monitor.Module{
 		Name:            moduleName,
-		CallbackOnce:    logFlapStart,
+		CallbackStart:   logFlapStart,
 		CallbackOnceEnd: logFlapEnd,
 	})
 }
 
 var logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{})).With("module", moduleName)
 
-func logFlapStart(f *monitor.Flap) {
+func logFlapStart(f monitor.FlapEvent) {
 	runScript(*scriptFileStart, f)
 }
 
-func logFlapEnd(f *monitor.Flap) {
+func logFlapEnd(f monitor.FlapEvent) {
 	runScript(*scriptFileEnd, f)
 }
 
-func runScript(path string, f *monitor.Flap) {
+func runScript(path string, f monitor.FlapEvent) {
 	if path == "" {
 		return
 	}

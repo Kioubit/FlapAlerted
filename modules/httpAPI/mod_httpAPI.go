@@ -15,7 +15,6 @@ import (
 	"net/netip"
 	"os"
 	"strconv"
-	"sync"
 	"time"
 )
 
@@ -32,7 +31,7 @@ func init() {
 	limitedHttpAPI = flag.Bool("limitedHttpApi", false, "Disable http API endpoints not needed for"+
 		" the user interface")
 	httpAPIListenAddress = flag.String("httpAPIListenAddress", ":8699", "Listen address for the http api")
-	gageMaxValue = flag.Int("httpGageMaxValue", 200, "HTTP dashboard Gage max value")
+	gageMaxValue = flag.Int("httpGageMaxValue", 400, "HTTP dashboard Gage max value")
 
 	monitor.RegisterModule(&monitor.Module{
 		Name:            moduleName,
@@ -42,49 +41,7 @@ func init() {
 
 var logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{})).With("module", moduleName)
 
-var FlapHistoryMap = make(map[string][]uint64)
-var FlapHistoryMapMu sync.RWMutex
-
-func monitorFlap() {
-	for {
-		<-time.After(10 * time.Second)
-		FlapHistoryMapMu.Lock()
-		flapList := monitor.GetActiveFlapsSummary()
-		for _, f := range flapList {
-			obj := FlapHistoryMap[f.Prefix]
-			if obj == nil {
-				FlapHistoryMap[f.Prefix] = []uint64{f.TotalCount}
-			} else {
-				if len(FlapHistoryMap[f.Prefix]) > 100 {
-					FlapHistoryMap[f.Prefix] = FlapHistoryMap[f.Prefix][1:]
-				}
-				FlapHistoryMap[f.Prefix] = append(FlapHistoryMap[f.Prefix], f.TotalCount)
-			}
-		}
-		FlapHistoryMapMu.Unlock()
-	}
-}
-
-func cleanupHistory() {
-	for {
-		time.Sleep(1 * time.Duration(config.GlobalConf.FlapPeriod+5) * time.Second)
-		FlapHistoryMapMu.Lock()
-		newFlapHistoryMap := make(map[string][]uint64)
-		flapList := monitor.GetActiveFlapsSummary()
-		for _, f := range flapList {
-			obj := FlapHistoryMap[f.Prefix]
-			if obj != nil {
-				newFlapHistoryMap[f.Prefix] = obj
-			}
-		}
-		FlapHistoryMap = newFlapHistoryMap
-		FlapHistoryMapMu.Unlock()
-	}
-}
-
 func startComplete() {
-	go monitorFlap()
-	go cleanupHistory()
 	go streamServe()
 
 	mux := http.NewServeMux()
@@ -119,21 +76,20 @@ func getAvgRouteChanges(w http.ResponseWriter, _ *http.Request) {
 	_, _ = w.Write([]byte(avgStr))
 }
 
-func getFlapHistory(w http.ResponseWriter, req *http.Request) {
-	cidr := req.URL.Query().Get("cidr")
-	if cidr == "" {
-		_, _ = w.Write([]byte("GET request: cidr value missing"))
+func getFlapHistory(w http.ResponseWriter, r *http.Request) {
+	prefix, err := netip.ParsePrefix(r.URL.Query().Get("cidr"))
+	if err != nil {
+		w.WriteHeader(500)
+		_, _ = w.Write([]byte("null"))
+		return
 	}
-
-	FlapHistoryMapMu.RLock()
-	defer FlapHistoryMapMu.RUnlock()
-	result := FlapHistoryMap[cidr]
-	if result == nil {
+	result, found := monitor.GetActiveFlapPrefix(prefix)
+	if !found {
 		_, _ = w.Write([]byte("null"))
 		return
 	}
 
-	marshaled, err := json.Marshal(result)
+	marshaled, err := json.Marshal(result.RateSecHistory)
 	if err != nil {
 		w.WriteHeader(500)
 	} else {
@@ -189,12 +145,11 @@ func getPrefix(w http.ResponseWriter, r *http.Request) {
 
 	flaps := monitor.GetActiveFlaps()
 	for _, f := range flaps {
-		if f.Cidr == prefix.String() {
-			f.RLock() // Needed to get paths
+		if f.Prefix == prefix {
 			var pathList []monitor.PathInfo
 			if config.GlobalConf.KeepPathInfo {
-				pathList = make([]monitor.PathInfo, 0, f.Paths.Length())
-				for _, v := range f.Paths.All() {
+				pathList = make([]monitor.PathInfo, 0)
+				for _, v := range f.PathHistory.All() {
 					pathList = append(pathList, *v)
 				}
 			}
@@ -202,14 +157,14 @@ func getPrefix(w http.ResponseWriter, r *http.Request) {
 			js, err := json.Marshal(struct {
 				Prefix     string
 				FirstSeen  int64
-				LastSeen   int64
+				RateSec    int
 				TotalCount uint64
 				Paths      []monitor.PathInfo
 			}{
-				f.Cidr,
-				f.FirstSeen,
-				f.LastSeen.Load(),
-				f.PathChangeCountTotal.Load(),
+				f.Prefix.String(),
+				f.FirstSeen.Unix(),
+				f.RateSec,
+				f.TotalPathChanges,
 				pathList,
 			})
 			if err != nil {
@@ -219,7 +174,6 @@ func getPrefix(w http.ResponseWriter, r *http.Request) {
 			} else {
 				_, _ = w.Write(js)
 			}
-			f.RUnlock()
 			return
 		}
 	}

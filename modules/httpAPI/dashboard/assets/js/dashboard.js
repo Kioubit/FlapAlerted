@@ -3,7 +3,7 @@ import "./chartjs/4.5.0/chart.umd.min.js";
 import "./chartjs/chartjs-adapter-date-fns.bundle.min.js";
 
 
-let gageMaxValue = 200;
+let gageMaxValue = 400;
 const gauge = new JustGage({
     id: "justgage",
     value: 0,
@@ -169,10 +169,10 @@ async function updateCapabilities() {
     versionBox.innerText = " " + data.Version;
     const infoBox = document.getElementById("info");
     if (data.UserParameters.RouteChangeCounter === 0) {
-        infoBox.innerText = `Displaying every BGP update received. Removing entries after ${data.UserParameters.FlapPeriod} seconds of inactivity.`;
+        infoBox.innerText = `Displaying every BGP update received. Removing entries after 1 minute of inactivity.`;
         dataFlapCount.datasets[1].hidden = true;
     } else {
-        infoBox.innerText = `A route for a prefix needs to change at least ${data.UserParameters.RouteChangeCounter}  times in ${data.UserParameters.FlapPeriod} seconds and remain active for at least ${data.UserParameters.MinimumAge} seconds for it to be shown in the table.`;
+        infoBox.innerText = `A route for a prefix needs to change at least ${data.UserParameters.RouteChangeCounter} times in 1 minute and remain active for at least ${data.UserParameters.OverThresholdTarget} minutes for it to be shown in the table.`;
     }
     gageMaxValue = data.gageMaxValue;
 }
@@ -201,26 +201,33 @@ const prefixTable = document.getElementById("prefixTableBody");
 
 async function updateList(flapList) {
     let prefixTableHtml = '';
+    const unixTime = Math.floor(Date.now() / 1000);
 
     if (flapList !== null) {
         flapList.sort((a, b) => b.TotalCount - a.TotalCount);
 
         for (let i = 0; i < flapList.length; i++) {
-            const duration = toTimeElapsed(flapList[i].LastSeen - flapList[i].FirstSeen);
+            //const duration = toTimeElapsed(flapList[i].LastSeen - flapList[i].FirstSeen);
+            const duration = toTimeElapsed(unixTime - flapList[i].FirstSeen);
             prefixTableHtml += `<tr>`;
             prefixTableHtml += `<td><a target="_blank" href='analyze/?prefix=${encodeURIComponent(flapList[i].Prefix)}'>${flapList[i].Prefix}</a></td>`;
             prefixTableHtml += `<td>${duration}</td>`;
             prefixTableHtml += `<td>${truncateRouteChanges(flapList[i].TotalCount)}</td>`;
+            let rateDisplay = "..";
+            if (flapList[i].RateSec !== -1) {
+                rateDisplay = flapList[i].RateSec + "/s";
+            }
+            prefixTableHtml += `<td>${rateDisplay}</td>`;
             prefixTableHtml += `</tr>`;
             if (i >= 100) {
                 break;
             }
         }
         if (flapList.length === 0) {
-            prefixTableHtml = '<tr><td colspan="3" class="centerText">No flapping prefixes detected</td></tr>';
+            prefixTableHtml = '<tr><td colspan="4" class="centerText">No flapping prefixes detected</td></tr>';
         }
     } else {
-        prefixTableHtml = '<tr><td colspan="3" class="centerText"><b>Please wait</b></td></tr>';
+        prefixTableHtml = '<tr><td colspan="4" class="centerText"><b>Please wait</b></td></tr>';
     }
 
     prefixTable.innerHTML = prefixTableHtml;

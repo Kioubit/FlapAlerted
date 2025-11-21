@@ -5,15 +5,13 @@ import "net/netip"
 var GlobalConf UserConfig
 
 type UserConfig struct {
-	RouteChangeCounter       int
-	FlapPeriod               int
-	MinimumAge               int
-	Asn                      uint32
-	KeepPathInfo             bool
-	KeepPathInfoDetectedOnly bool
-	UseAddPath               bool
-	RelevantAsnPosition      int
-	Debug                    bool
-	RouterID                 netip.Addr
-	BgpListenAddress         string
+	RouteChangeCounter   int
+	OverThresholdTarget  int
+	UnderThresholdTarget int
+	Asn                  uint32
+	KeepPathInfo         bool
+	UseAddPath           bool
+	Debug                bool
+	RouterID             netip.Addr
+	BgpListenAddress     string
 }

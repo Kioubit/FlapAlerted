@@ -1,6 +1,8 @@
 package open
 
-import "FlapAlerted/bgp/update"
+import (
+	"FlapAlerted/bgp/common"
+)
 
 type Msg struct {
 	Version                 uint8
@@ -60,8 +62,8 @@ type CapabilityValue interface {
 type AddPathCapabilityList []AddPathCapability
 
 type AddPathCapability struct {
-	AFI  update.AFI
-	SAFI update.SAFI
+	AFI  common.AFI
+	SAFI common.SAFI
 	TXRX AddPathTXRX
 }
 
@@ -78,9 +80,9 @@ type FourByteASNCapability struct {
 }
 
 type MultiProtocolCapability struct {
-	AFI      update.AFI
+	AFI      common.AFI
 	Reserved uint8
-	SAFI     update.SAFI
+	SAFI     common.SAFI
 }
 
 type ExtendedMessageCapability struct{}
@@ -93,9 +95,9 @@ type HostnameCapability struct {
 type ExtendedNextHopCapabilityList []ExtendedNextHopCapability
 
 type ExtendedNextHopCapability struct {
-	AFI        update.AFI
-	SAFI       update.SAFI
-	NextHopAFI update.AFI
+	AFI        common.AFI
+	SAFI       common.SAFI
+	NextHopAFI common.AFI
 }
 
 type UnknownCapability struct {

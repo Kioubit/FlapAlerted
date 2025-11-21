@@ -6,7 +6,6 @@ import (
 	"FlapAlerted/monitor"
 	"log/slog"
 	"os"
-	"time"
 )
 
 var moduleName = "mod_log"
@@ -14,18 +13,17 @@ var moduleName = "mod_log"
 func init() {
 	monitor.RegisterModule(&monitor.Module{
 		Name:            moduleName,
-		CallbackOnce:    logFlapStart,
+		CallbackStart:   logFlapStart,
 		CallbackOnceEnd: logFlapEnd,
 	})
 }
 
 var logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{})).With("module", moduleName)
 
-func logFlapStart(f *monitor.Flap) {
-	logger.Info("event", "type", "start", "prefix", f.Cidr, "first_seen", time.Unix(f.FirstSeen, 0), "total_path_changes", f.PathChangeCountTotal.Load())
+func logFlapStart(f monitor.FlapEvent) {
+	logger.Info("event", "type", "start", "prefix", f.Prefix.String(), "first_seen", f.FirstSeen, "total_path_changes", f.TotalPathChanges)
 }
 
-func logFlapEnd(f *monitor.Flap) {
-	logger.Info("event", "type", "end", "prefix", f.Cidr, "first_seen", time.Unix(f.FirstSeen, 0),
-		"last_seen", time.Unix(f.LastSeen.Load(), 0), "total_path_changes", f.PathChangeCountTotal.Load())
+func logFlapEnd(f monitor.FlapEvent) {
+	logger.Info("event", "type", "end", "prefix", f.Prefix.String(), "first_seen", f.FirstSeen, "total_path_changes", f.TotalPathChanges)
 }
