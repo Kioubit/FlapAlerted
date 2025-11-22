@@ -64,6 +64,7 @@ func recordPathChanges(pathChan chan table.PathChange) {
 				}
 
 				if intervalCount < uint64(config.GlobalConf.RouteChangeCounter) {
+					event.overThresholdCount = 0
 					if event.underThresholdCount == config.GlobalConf.UnderThresholdTarget {
 						delete(activeMap, prefix)
 						NotificationEndChannel <- *event
