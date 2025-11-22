@@ -22,13 +22,13 @@ var (
 	GlobalListedRouteChangeCounter atomic.Uint64
 )
 
-var NotificationChannel = make(chan FlapEvent)
-var NotificationEndChannel = make(chan FlapEvent)
+var NotificationChannel = make(chan FlapEvent, 10)
+var NotificationEndChannel = make(chan FlapEvent, 10)
 
 type FlapEvent struct {
 	Prefix           netip.Prefix
 	PathHistory      *PathTracker
-	TotalPathChanges uint64 // Total path changes since first exceeding
+	TotalPathChanges uint64
 
 	RateSec           int
 	lastIntervalCount uint64
@@ -67,7 +67,9 @@ func recordPathChanges(pathChan chan table.PathChange) {
 					event.overThresholdCount = 0
 					if event.underThresholdCount == config.GlobalConf.UnderThresholdTarget {
 						delete(activeMap, prefix)
-						NotificationEndChannel <- *event
+						if event.IsActive {
+							NotificationEndChannel <- *event
+						}
 					} else {
 						event.underThresholdCount++
 					}

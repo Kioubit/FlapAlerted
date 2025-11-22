@@ -150,6 +150,7 @@ function display() {
                 scales: {
                     y: {
                         suggestedMin: 0,
+                        suggestedMax: 15,
                     }
                 },
                 maintainAspectRatio: false,

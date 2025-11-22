@@ -15,22 +15,21 @@ const gauge = new JustGage({
     pointer: true,
     relativeGaugeSize: true,
     customSectors: {
-        percents: true, // lo and hi values are in %
+        // lo and hi values are in %
+        percents: true,
         ranges: [{
             color: "#43bf58",
             lo: 0,
             hi: 20
-        },
-            {
-                color: "#f7bc08",
-                lo: 21,
-                hi: 70
-            },
-            {
-                color: "#ff3b30",
-                lo: 71,
-                hi: 100
-            }]
+        }, {
+            color: "#f7bc08",
+            lo: 21,
+            hi: 70
+        }, {
+            color: "#ff3b30",
+            lo: 71,
+            hi: 100
+        }]
     }
 });
 
@@ -367,7 +366,6 @@ updateCapabilities().catch((err) => {
             data.forEach(entry => {
                 const row = document.createElement('tr');
 
-                // Create cells with proper styling
                 const cells = [
                     entry.Remote,
                     entry.RouterID,

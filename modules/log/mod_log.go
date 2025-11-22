@@ -6,6 +6,7 @@ import (
 	"FlapAlerted/monitor"
 	"log/slog"
 	"os"
+	"time"
 )
 
 var moduleName = "mod_log"
@@ -25,5 +26,5 @@ func logFlapStart(f monitor.FlapEvent) {
 }
 
 func logFlapEnd(f monitor.FlapEvent) {
-	logger.Info("event", "type", "end", "prefix", f.Prefix.String(), "first_seen", f.FirstSeen, "total_path_changes", f.TotalPathChanges)
+	logger.Info("event", "type", "end", "prefix", f.Prefix.String(), "duration", time.Now().Sub(f.FirstSeen).String(), "total_path_changes", f.TotalPathChanges)
 }

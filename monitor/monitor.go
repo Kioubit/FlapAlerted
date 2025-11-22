@@ -19,7 +19,7 @@ func StartMonitoring(conf config.UserConfig) {
 }
 
 func getEvent(k netip.Prefix) (event FlapEvent, found bool) {
-	e, ok := activeMap[k] // shallow copy of the struct
+	e, ok := activeMap[k]
 	if !ok {
 		return FlapEvent{}, false
 	}
@@ -28,11 +28,9 @@ func getEvent(k netip.Prefix) (event FlapEvent, found bool) {
 		return FlapEvent{}, false
 	}
 
-	if activeMap[k].overThresholdCount < config.GlobalConf.OverThresholdTarget {
-		return FlapEvent{}, false
-	}
-
+	// Shallow copy of the struct
 	event = *e
+	// Copy the slice in the struct
 	if len(activeMap[k].RateSecHistory) > 0 {
 		event.RateSecHistory = make([]int, len(activeMap[k].RateSecHistory))
 		copy(event.RateSecHistory, activeMap[k].RateSecHistory)
@@ -43,17 +41,16 @@ func getEvent(k netip.Prefix) (event FlapEvent, found bool) {
 func GetActiveFlapList() ([]FlapEvent, int) {
 	aFlap := make([]FlapEvent, 0)
 	activeMapLock.RLock()
-	belowThreshold := 0
 	for k := range activeMap {
 		event, ok := getEvent(k)
 		if !ok {
-			belowThreshold++
 			continue
 		}
 		aFlap = append(aFlap, event)
 	}
+	trackedCount := len(activeMap)
 	activeMapLock.RUnlock()
-	return aFlap, belowThreshold
+	return aFlap, trackedCount
 }
 
 func GetActiveFlapPrefix(prefix netip.Prefix) (FlapEvent, bool) {

@@ -6,12 +6,12 @@ import (
 )
 
 type PrefixTable struct {
-	table           map[netip.Prefix]*Entry
-	patchChangeChan chan PathChange
+	table          map[netip.Prefix]*Entry
+	pathChangeChan chan PathChange
 }
 
 func NewPrefixTable(pathChangeChan chan PathChange) *PrefixTable {
-	return &PrefixTable{table: make(map[netip.Prefix]*Entry), patchChangeChan: pathChangeChan}
+	return &PrefixTable{table: make(map[netip.Prefix]*Entry), pathChangeChan: pathChangeChan}
 }
 
 type PathChange struct {
@@ -28,7 +28,7 @@ func (t *PrefixTable) update(prefix netip.Prefix, pathID uint32, isWithdrawal bo
 	if isWithdrawal {
 		if entry, ok := t.table[prefix]; ok {
 			if oldPath, exists := entry.Paths[pathID]; exists {
-				t.patchChangeChan <- PathChange{
+				t.pathChangeChan <- PathChange{
 					Prefix:       prefix,
 					IsWithdrawal: true,
 					OldPath:      oldPath,
@@ -46,7 +46,7 @@ func (t *PrefixTable) update(prefix netip.Prefix, pathID uint32, isWithdrawal bo
 			t.table[prefix] = entry
 		} else {
 			if oldPath, existed := entry.Paths[pathID]; existed {
-				t.patchChangeChan <- PathChange{
+				t.pathChangeChan <- PathChange{
 					Prefix:       prefix,
 					IsWithdrawal: false,
 					OldPath:      oldPath,

@@ -25,13 +25,13 @@ var dashboardContent embed.FS
 
 var limitedHttpAPI *bool
 var httpAPIListenAddress *string
-var gageMaxValue *int
+var gageMaxValue *uint
 
 func init() {
 	limitedHttpAPI = flag.Bool("limitedHttpApi", false, "Disable http API endpoints not needed for"+
 		" the user interface")
 	httpAPIListenAddress = flag.String("httpAPIListenAddress", ":8699", "Listen address for the http api")
-	gageMaxValue = flag.Int("httpGageMaxValue", 400, "HTTP dashboard Gage max value")
+	gageMaxValue = flag.Uint("httpGageMaxValue", 400, "HTTP dashboard Gage max value")
 
 	monitor.RegisterModule(&monitor.Module{
 		Name:            moduleName,
@@ -111,7 +111,7 @@ func showCapabilities(w http.ResponseWriter, _ *http.Request) {
 		GageMaxValue int `json:"gageMaxValue"`
 	}{
 		Capabilities: caps,
-		GageMaxValue: *gageMaxValue,
+		GageMaxValue: int(*gageMaxValue),
 	}
 
 	b, err := json.Marshal(fullCaps)

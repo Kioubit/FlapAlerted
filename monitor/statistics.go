@@ -79,7 +79,7 @@ func statTracker() {
 	for {
 		time.Sleep(5 * time.Second)
 
-		aFlap, belowThreshold := GetActiveFlapList()
+		aFlap, trackedCount := GetActiveFlapList()
 
 		if len(aFlap) > 100 {
 			slices.SortFunc(aFlap, func(a, b FlapEvent) int {
@@ -109,7 +109,7 @@ func statTracker() {
 			Time:          time.Now().Unix(),
 			Changes:       GlobalTotalRouteChangeCounter.Swap(0),
 			ListedChanges: GlobalListedRouteChangeCounter.Swap(0),
-			Active:        len(aFlap) + belowThreshold,
+			Active:        trackedCount,
 		}
 
 		newWrapper := statisticWrapper{

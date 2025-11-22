@@ -20,11 +20,11 @@ func main() {
 	_, _ = fmt.Fprintln(os.Stderr, "FlapAlerted", Version)
 	monitor.SetVersion(Version)
 
-	routeChangeCounter := flag.Int("routeChangeCounter", 700, "Number of times a route path needs"+
+	routeChangeCounter := flag.Uint("routeChangeCounter", 700, "Number of times a route path needs"+
 		" to change to list a prefix. Use '0' to show all route changes.")
-	asn := flag.Int("asn", 0, "Your ASN number")
-	overThresholdTarget := flag.Int("overThresholdTarget", 10, "Number of consecutive intervals with rate at or above the routeChangeCounter to trigger an event")
-	underThresholdTarget := flag.Int("underThresholdTarget", 10, "Number of consecutive intervals with rate below routeChangeCounter to remove an event")
+	asn := flag.Uint("asn", 0, "Your ASN number")
+	overThresholdTarget := flag.Uint("overThresholdTarget", 10, "Number of consecutive intervals with rate at or above the routeChangeCounter to trigger an event")
+	underThresholdTarget := flag.Uint("underThresholdTarget", 10, "Number of consecutive intervals with rate below routeChangeCounter to remove an event")
 	routerID := flag.String("routerID", "0.0.0.51", "BGP Router ID for this program")
 	noPathInfo := flag.Bool("noPathInfo", false, "Disable keeping path information")
 	disableAddPath := flag.Bool("disableAddPath", false, "Disable BGP AddPath support. (Setting must be replicated in BGP daemon)")
@@ -50,9 +50,9 @@ func main() {
 	})
 
 	conf := config.UserConfig{}
-	conf.RouteChangeCounter = *routeChangeCounter
-	conf.OverThresholdTarget = *overThresholdTarget
-	conf.UnderThresholdTarget = *underThresholdTarget
+	conf.RouteChangeCounter = int(*routeChangeCounter)
+	conf.OverThresholdTarget = int(*overThresholdTarget)
+	conf.UnderThresholdTarget = int(*underThresholdTarget)
 	conf.Asn = uint32(*asn)
 	conf.KeepPathInfo = !*noPathInfo
 	conf.UseAddPath = !*disableAddPath

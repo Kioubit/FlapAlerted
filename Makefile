@@ -1,4 +1,3 @@
-# Makefile for FlapAlerted
 BINARY=FlapAlerted
 MODULES=
 VERSION=`git describe --tags`
