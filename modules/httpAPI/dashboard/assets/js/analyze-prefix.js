@@ -195,7 +195,7 @@ function display() {
         const data = [];
         for (let i = 1; i < json.length; i++) {
             // Timestamps are within an accuracy of about 60 seconds
-            const ts = new Date(t - (10000 * (json.length - i)));
+            const ts = new Date(t - (1000 * dataIntervalSeconds * (json.length - i)));
             const timeStamp = `${String(ts.getHours()).padStart(2, "0")}:${String(ts.getMinutes()).padStart(2, "0")}:${String(ts.getSeconds()).padStart(2, "0")}`;
             labels.push(timeStamp);
             data.push(json[i]);
