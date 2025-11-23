@@ -9,8 +9,7 @@ const noDataPlugin = {
     afterDraw: (chart) => {
         const hasData = chart.data.datasets.some(dataset =>
             Array.isArray(dataset.data) &&
-            dataset.data.length > 0 &&
-            dataset.data.some(item => item !== 0)
+            dataset.data.length > 0
         );
 
         if (!hasData) {
