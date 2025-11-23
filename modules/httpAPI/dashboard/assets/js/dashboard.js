@@ -1,7 +1,6 @@
-import {JustGage} from "./justgage/2.0.1/justgage.esm.js";
 import "./chartjs/4.5.0/chart.umd.min.js";
 import "./chartjs/chartjs-adapter-date-fns.bundle.min.js";
-
+import {JustGage} from "./justgage/2.0.1/justgage.esm.js";
 
 let gageMaxValue = 400;
 const gauge = new JustGage({
@@ -17,19 +16,23 @@ const gauge = new JustGage({
     customSectors: {
         // lo and hi values are in %
         percents: true,
-        ranges: [{
-            color: "#43bf58",
-            lo: 0,
-            hi: 20
-        }, {
-            color: "#f7bc08",
-            lo: 21,
-            hi: 70
-        }, {
-            color: "#ff3b30",
-            lo: 71,
-            hi: 100
-        }]
+        ranges: [
+            {
+                color: "#43bf58",
+                lo: 0,
+                hi: 20
+            },
+            {
+                color: "#f7bc08",
+                lo: 21,
+                hi: 70
+            },
+            {
+                color: "#ff3b30",
+                lo: 71,
+                hi: 100
+            }
+        ]
     }
 });
 
@@ -41,9 +44,9 @@ const dataFlapCount = {
             fill: false,
             backgroundColor: "rgba(255,47,5,0.4)",
             borderColor: "rgba(255,47,5,1)",
-            borderCapStyle: 'butt',
+            borderCapStyle: "butt",
             borderDashOffset: 0.0,
-            borderJoinStyle: 'miter',
+            borderJoinStyle: "miter",
             pointBorderColor: "rgba(255,47,5,0.4)",
             pointBackgroundColor: "#fff",
             pointBorderWidth: 1,
@@ -53,7 +56,7 @@ const dataFlapCount = {
             pointHoverBorderWidth: 2,
             pointRadius: 5,
             pointHitRadius: 10,
-            data: [],
+            data: []
         }
     ]
 };
@@ -66,9 +69,9 @@ const dataRouteChange = {
             fill: false,
             backgroundColor: "rgba(75,192,192,0.4)",
             borderColor: "rgba(75,192,192,1)",
-            borderCapStyle: 'butt',
+            borderCapStyle: "butt",
             borderDashOffset: 0.0,
-            borderJoinStyle: 'miter',
+            borderJoinStyle: "miter",
             pointBorderColor: "rgba(75,192,192,1)",
             pointBackgroundColor: "#fff",
             pointBorderWidth: 1,
@@ -78,15 +81,16 @@ const dataRouteChange = {
             pointHoverBorderWidth: 2,
             pointRadius: 5,
             pointHitRadius: 10,
-            data: [],
-        }, {
+            data: []
+        },
+        {
             label: "Route Changes (listed prefixes)",
             fill: false,
             backgroundColor: "rgba(15,151,3,0.4)",
             borderColor: "rgb(50,168,5)",
-            borderCapStyle: 'butt',
+            borderCapStyle: "butt",
             borderDashOffset: 0.0,
-            borderJoinStyle: 'miter',
+            borderJoinStyle: "miter",
             pointBorderColor: "rgb(50,168,5)",
             pointBackgroundColor: "#fff",
             pointBorderWidth: 1,
@@ -96,80 +100,86 @@ const dataRouteChange = {
             pointHoverBorderWidth: 2,
             pointRadius: 5,
             pointHitRadius: 10,
-            data: [],
+            data: []
         }
     ]
 };
 
-const ctxFlapCount = document.getElementById('chartFlapCount').getContext('2d');
-const ctxRoute = document.getElementById('chartRoute').getContext('2d');
+const ctxFlapCount = document.getElementById("chartFlapCount").getContext("2d");
+const ctxRoute = document.getElementById("chartRoute").getContext("2d");
 
-const liveFlapChart = new Chart(ctxFlapCount, {
-    type: "line",
-    data: dataFlapCount,
-    options: {
-        scales: {
-            x: {
-                type: 'time',
-                time: {
-                    unit: 'minute',
-                    displayFormats: {
-                        minute: 'HH:mm'
-                    },
-                    tooltipFormat: 'HH:mm:ss'
+const liveFlapChart = new Chart(
+    ctxFlapCount,
+    {
+        type: "line",
+        data: dataFlapCount,
+        options: {
+            scales: {
+                x: {
+                    type: "time",
+                    time: {
+                        unit: "minute",
+                        displayFormats: {
+                            minute: "HH:mm"
+                        },
+                        tooltipFormat: "HH:mm:ss"
+                    }
                 },
+                y: {
+                    suggestedMin: 0,
+                    suggestedMax: 10
+                }
             },
-            y: {
-                suggestedMin: 0,
-                suggestedMax: 10,
+            maintainAspectRatio: false
+        }
+    }
+);
+
+
+const liveRouteChart = new Chart(
+    ctxRoute,
+    {
+        type: "line",
+        data: dataRouteChange,
+        options: {
+            scales: {
+                x: {
+                    type: "time",
+                    time: {
+                        unit: "minute",
+                        displayFormats: {
+                            minute: "HH:mm"
+                        },
+                        tooltipFormat: "HH:mm:ss"
+                    }
+                },
+                y: {
+                    suggestedMin: 0,
+                    suggestedMax: 15
+                }
+            },
+            maintainAspectRatio: false,
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: (context) => `${context.dataset.label}: ${context.parsed.y}/sec`
+                    }
+                }
             }
-        },
-        maintainAspectRatio: false,
-    },
-});
-
-
-const liveRouteChart = new Chart(ctxRoute, {
-    type: "line",
-    data: dataRouteChange,
-    options: {
-        scales: {
-            x: {
-                type: 'time',
-                time: {
-                    unit: 'minute',
-                    displayFormats: {
-                        minute: 'HH:mm'
-                    },
-                    tooltipFormat: 'HH:mm:ss'
-                },
-            },
-            y: {
-                suggestedMin: 0,
-                suggestedMax: 15,
-            }
-        },
-        maintainAspectRatio: false,
-        plugins: {
-            tooltip: {
-                callbacks: {
-                    label: (context) => `${context.dataset.label}: ${context.parsed.y}/sec`,
-                },
-            },
-        },
-    },
-});
+        }
+    }
+);
 
 
 async function updateCapabilities() {
     const response = await fetch("capabilities");
     const data = await response.json();
     const versionBox = document.getElementById("version");
-    versionBox.innerText = " " + data.Version;
     const infoBox = document.getElementById("info");
+
+    versionBox.innerText = ` ${data.Version}`;
     if (data.UserParameters.RouteChangeCounter === 0) {
-        infoBox.innerText = `Displaying every BGP update received. Removing entries after 1 minute of inactivity.`;
-        dataFlapCount.datasets[1].hidden = true;
+        infoBox.innerText = "Displaying every BGP update received. Removing entries after 1 minute of inactivity.";
     } else {
         infoBox.innerText = `A route for a prefix needs to change at least ${data.UserParameters.RouteChangeCounter} times in 1 minute and remain active for at least ${data.UserParameters.OverThresholdTarget} minutes for it to be shown in the table.`;
     }
@@ -179,10 +189,10 @@ async function updateCapabilities() {
 function addToChart(liveChart, point, unixTime, dataInterval) {
     let shifted = false;
     for (let i = 0; i < point.length; i++) {
-        if (liveChart.data.datasets[i] === undefined) {
+        if (liveChart.data.datasets.length <= i) {
             continue;
         }
-        liveChart.data.datasets[i].data.push((point[i] / dataInterval));
+        liveChart.data.datasets[i].data.push(point[i] / dataInterval);
 
         if (liveChart.data.datasets[i].data.length > 50) {
             shifted = true;
@@ -198,26 +208,28 @@ function addToChart(liveChart, point, unixTime, dataInterval) {
 
 const prefixTable = document.getElementById("prefixTableBody");
 
-async function updateList(flapList) {
-    let prefixTableHtml = '';
+function updateList(flapList) {
+    let prefixTableHtml = "";
     const unixTime = Math.floor(Date.now() / 1000);
 
-    if (flapList !== null) {
+    if (flapList === null) {
+        prefixTableHtml = '<tr><td colspan="4" class="centerText"><b>Please wait</b></td></tr>';
+    } else {
         flapList.sort((a, b) => b.TotalCount - a.TotalCount);
 
         for (let i = 0; i < flapList.length; i++) {
             //const duration = toTimeElapsed(flapList[i].LastSeen - flapList[i].FirstSeen);
             const duration = toTimeElapsed(unixTime - flapList[i].FirstSeen);
-            prefixTableHtml += `<tr>`;
+            prefixTableHtml += '<tr>';
             prefixTableHtml += `<td><a target="_blank" href='analyze/?prefix=${encodeURIComponent(flapList[i].Prefix)}'>${flapList[i].Prefix}</a></td>`;
             prefixTableHtml += `<td>${duration}</td>`;
             prefixTableHtml += `<td>${truncateRouteChanges(flapList[i].TotalCount)}</td>`;
             let rateDisplay = "..";
             if (flapList[i].RateSec !== -1) {
-                rateDisplay = flapList[i].RateSec + "/s";
+                rateDisplay = `${flapList[i].RateSec}/s`;
             }
             prefixTableHtml += `<td>${rateDisplay}</td>`;
-            prefixTableHtml += `</tr>`;
+            prefixTableHtml += '</tr>';
             if (i >= 100) {
                 break;
             }
@@ -225,8 +237,6 @@ async function updateList(flapList) {
         if (flapList.length === 0) {
             prefixTableHtml = '<tr><td colspan="4" class="centerText">No flapping prefixes detected</td></tr>';
         }
-    } else {
-        prefixTableHtml = '<tr><td colspan="4" class="centerText"><b>Please wait</b></td></tr>';
     }
 
     prefixTable.innerHTML = prefixTableHtml;
@@ -256,7 +266,7 @@ function getStats() {
                 noBGPFeedsElem.style.display = "none";
             }
 
-            updateList(flapList).then();
+            updateList(flapList);
 
 
             addToChart(liveRouteChart, [stats["Changes"], stats["ListedChanges"]], stats["Time"], 5);
@@ -278,12 +288,12 @@ function getStats() {
         }
     });
     evtSource.onerror = (err) => {
-        loadingScreen.style.display = 'none';
+        loadingScreen.style.display = "none";
         handleConnectionLost(true);
         console.log(err);
     };
     evtSource.onopen = () => {
-        loadingScreen.style.display = 'none';
+        loadingScreen.style.display = "none";
         handleConnectionLost(false);
     };
 }
@@ -293,9 +303,9 @@ function toTimeElapsed(secondsIn) {
     const secondsHour = secondsMinute * 60;
     const secondsDay = secondsHour * 24;
     const days = Math.floor(secondsIn / secondsDay);
-    const hours = Math.floor((secondsIn % secondsDay) / secondsHour).toString().padStart(2, '0');
-    const minutes = Math.floor((secondsIn % secondsHour) / secondsMinute).toString().padStart(2, '0');
-    const seconds = Math.floor(secondsIn % secondsMinute).toString().padStart(2, '0');
+    const hours = Math.floor((secondsIn % secondsDay) / secondsHour).toString().padStart(2, "0");
+    const minutes = Math.floor((secondsIn % secondsHour) / secondsMinute).toString().padStart(2, "0");
+    const seconds = Math.floor(secondsIn % secondsMinute).toString().padStart(2, "0");
     let result = "";
     if (days !== 0) {
         result += `${days}d `;
@@ -312,11 +322,11 @@ function truncateRouteChanges(routeChanges) {
     if (routeChanges < million) {
         return routeChanges;
     } else if (routeChanges >= million && routeChanges < billion) {
-        return (+(routeChanges / million).toFixed(3)) + " million";
+        return `${Number(routeChanges / million).toFixed(3)} million`;
     } else if (routeChanges >= billion && routeChanges < trillion) {
-        return (+(routeChanges / billion).toFixed(3)) + " billion";
+        return `${Number(routeChanges / billion).toFixed(3)} billion`;
     } else if (routeChanges >= trillion) {
-        return (+(routeChanges / trillion).toFixed(2)) + " trillion";
+        return `${Number(routeChanges / trillion).toFixed(2)} trillion`;
     }
     return routeChanges;
 }
@@ -324,9 +334,9 @@ function truncateRouteChanges(routeChanges) {
 
 function handleConnectionLost(lost) {
     if (lost) {
-        document.getElementById('connectionLost').style.display = 'block';
+        document.getElementById("connectionLost").style.display = "block";
     } else {
-        document.getElementById('connectionLost').style.display = 'none';
+        document.getElementById("connectionLost").style.display = "none";
     }
 }
 
@@ -336,47 +346,47 @@ updateCapabilities().catch((err) => {
 });
 
 {
-    const dialog = document.getElementById('sessionsDialog');
-    const loading = document.getElementById('sessionsLoading');
-    const table = document.getElementById('sessionsTable');
-    const tbody = document.getElementById('sessionsTableBody');
-    const error = document.getElementById('sessionsError');
+    const dialog = document.getElementById("sessionsDialog");
+    const loading = document.getElementById("sessionsLoading");
+    const table = document.getElementById("sessionsTable");
+    const tbody = document.getElementById("sessionsTableBody");
+    const error = document.getElementById("sessionsError");
 
-    document.getElementById('closeSessionsDialog')?.addEventListener('click', () => {
+    document.getElementById("closeSessionsDialog")?.addEventListener("click", () => {
         dialog.close();
     });
 
     document.getElementById("sessionCountLink").onclick = async (ev) => {
-        ev.preventDefault()
-        loading.style.display = 'block';
-        table.style.display = 'none';
-        error.style.display = 'none';
-        tbody.innerHTML = '';
+        ev.preventDefault();
+        loading.style.display = "block";
+        table.style.display = "none";
+        error.style.display = "none";
+        tbody.innerHTML = "";
 
         dialog.showModal();
 
         try {
-            const response = await fetch('sessions');
+            const response = await fetch("sessions");
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             const data = await response.json();
 
             const now = Math.floor(Date.now() / 1000);
             const fragment = document.createDocumentFragment();
 
-            data.forEach(entry => {
-                const row = document.createElement('tr');
+            data.forEach((entry) => {
+                const row = document.createElement("tr");
 
                 const cells = [
                     entry.Remote,
                     entry.RouterID,
-                    entry.Hostname || 'N/A',
+                    entry.Hostname || "N/A",
                     toTimeElapsed(now - entry.Time)
                 ];
 
-                cells.forEach(text => {
-                    const cell = document.createElement('td');
+                cells.forEach((text) => {
+                    const cell = document.createElement("td");
                     cell.textContent = text;
-                    cell.style.cssText = 'border: 1px solid #ddd; padding: 8px; text-align: left;';
+                    cell.style.cssText = "border: 1px solid #ddd; padding: 8px; text-align: left;";
                     row.appendChild(cell);
                 });
 
@@ -384,30 +394,30 @@ updateCapabilities().catch((err) => {
             });
 
             tbody.appendChild(fragment);
-            loading.style.display = 'none';
-            table.style.display = 'table';
+            loading.style.display = "none";
+            table.style.display = "table";
         } catch (err) {
-            loading.style.display = 'none';
+            loading.style.display = "none";
             error.textContent = `Error loading sessions: ${err.message}`;
-            error.style.display = 'block';
+            error.style.display = "block";
         }
     };
 }
 
 
 // Gauge-only view toggle
-const gaugeOnlyToggle = document.getElementById('gaugeOnlyToggle');
+const gaugeOnlyToggle = document.getElementById("gaugeOnlyToggle");
 if (gaugeOnlyToggle) {
     // Load saved preference
-    const isGaugeOnly = localStorage.getItem('gaugeOnlyView') === 'true';
+    const isGaugeOnly = localStorage.getItem("gaugeOnlyView") === "true";
     if (isGaugeOnly) {
-        document.body.classList.add('gauge-only');
-        gaugeOnlyToggle.textContent = 'Full View';
+        document.body.classList.add("gauge-only");
+        gaugeOnlyToggle.textContent = "Full view";
     }
 
-    gaugeOnlyToggle.addEventListener('click', () => {
-        const currentlyGaugeOnly = document.body.classList.toggle('gauge-only');
-        gaugeOnlyToggle.textContent = currentlyGaugeOnly ? 'Full View' : 'Gauge Only View';
-        localStorage.setItem('gaugeOnlyView', currentlyGaugeOnly);
+    gaugeOnlyToggle.addEventListener("click", () => {
+        const currentlyGaugeOnly = document.body.classList.toggle("gauge-only");
+        gaugeOnlyToggle.textContent = currentlyGaugeOnly ? "Full view" : "Gauge-only view";
+        localStorage.setItem("gaugeOnlyView", currentlyGaugeOnly.toString());
     });
 }

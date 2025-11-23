@@ -53,6 +53,10 @@ const (
 	OpenUnsupportedOptionalParameter ErrorSubCode = 4
 )
 
+const (
+	CeaseMaxNumberOfPrefixes ErrorSubCode = 1
+)
+
 func (m Msg) LogValue() slog.Value {
 	return slog.GroupValue(
 		slog.String("error_code", m.ErrorCode.String()),

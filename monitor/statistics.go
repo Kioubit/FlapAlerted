@@ -5,6 +5,7 @@ import (
 	"math"
 	"slices"
 	"sort"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -26,17 +27,57 @@ func GetAverageRouteChanges90() float64 {
 
 	var sum uint64 = 0
 	for _, u := range changesList {
-		sum = SafeAddUint64(sum, u)
+		sum = safeAddUint64(sum, u)
 	}
 	avg := float64(sum) / float64(len(changesList))
-	return avg / 5 // Data collected for 5 seconds
+	return avg / statisticsCollectionIntervalSec
 }
 
 func GetSessionInfoJson() (string, error) {
 	return common.GetSessionInfoJson()
 }
 
-//-------------------------------------------------------
+func GetActiveFlaps() []FlapEvent {
+	active, _ := GetActiveFlapList()
+	return active
+}
+
+func GetActiveFlapsSummary() []FlapSummary {
+	l := lastFlapSummaryList.Load()
+	if l == nil {
+		return make([]FlapSummary, 0)
+	}
+	return *l
+}
+
+type Metric struct {
+	ActiveFlapCount                int
+	ActiveFlapTotalPathChangeCount uint64
+	AverageRouteChanges90          string
+	Sessions                       int
+}
+
+func GetMetric() Metric {
+	var activeFlapCount = 0
+	var pathChangeCount uint64 = 0
+	stats := GetStats()
+	if len(stats) != 0 {
+		activeFlapCount = stats[len(stats)-1].Stats.Active
+		pathChangeCount = stats[len(stats)-1].Stats.Changes
+	}
+	avg := GetAverageRouteChanges90()
+	avgStr := strconv.FormatFloat(avg, 'f', 2, 64)
+
+	return Metric{
+		ActiveFlapCount:                activeFlapCount,
+		ActiveFlapTotalPathChangeCount: pathChangeCount,
+		AverageRouteChanges90:          avgStr,
+		Sessions:                       common.GetSessionCount(),
+	}
+}
+
+// -------------------------------------------------------
+const statisticsCollectionIntervalSec = 5
 
 type statisticWrapper struct {
 	List     []FlapSummary
@@ -77,7 +118,7 @@ var lastFlapSummaryList atomic.Pointer[[]FlapSummary]
 
 func statTracker() {
 	for {
-		time.Sleep(5 * time.Second)
+		time.Sleep(statisticsCollectionIntervalSec * time.Second)
 
 		aFlap, trackedCount := GetActiveFlapList()
 
@@ -107,8 +148,8 @@ func statTracker() {
 
 		newStatistic := statistic{
 			Time:          time.Now().Unix(),
-			Changes:       GlobalTotalRouteChangeCounter.Swap(0),
-			ListedChanges: GlobalListedRouteChangeCounter.Swap(0),
+			Changes:       globalTotalRouteChangeCounter.Swap(0),
+			ListedChanges: globalListedRouteChangeCounter.Swap(0),
 			Active:        trackedCount,
 		}
 

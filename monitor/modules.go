@@ -1,10 +1,8 @@
 package monitor
 
 import (
-	"FlapAlerted/bgp/common"
 	"FlapAlerted/config"
 	"log/slog"
-	"strconv"
 )
 
 type Module struct {
@@ -18,9 +16,9 @@ var (
 	moduleList     = make([]*Module, 0)
 	modulesStarted = false
 )
-var (
-	version string
-)
+
+var notificationStartChannel = make(chan FlapEvent, 10)
+var notificationEndChannel = make(chan FlapEvent, 10)
 
 func notificationHandler(c, cEnd chan FlapEvent) {
 	modulesStarted = true
@@ -79,49 +77,6 @@ func GetRegisteredModuleNames() []string {
 	return list
 }
 
-func SetVersion(v string) {
-	version = v
-}
-
-func GetActiveFlaps() []FlapEvent {
-	active, _ := GetActiveFlapList()
-	return active
-}
-
-func GetActiveFlapsSummary() []FlapSummary {
-	l := lastFlapSummaryList.Load()
-	if l == nil {
-		return make([]FlapSummary, 0)
-	}
-	return *l
-}
-
-type Metric struct {
-	ActiveFlapCount                int
-	ActiveFlapTotalPathChangeCount uint64
-	AverageRouteChanges90          string
-	Sessions                       int
-}
-
-func GetMetric() Metric {
-	var activeFlapCount = 0
-	var pathChangeCount uint64 = 0
-	stats := GetStats()
-	if len(stats) != 0 {
-		activeFlapCount = stats[len(stats)-1].Stats.Active
-		pathChangeCount = stats[len(stats)-1].Stats.Changes
-	}
-	avg := GetAverageRouteChanges90()
-	avgStr := strconv.FormatFloat(avg, 'f', 2, 64)
-
-	return Metric{
-		ActiveFlapCount:                activeFlapCount,
-		ActiveFlapTotalPathChangeCount: pathChangeCount,
-		AverageRouteChanges90:          avgStr,
-		Sessions:                       common.GetSessionCount(),
-	}
-}
-
 type Capabilities struct {
 	Version        string
 	Modules        []string
@@ -138,7 +93,7 @@ type UserParameters struct {
 
 func GetCapabilities() Capabilities {
 	return Capabilities{
-		Version: version,
+		Version: programVersion,
 		Modules: getModuleNameList(),
 		UserParameters: UserParameters{
 			RouteChangeCounter:   config.GlobalConf.RouteChangeCounter,

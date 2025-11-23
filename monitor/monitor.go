@@ -7,12 +7,20 @@ import (
 	"net/netip"
 )
 
+var (
+	programVersion string
+)
+
+func SetProgramVersion(v string) {
+	programVersion = v
+}
+
 func StartMonitoring(conf config.UserConfig) {
 	config.GlobalConf = conf
 
 	pathChangeChan := make(chan table.PathChange, 1000)
 
-	go notificationHandler(NotificationChannel, NotificationEndChannel)
+	go notificationHandler(notificationStartChannel, notificationEndChannel)
 	go statTracker()
 	go recordPathChanges(pathChangeChan)
 	bgp.StartBGP(config.GlobalConf.BgpListenAddress, pathChangeChan)

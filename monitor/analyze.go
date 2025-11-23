@@ -18,12 +18,9 @@ var (
 )
 
 var (
-	GlobalTotalRouteChangeCounter  atomic.Uint64
-	GlobalListedRouteChangeCounter atomic.Uint64
+	globalTotalRouteChangeCounter  atomic.Uint64
+	globalListedRouteChangeCounter atomic.Uint64
 )
-
-var NotificationChannel = make(chan FlapEvent, 10)
-var NotificationEndChannel = make(chan FlapEvent, 10)
 
 type FlapEvent struct {
 	Prefix           netip.Prefix
@@ -59,7 +56,7 @@ func recordPathChanges(pathChan chan table.PathChange) {
 				event.lastIntervalCount = event.TotalPathChanges
 
 				event.RateSecHistory = append(event.RateSecHistory, event.RateSec)
-				if len(event.RateSecHistory) > 20 {
+				if len(event.RateSecHistory) > 60 {
 					event.RateSecHistory = event.RateSecHistory[1:]
 				}
 
@@ -68,7 +65,7 @@ func recordPathChanges(pathChan chan table.PathChange) {
 					if event.underThresholdCount == config.GlobalConf.UnderThresholdTarget {
 						delete(activeMap, prefix)
 						if event.IsActive {
-							NotificationEndChannel <- *event
+							notificationEndChannel <- *event
 						}
 					} else {
 						event.underThresholdCount++
@@ -78,7 +75,7 @@ func recordPathChanges(pathChan chan table.PathChange) {
 					if event.overThresholdCount == config.GlobalConf.OverThresholdTarget {
 						event.IsActive = true
 						event.overThresholdCount++
-						NotificationChannel <- *event
+						notificationStartChannel <- *event
 					} else {
 						event.overThresholdCount++
 					}
@@ -89,25 +86,27 @@ func recordPathChanges(pathChan chan table.PathChange) {
 		case pathChange = <-pathChan:
 		}
 
-		GlobalTotalRouteChangeCounter.Add(1)
+		globalTotalRouteChangeCounter.Add(1)
 
 		activeMapLock.Lock()
 		if val, exists := activeMap[pathChange.Prefix]; exists {
 			incrementUint64(&val.TotalPathChanges)
-			val.PathHistory.Record(pathChange.OldPath, pathChange.IsWithdrawal)
+			val.PathHistory.record(pathChange.OldPath, pathChange.IsWithdrawal)
 			if val.IsActive {
-				GlobalListedRouteChangeCounter.Add(1)
+				globalListedRouteChangeCounter.Add(1)
 			}
 		} else {
 			if counterMap[pathChange.Prefix] == uint32(config.GlobalConf.RouteChangeCounter) {
 				activeMap[pathChange.Prefix] = &FlapEvent{
 					Prefix:             pathChange.Prefix,
-					PathHistory:        NewPathTracker(pathHistoryLimit),
+					PathHistory:        newPathTracker(pathHistoryLimit),
 					TotalPathChanges:   uint64(counterMap[pathChange.Prefix]) + 1,
 					RateSec:            -1,
 					RateSecHistory:     make([]int, 0),
 					FirstSeen:          now,
 					overThresholdCount: 1,
+					// Special case for the 'display all route changes' mode
+					IsActive: config.GlobalConf.RouteChangeCounter == 0,
 				}
 			} else {
 				counterMap[pathChange.Prefix]++
@@ -125,7 +124,7 @@ func incrementUint64(n *uint64) {
 	*n = *n + 1
 }
 
-func SafeAddUint64(a, b uint64) uint64 {
+func safeAddUint64(a, b uint64) uint64 {
 	sum := a + b
 	if sum >= a {
 		return sum

@@ -2,16 +2,20 @@ package table
 
 import (
 	"FlapAlerted/bgp/common"
+	"FlapAlerted/config"
+	"context"
 	"net/netip"
 )
 
 type PrefixTable struct {
-	table          map[netip.Prefix]*Entry
-	pathChangeChan chan PathChange
+	table               map[netip.Prefix]*Entry
+	pathChangeChan      chan PathChange
+	importCount         int
+	sessionCancellation context.CancelCauseFunc
 }
 
-func NewPrefixTable(pathChangeChan chan PathChange) *PrefixTable {
-	return &PrefixTable{table: make(map[netip.Prefix]*Entry), pathChangeChan: pathChangeChan}
+func NewPrefixTable(pathChangeChan chan PathChange, sessionCancellation context.CancelCauseFunc) *PrefixTable {
+	return &PrefixTable{table: make(map[netip.Prefix]*Entry), pathChangeChan: pathChangeChan, sessionCancellation: sessionCancellation}
 }
 
 type PathChange struct {
@@ -33,6 +37,7 @@ func (t *PrefixTable) update(prefix netip.Prefix, pathID uint32, isWithdrawal bo
 					IsWithdrawal: true,
 					OldPath:      oldPath,
 				}
+				t.importCount--
 				delete(entry.Paths, pathID)
 				if len(entry.Paths) == 0 {
 					delete(t.table, prefix)
@@ -42,6 +47,7 @@ func (t *PrefixTable) update(prefix netip.Prefix, pathID uint32, isWithdrawal bo
 	} else {
 		entry, found := t.table[prefix]
 		if !found {
+			t.importCount++
 			entry = &Entry{Paths: make(map[uint32]common.AsPath)}
 			t.table[prefix] = entry
 		} else {
@@ -51,8 +57,19 @@ func (t *PrefixTable) update(prefix netip.Prefix, pathID uint32, isWithdrawal bo
 					IsWithdrawal: false,
 					OldPath:      oldPath,
 				}
+			} else {
+				t.importCount++
 			}
 		}
 		entry.Paths[pathID] = asPath
+		if t.importCount > config.GlobalConf.ImportLimit {
+			t.sessionCancellation(&ImportLimitError{})
+		}
 	}
+}
+
+type ImportLimitError struct{}
+
+func (e *ImportLimitError) Error() string {
+	return "import limit reached"
 }

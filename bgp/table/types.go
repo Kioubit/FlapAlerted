@@ -18,7 +18,7 @@ func (u *SessionUpdateMessage) LogValue() slog.Value {
 		return slog.StringValue("Failed to marshal update to JSON: " + err.Error())
 	}
 
-	asPath, err := u.GetAsPath()
+	asPath, _, err := u.GetAsPath()
 	if err != nil {
 		slog.Warn("error getting ASPath", "error", err)
 	}
@@ -62,6 +62,6 @@ func (u *SessionUpdateMessage) GetMpUnReachNLRI() (update.MPUnReachNLRI, bool, e
 	return u.Msg.GetMpUnReachNLRI(u.Session)
 }
 
-func (u *SessionUpdateMessage) GetAsPath() (common.AsPath, error) {
+func (u *SessionUpdateMessage) GetAsPath() (common.AsPath, bool, error) {
 	return u.Msg.GetAsPath(u.Session)
 }

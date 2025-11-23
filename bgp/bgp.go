@@ -226,6 +226,17 @@ func newBGPConnection(ctx context.Context, logger *slog.Logger, conn net.Conn, s
 
 	err = handleIncoming(ctx, logger, conn, session, updateChannel, keepAliveChan)
 	if err != nil {
+		if errors.Is(err, &table.ImportLimitError{}) {
+			if nMsg, err := notification.GetNotification(notification.Cease, notification.CeaseMaxNumberOfPrefixes, []byte{}); err == nil {
+				_, _ = conn.Write(nMsg)
+			}
+		} else {
+			if nMsg, err := notification.GetNotification(notification.UpdateMessageError, 0, []byte{}); err == nil {
+				_, _ = conn.Write(nMsg)
+			}
+		}
+		// Give the receiver time to receive the notification before closing the connection
+		time.Sleep(1 * time.Second)
 		return err, true
 	}
 	logger.Info("BGP Connection closed", "routerID", remoteRouterID)

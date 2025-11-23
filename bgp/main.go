@@ -48,7 +48,7 @@ func handleConnection(conn net.Conn, pathChangeChan chan table.PathChange) {
 	ctx, cancel := context.WithCancelCause(context.Background())
 
 	go func() {
-		t := table.NewPrefixTable(pathChangeChan)
+		t := table.NewPrefixTable(pathChangeChan, cancel)
 		table.ProcessUpdates(cancel, updateChannel, t)
 	}()
 

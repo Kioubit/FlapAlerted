@@ -311,24 +311,31 @@ func (u Msg) GetMpUnReachNLRI(session *common.LocalSession) (MPUnReachNLRI, bool
 	return MPUnReachNLRI{}, false, nil
 }
 
-func (u Msg) GetAsPath(session *common.LocalSession) (common.AsPath, error) {
+func (u Msg) GetAsPath(session *common.LocalSession) (common.AsPath, bool, error) {
 	path := make([]uint32, 0)
+	found := false
 	for _, a := range u.PathAttributes {
 		switch a.TypeCode {
 		case AsPathAttr:
+			found = true
 			attribute, err := a.GetAttribute(session)
 			if err != nil {
-				return common.AsPath{}, err
+				return common.AsPath{}, false, err
 			}
 			if attribute.(asPathAttribute).PathSegmentType == AsSequence {
 				path = append(path, attribute.(asPathAttribute).Value...)
 			}
 		}
 	}
+
+	if !found {
+		return nil, false, nil
+	}
+
 	if len(path) == 0 {
 		path = append(path, session.Asn)
 	}
-	return path, nil
+	return path, true, nil
 }
 
 func (p prefix) ToNetCidr() netip.Prefix {

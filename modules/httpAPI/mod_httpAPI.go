@@ -85,6 +85,7 @@ func getFlapHistory(w http.ResponseWriter, r *http.Request) {
 	}
 	result, found := monitor.GetActiveFlapPrefix(prefix)
 	if !found {
+		w.WriteHeader(500)
 		_, _ = w.Write([]byte("null"))
 		return
 	}
@@ -92,9 +93,9 @@ func getFlapHistory(w http.ResponseWriter, r *http.Request) {
 	marshaled, err := json.Marshal(result.RateSecHistory)
 	if err != nil {
 		w.WriteHeader(500)
-	} else {
-		_, _ = w.Write(marshaled)
+		return
 	}
+	_, _ = w.Write(marshaled)
 }
 
 func mainPageHandler() http.Handler {
@@ -149,7 +150,7 @@ func getPrefix(w http.ResponseWriter, r *http.Request) {
 			var pathList []monitor.PathInfo
 			if config.GlobalConf.KeepPathInfo {
 				pathList = make([]monitor.PathInfo, 0)
-				for _, v := range f.PathHistory.All() {
+				for v := range f.PathHistory.All() {
 					pathList = append(pathList, *v)
 				}
 			}

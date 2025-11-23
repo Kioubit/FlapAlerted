@@ -9,6 +9,7 @@ type UserConfig struct {
 	OverThresholdTarget  int
 	UnderThresholdTarget int
 	Asn                  uint32
+	ImportLimit          int
 	KeepPathInfo         bool
 	UseAddPath           bool
 	Debug                bool

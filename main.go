@@ -18,18 +18,19 @@ var Version = ""
 func main() {
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{})))
 	_, _ = fmt.Fprintln(os.Stderr, "FlapAlerted", Version)
-	monitor.SetVersion(Version)
+	monitor.SetProgramVersion(Version)
 
-	routeChangeCounter := flag.Uint("routeChangeCounter", 700, "Number of times a route path needs"+
+	routeChangeCounter := flag.Uint("routeChangeCounter", 600, "Number of times a route path needs"+
 		" to change to list a prefix. Use '0' to show all route changes.")
 	asn := flag.Uint("asn", 0, "Your ASN number")
-	overThresholdTarget := flag.Uint("overThresholdTarget", 10, "Number of consecutive intervals with rate at or above the routeChangeCounter to trigger an event")
+	overThresholdTarget := flag.Uint("overThresholdTarget", 9, "Number of consecutive intervals with rate at or above the routeChangeCounter to trigger an event")
 	underThresholdTarget := flag.Uint("underThresholdTarget", 10, "Number of consecutive intervals with rate below routeChangeCounter to remove an event")
 	routerID := flag.String("routerID", "0.0.0.51", "BGP Router ID for this program")
 	noPathInfo := flag.Bool("noPathInfo", false, "Disable keeping path information")
 	disableAddPath := flag.Bool("disableAddPath", false, "Disable BGP AddPath support. (Setting must be replicated in BGP daemon)")
 	bgpListenAddress := flag.String("bgpListenAddress", ":1790", "Address to listen on for incoming BGP connections")
 	enableDebug := flag.Bool("debug", false, "Enable debug mode (produces a lot of output)")
+	importLimitThousands := flag.Uint("importLimitThousands", 10000, "Maximum number of allowed routes per session")
 
 	flag.Parse()
 
@@ -58,6 +59,7 @@ func main() {
 	conf.UseAddPath = !*disableAddPath
 	conf.Debug = *enableDebug
 	conf.BgpListenAddress = *bgpListenAddress
+	conf.ImportLimit = int(*importLimitThousands * 1000)
 
 	if conf.Asn == 0 {
 		fmt.Println("ASN value not specified")
@@ -67,6 +69,8 @@ func main() {
 	if conf.RouteChangeCounter == 0 {
 		conf.OverThresholdTarget = 0
 		conf.UnderThresholdTarget = 0
+	} else if conf.OverThresholdTarget == 0 {
+		conf.UnderThresholdTarget = 1
 	}
 
 	var err error
@@ -88,11 +92,17 @@ func main() {
 		slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug, AddSource: true})))
 	}
 
-	slog.Info("Started", "parameters", fmt.Sprintf(
-		"Detecting flaps: trigger alert after %d consecutive 60s intervals with >= %d route changes; "+
-			"end alert after %d consecutive 60s intervals with < %d route changes",
-		conf.OverThresholdTarget, conf.RouteChangeCounter,
-		conf.UnderThresholdTarget, conf.RouteChangeCounter))
+	var parameterString string
+	if conf.RouteChangeCounter == 0 {
+		parameterString = "Trigger an alert for all route changes. Remove entries after 60s of inactivity."
+	} else {
+		parameterString = fmt.Sprintf(
+			"Trigger an alert after %d consecutive 60s intervals with >= %d route changes; "+
+				"end alert after %d consecutive 60s intervals with < %d route changes",
+			conf.OverThresholdTarget, conf.RouteChangeCounter,
+			conf.UnderThresholdTarget, conf.RouteChangeCounter)
+	}
 
+	slog.Info("Started", "parameters", parameterString)
 	monitor.StartMonitoring(conf)
 }

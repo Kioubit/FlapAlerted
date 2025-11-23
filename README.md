@@ -8,30 +8,32 @@
 
 ### Setup notes
 
-The program will listen on port 1790 for incoming BGP sessions (passive mode - no outgoing connections).
+The program will listen on port `1790` for incoming BGP sessions (passive mode - no outgoing connections).
 It is recommended to adjust the `routeChangeCounter` and `overThresholdTarget` parameters (see usage) to produce the desired result.
 
 ### Usage
 ```
 Usage:
-  -asn int
-    	Your ASN number
+  -asn uint
+        Your ASN number
   -bgpListenAddress string
-    	Address to listen on for incoming BGP connections (default ":1790")
+        Address to listen on for incoming BGP connections (default ":1790")
   -debug
-    	Enable debug mode (produces a lot of output)
+        Enable debug mode (produces a lot of output)
   -disableAddPath
-    	Disable BGP AddPath support. (Setting must be replicated in BGP daemon)
+        Disable BGP AddPath support. (Setting must be replicated in BGP daemon)
+  -importLimitThousands uint
+        Maximum number of allowed routes per session (default 10000)
   -noPathInfo
-    	Disable keeping path information
-  -overThresholdTarget int
-    	Number of consecutive intervals with rate at or above the routeChangeCounter to trigger an event (default 10)
-  -routeChangeCounter int
-    	Number of times a route path needs to change to list a prefix. Use '0' to show all route changes. (default 700)
+        Disable keeping path information
+  -overThresholdTarget uint
+        Number of consecutive intervals with rate at or above the routeChangeCounter to trigger an event (default 5)
+  -routeChangeCounter uint
+        Number of times a route path needs to change to list a prefix. Use '0' to show all route changes. (default 200)
   -routerID string
-    	BGP Router ID for this program (default "0.0.0.51")
-  -underThresholdTarget int
-    	Number of consecutive intervals with rate below routeChangeCounter to remove an event (default 10)
+        BGP Router ID for this program (default "0.0.0.51")
+  -underThresholdTarget uint
+        Number of consecutive intervals with rate below routeChangeCounter to remove an event (default 10)
 ```
 #### Using environment variables
 Environment variables can configure options by prefixing `FA_` to any command-line flag name (optionally in uppercase). For example, set the ASN number with `FA_ASN=<asn>` or the router ID using `FA_routerID=<router id>`.
@@ -77,12 +79,12 @@ It also provides a user interface (on the same port) at path:
 To disable this module, add the following tag to the `MODULES` variable in the `Makefile`: `disable_mod_httpAPI`
 
 #### mod_log (Enabled by default)
-Logs each time a prefix exceeds the defined `routeChangeCounter` within the defined `period` to STDOUT.
+Logs each detected active prefix to `STDOUT`.
 
 To disable this module, add the following tag to the `MODULES` variable in the `Makefile`: `disable_mod_log`
 
 #### mod_script (Enabled by default, except for docker builds)
-The mod_script module allows executing custom scripts when BGP flap events are detected. Scripts can be triggered at both the start and end of flap events.
+Allows executing custom scripts when BGP flap events are detected. Scripts can be triggered at both the start and end of flap events.
 
 Command Line Arguments:
 - `-detectionScriptStart`: Path to script executed when a flap event starts
@@ -103,7 +105,7 @@ Configuration:
 
 Payload: Flap event data is sent as a JSON string in the request body.
 
-To disable this module, use the tag `disable_mod_webhook` in the `Makefile`.
+To disable this module, add the following tag to the `MODULES` variable in the Makefile: `disable_mod_webhook`
 
 #### mod_roaFilter (Disabled by default)
 Filters a ROA file in JSON format to remove flapping prefixes.

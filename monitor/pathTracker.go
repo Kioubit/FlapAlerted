@@ -4,9 +4,8 @@ import (
 	"FlapAlerted/bgp/common"
 	"FlapAlerted/config"
 	"container/list"
+	"encoding/binary"
 	"math"
-	"strconv"
-	"strings"
 	"sync"
 )
 
@@ -19,8 +18,8 @@ type PathTracker struct {
 
 type PathInfo struct {
 	Path              common.AsPath
-	AnnouncementCount uint64
-	WithdrawalCount   uint64
+	AnnouncementCount uint64 `json:"ac"`
+	WithdrawalCount   uint64 `json:"wc"`
 }
 
 type pathEntry struct {
@@ -29,16 +28,16 @@ type pathEntry struct {
 	ticks int
 }
 
-func (pt *PathTracker) Record(path common.AsPath, isWithdrawal bool) {
+func (pt *PathTracker) record(path common.AsPath, isWithdrawal bool) {
 	if !config.GlobalConf.KeepPathInfo {
 		return
 	}
+	key := pathToKey(path)
+
 	pt.lock.Lock()
 	defer pt.lock.Unlock()
 
-	key := pathToString(path)
-
-	if elem, exists := pt.paths[key]; exists {
+	if elem, exists := pt.paths[string(key)]; exists {
 		entry := elem.Value.(*pathEntry)
 		if isWithdrawal {
 			incrementUint64(&entry.info.WithdrawalCount)
@@ -65,38 +64,20 @@ func (pt *PathTracker) Record(path common.AsPath, isWithdrawal bool) {
 	}
 
 	elem := pt.order.PushBack(&pathEntry{
-		key:  key,
+		key:  string(key),
 		info: pathInfoEntry,
 	})
-	pt.paths[key] = elem
+	pt.paths[string(key)] = elem
 }
-func pathToString(asPath common.AsPath) string {
-	if len(asPath) == 0 {
-		return ""
-	}
-
-	var sb strings.Builder
-	sb.Grow(len(asPath) * 11) // Pre-allocate
-
-	for i, as := range asPath {
-		if i > 0 {
-			sb.WriteByte(',')
-		}
-		sb.WriteString(strconv.FormatUint(uint64(as), 10))
-	}
-
-	return sb.String()
-}
-
-func (pt *PathTracker) Get(key string) *PathInfo {
-	pt.lock.RLock()
-	defer pt.lock.RUnlock()
-
-	if elem, exists := pt.paths[key]; exists {
-		return elem.Value.(*pathEntry).info
-	} else {
+func pathToKey(p common.AsPath) []byte {
+	if len(p) == 0 {
 		return nil
 	}
+	buf := make([]byte, len(p)*4)
+	for i, v := range p {
+		binary.LittleEndian.PutUint32(buf[i*4:], v)
+	}
+	return buf
 }
 
 func (pt *PathTracker) deleteLeastValuable() {
@@ -117,7 +98,7 @@ func (pt *PathTracker) deleteLeastValuable() {
 		steps := 0
 		for elem := pt.order.Front(); elem != nil && steps < 50; elem = elem.Next() {
 			entry := elem.Value.(*pathEntry)
-			entryCount := SafeAddUint64(entry.info.AnnouncementCount, entry.info.WithdrawalCount)
+			entryCount := safeAddUint64(entry.info.AnnouncementCount, entry.info.WithdrawalCount)
 
 			if entryCount < minCount {
 				minCount = entryCount
@@ -134,20 +115,20 @@ func (pt *PathTracker) deleteLeastValuable() {
 	delete(pt.paths, entry.key)
 }
 
-func (pt *PathTracker) All() func(func(string, *PathInfo) bool) {
-	return func(yield func(string, *PathInfo) bool) {
+func (pt *PathTracker) All() func(func(*PathInfo) bool) {
+	return func(yield func(*PathInfo) bool) {
 		pt.lock.RLock()
 		defer pt.lock.RUnlock()
 		for elem := pt.order.Front(); elem != nil; elem = elem.Next() {
 			entry := elem.Value.(*pathEntry)
-			if !yield(entry.key, entry.info) {
+			if !yield(entry.info) {
 				return
 			}
 		}
 	}
 }
 
-func NewPathTracker(limit int) *PathTracker {
+func newPathTracker(limit int) *PathTracker {
 	return &PathTracker{
 		paths: make(map[string]*list.Element),
 		order: list.New(),

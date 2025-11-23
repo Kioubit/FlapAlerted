@@ -79,6 +79,10 @@ body {
         grid-template-columns: 1fr;
     }
 
+    #grid-container-charts {
+        margin-top: 2em;
+    }
+
     #mainHeading {
         text-align: center;
     }

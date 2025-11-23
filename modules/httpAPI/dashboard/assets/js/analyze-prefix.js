@@ -4,7 +4,30 @@ window.onload = () => {
     display();
 };
 
-const ctxRouteCount = document.getElementById('chartRouteCount').getContext('2d');
+const noDataPlugin = {
+    id: "noDataToDisplay",
+    afterDraw: (chart) => {
+        const hasData = chart.data.datasets.some(dataset =>
+            Array.isArray(dataset.data) &&
+            dataset.data.length > 0 &&
+            dataset.data.some(item => item !== 0)
+        );
+
+        if (!hasData) {
+            const {ctx, width, height} = chart;
+            chart.clear();
+            ctx.save();
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.font = 'bold 16px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto';
+            ctx.fillStyle = "#999";
+            ctx.fillText("Awaiting data to display", width / 2, height / 2);
+            ctx.restore();
+        }
+    }
+};
+
+const ctxRouteCount = document.getElementById("chartRouteCount").getContext("2d");
 const dataRouteChangeCount = {
     labels: [],
     datasets: [
@@ -13,9 +36,9 @@ const dataRouteChangeCount = {
             fill: false,
             backgroundColor: "rgba(75,192,192,0.4)",
             borderColor: "rgba(75,192,192,1)",
-            borderCapStyle: 'butt',
+            borderCapStyle: "butt",
             borderDashOffset: 0.0,
-            borderJoinStyle: 'miter',
+            borderJoinStyle: "miter",
             pointBorderColor: "rgba(75,192,192,1)",
             pointBackgroundColor: "#fff",
             pointBorderWidth: 1,
@@ -25,7 +48,7 @@ const dataRouteChangeCount = {
             pointHoverBorderWidth: 2,
             pointRadius: 5,
             pointHitRadius: 10,
-            data: [],
+            data: []
         }
     ]
 };
@@ -33,13 +56,12 @@ const dataRouteChangeCount = {
 
 function display() {
     const prefix = new URL(location.href).searchParams.get("prefix");
-    if (prefix == null) {
-        alert("Invalid link");
+    if (prefix === null) {
+        document.getElementById("loader").style.display = "none";
+        document.getElementById("loaderText").innerText = "Invalid link";
         return;
     }
-    fetch("../flaps/prefix?prefix=" + encodeURIComponent(prefix)).then(function (response) {
-        return response.json();
-    }).then(function (json) {
+    fetch(`../flaps/prefix?prefix=${encodeURIComponent(prefix)}`).then((response) => response.json()).then((json) => {
         if (json === null) {
             document.getElementById("loader").style.display = "none";
             document.getElementById("loaderText").innerText = "Prefix not found. The link may have expired";
@@ -59,7 +81,7 @@ function display() {
             for (let i = 0; i < pJson.length; i++) {
                 const firstAsn = pJson[i].Path[0];
                 const targetArray = pathMap.get(firstAsn);
-                if (targetArray === undefined) {
+                if (!targetArray) {
                     pathMap.set(firstAsn, [pJson[i]]);
                 } else {
                     targetArray.push(pJson[i]);
@@ -72,24 +94,19 @@ function display() {
             // For each path group
             let elementHTML = "";
             let pathGroupTotalCount = 0;
-            value.forEach(item => {
-                item.Count = item.AnnouncementCount + item.WithdrawalCount;
+            value.forEach((item) => {
+                item.Count = item.ac + item.wc;
             });
             value.sort((a, b) => b.Count - a.Count);
             for (let c = 0; c < value.length; c++) {
                 // For each path
                 const count = value[c].Count;
                 pathGroupTotalCount += count;
-                elementHTML += `${count} (${value[c].AnnouncementCount}/${value[c].WithdrawalCount}) &nbsp;&nbsp;`;
+                elementHTML += `${count} (${value[c].ac}/${value[c].wc}) &nbsp;&nbsp;`;
                 for (let d = 0; d < value[c].Path.length; d++) {
                     // For each ASN in the path
-                    let single_asn = value[c].Path[d].toString();
-                    const hexColor = stringToColor(single_asn);
-                    single_asn = single_asn.padStart(10, " ");
-                    const r = parseInt(hexColor.slice(1, 3), 16);
-                    const g = parseInt(hexColor.slice(3, 5), 16);
-                    const b = parseInt(hexColor.slice(5, 7), 16);
-                    elementHTML += `<span style='background-color: rgba(${r},${g},${b},0.3);'>&nbsp;${single_asn}</span>`;
+                    let singleAsn = value[c].Path[d].toString();
+                    elementHTML += `<span style='background-color: ${asnToColor(singleAsn)};'>&nbsp;${singleAsn.padStart(10, " ")}</span>`;
                 }
                 elementHTML += "<br>";
             }
@@ -99,7 +116,7 @@ function display() {
         });
         htmlBundles.sort((a, b) => b.count - a.count);
 
-        let tableHtml = '';
+        let tableHtml = "";
         htmlBundles.forEach((bundle) => {
             tableHtml += bundle.html;
         });
@@ -108,7 +125,7 @@ function display() {
         document.getElementById("pathTable").innerHTML = tableHtml;
 
 
-        document.getElementById("prefixTitle").innerHTML = "Flap report for " + prefix;
+        document.getElementById("prefixTitle").innerHTML = `Flap report for ${prefix}`;
         document.getElementById("loader").style.display = "none";
         document.getElementById("loaderText").style.display = "none";
 
@@ -116,7 +133,7 @@ function display() {
         document.getElementById("pathChangeDisplay").innerText = json.TotalCount;
         document.getElementById("fistSeenDisplay").innerText = timeConverter(json.FirstSeen);
         //document.getElementById("lastSeenDisplay").innerText = timeConverter(json.LastSeen);
-        document.getElementById("durationDisplay").innerText = toTimeElapsed(Math.floor(Date.now() / 1000)- json.FirstSeen);
+        document.getElementById("durationDisplay").innerText = toTimeElapsed(Math.floor(Date.now() / 1000) - json.FirstSeen);
 
         document.getElementById("informationText1").style.display = "block";
         document.getElementById("informationText2").style.display = "block";
@@ -124,49 +141,49 @@ function display() {
 
         const printButton = document.getElementById("printButton");
         if (printButton !== null) {
-             printButton.onclick = () => {
-                 window.print();
-             };
+            printButton.onclick = () => {
+                window.print();
+            };
         }
 
-    }).catch(function (error) {
+    }).catch((error) => {
         alert("Network error");
         console.log(error);
     });
 
 
-    fetch("../flaps/active/history?cidr=" + encodeURIComponent(prefix)).then(function (response) {
-        return response.json();
-    }).then(function (json) {
+    fetch(`../flaps/active/history?cidr=${encodeURIComponent(prefix)}`).then((response) => response.json()).then((json) => {
         const dataIntervalSeconds = 60;
         if (json === null) {
             return;
         }
-        document.getElementById('chartRouteCount-outerContainer').classList.remove("noDisplay");
+        document.getElementById("chartRouteCount-outerContainer").classList.remove("noDisplay");
         const RouteChangeChart = new Chart(ctxRouteCount, {
             type: "line",
+            plugins: [noDataPlugin],
             data: dataRouteChangeCount,
             options: {
+                animation: false,
                 scales: {
                     y: {
                         suggestedMin: 0,
-                        suggestedMax: 15,
+                        suggestedMax: 15
                     }
                 },
                 maintainAspectRatio: false,
                 plugins: {
                     tooltip: {
                         callbacks: {
-                            label: (context) => `${context.dataset.label}: ${context.parsed.y}/sec`,
-                        },
-                    },
-                },
-            },
+                            label: (context) => `${context.dataset.label}: ${context.parsed.y}/sec`
+                        }
+                    }
+                }
+            }
         });
-        window.addEventListener('beforeprint', () => {
+        window.addEventListener("beforeprint", () => {
             RouteChangeChart.resize(700, 150);
         });
-        window.addEventListener('afterprint', () => {
+        window.addEventListener("afterprint", () => {
             RouteChangeChart.resize();
         });
 
@@ -179,46 +196,51 @@ function display() {
         for (let i = 1; i < json.length; i++) {
             // Timestamps are within an accuracy of about 60 seconds
             const ts = new Date(t - (10000 * (json.length - i)));
-            const timeStamp = String(ts.getHours()).padStart(2, '0') + ':' +
-                String(ts.getMinutes()).padStart(2, '0') + ":" + String(ts.getSeconds()).padStart(2, '0');
+            const timeStamp = `${String(ts.getHours()).padStart(2, "0")}:${String(ts.getMinutes()).padStart(2, "0")}:${String(ts.getSeconds()).padStart(2, "0")}`;
             labels.push(timeStamp);
             data.push(json[i]);
         }
-        if (data.length === 0 ) {
+        if (data.length === 0) {
             return;
         }
 
-        const dataSum = data.reduce((s,a) => s + a , 0);
-        const avg = ((dataSum/data.length)).toFixed(2);
-        document.getElementById("averageDisplay").innerText = `${avg}/s during the last ${toTimeElapsed(data.length*dataIntervalSeconds)}`;
+        const dataSum = data.reduce((s, a) => s + a, 0);
+        const avg = ((dataSum / data.length)).toFixed(2);
+        document.getElementById("averageDisplay").innerText = `${avg}/s during the last ${toTimeElapsed(data.length * dataIntervalSeconds)}`;
 
         RouteChangeChart.data.labels = labels;
         RouteChangeChart.data.datasets[0].data = data;
         RouteChangeChart.update();
-    }).catch(function (error) {
+    }).catch((error) => {
         alert("Network error");
         console.log(error);
     });
 }
 
+function asnToColor(input) {
+    let num = Number(input);
+    // 1. Bit mixing logic
+    // Bits are mixed so close numbers become different
+    num ^= num >>> 16;
+    num = Math.imul(num, 0x7feb352d);
+    num ^= num >>> 15;
+    num = Math.imul(num, 0x846ca68b);
+    num ^= num >>> 16;
 
-function stringToColor(str) {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-        hash = str.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    let colour = '#';
-    for (let i = 0; i < 3; i++) {
-        let value = (hash >> (i * 8)) & 0xFF;
-        let rawColour = '00' + value.toString(16);
-        colour += rawColour.substring(rawColour.length - 2);
-    }
-    return colour;
+    // 2. Map to HSL
+    // The scrambled number is mapped to 0-360 degrees
+    const hue = Math.abs(num % 360);
+
+    // 3. Vary saturation/lightness slightly based on other bits
+    const sat = 65 + (Math.abs(num) % 30); // 65-95%
+    const lig = 40 + (Math.abs(num) % 20); // 40-60%
+
+    return `hsl(${hue}, ${sat}%, ${lig}%, 0.3)`;
 }
 
 function timeConverter(unixTimestamp) {
     function padTo2Digits(num) {
-        return num.toString().padStart(2, '0');
+        return num.toString().padStart(2, "0");
     }
 
     const date = new Date(unixTimestamp * 1000);
@@ -234,15 +256,14 @@ function timeConverter(unixTimestamp) {
     return `${year}-${month}-${day} ${time}`;
 }
 
-
 function toTimeElapsed(secondsIn) {
     const secondsMinute = 60;
     const secondsHour = secondsMinute * 60;
     const secondsDay = secondsHour * 24;
     const days = Math.floor(secondsIn / secondsDay);
-    const hours = Math.floor((secondsIn % secondsDay) / secondsHour).toString().padStart(2, '0');
-    const minutes = Math.floor((secondsIn % secondsHour) / secondsMinute).toString().padStart(2, '0');
-    const seconds = Math.floor(secondsIn % secondsMinute).toString().padStart(2, '0');
+    const hours = Math.floor((secondsIn % secondsDay) / secondsHour).toString().padStart(2, "0");
+    const minutes = Math.floor((secondsIn % secondsHour) / secondsMinute).toString().padStart(2, "0");
+    const seconds = Math.floor(secondsIn % secondsMinute).toString().padStart(2, "0");
     let result = "";
     if (days !== 0) {
         result += `${days}d `;
