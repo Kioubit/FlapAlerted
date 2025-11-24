@@ -1,7 +1,6 @@
 package httpAPI
 
 import (
-	"FlapAlerted/bgp/common"
 	"FlapAlerted/monitor"
 	"encoding/json"
 	"net/http"
@@ -10,12 +9,6 @@ import (
 )
 
 func getUserDefinedStatisticStream(w http.ResponseWriter, r *http.Request) {
-	prefix, err := netip.ParsePrefix(r.URL.Query().Get("prefix"))
-	if err != nil {
-		w.WriteHeader(500)
-		return
-	}
-
 	flusher, ok := w.(http.Flusher)
 	if !ok {
 		http.Error(w, "Streaming unsupported!", http.StatusInternalServerError)
@@ -24,40 +17,49 @@ func getUserDefinedStatisticStream(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
-	closeChan := make(chan struct{})
+
+	prefix, err := netip.ParsePrefix(r.URL.Query().Get("prefix"))
+	if err != nil {
+		_, _ = w.Write([]byte(formatEventStreamMessage("e", "Invalid prefix")))
+		flusher.Flush()
+		return
+	}
+
+	if monitor.GetNumberOfUserDefinedMonitorClients() >= int(*maxUserDefinedMonitors) {
+		_, _ = w.Write([]byte(formatEventStreamMessage("e", "Maximum number of user-defined tracked prefixes reached")))
+		flusher.Flush()
+		return
+	}
+
+	var statisticChannel chan monitor.UserDefinedMonitorStatistic
 
 	go func() {
 		// Listen for connection close
 		<-r.Context().Done()
-		close(closeChan)
-		monitor.RemoveUserDefined(prefix)
+		// Give the user time to potentially retrieve path statistics via the view paths page
+		time.Sleep(2 * time.Second)
+		monitor.RemoveUserDefinedMonitor(prefix, statisticChannel)
 	}()
 
-	if err = monitor.NewUserDefined(prefix); err != nil {
+	if statisticChannel, err = monitor.NewUserDefinedMonitor(prefix); err != nil {
 		_, _ = w.Write([]byte(formatEventStreamMessage("e", err.Error())))
 		return
 	}
 
+	_, _ = w.Write([]byte(formatEventStreamMessage("valid", "")))
+
 	for {
-		select {
-		case <-closeChan:
+		data, ok := <-statisticChannel
+		if !ok {
 			return
-		default:
 		}
-		result, err := json.Marshal(struct {
-			Count    uint64
-			Sessions int
-		}{
-			Count:    monitor.GetUserDefinedEventCount(prefix),
-			Sessions: common.GetSessionCount(),
-		})
+		result, err := json.Marshal(data)
 		if err != nil {
 			return
 		}
 
 		_, _ = w.Write([]byte(formatEventStreamMessage("u", string(result))))
 		flusher.Flush()
-		time.Sleep(5 * time.Second)
 	}
 }
 
@@ -68,7 +70,7 @@ func getUserDefinedStatistic(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	f := monitor.GetUserDefinedEvent(prefix)
+	f := monitor.GetUserDefinedMonitorEvent(prefix)
 	if f == nil {
 		_, _ = w.Write([]byte("null"))
 		return

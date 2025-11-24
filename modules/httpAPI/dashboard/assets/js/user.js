@@ -5,7 +5,7 @@ const dataRouteChange = {
     labels: [],
     datasets: [
         {
-            label: "Route Changes",
+            label: "Route Changes per second",
             fill: false,
             backgroundColor: "rgba(75,192,192,0.4)",
             borderColor: "rgba(75,192,192,1)",
@@ -61,6 +61,7 @@ const liveRouteChart = new Chart(
     }
 );
 
+let fatalErrorReported = false;
 (function start() {
     const loadingScreen = document.getElementById("loadingScreen");
     const totalChangesDiv = document.getElementById("totalChanges");
@@ -68,20 +69,31 @@ const liveRouteChart = new Chart(
     const prefixLink = document.getElementById("prefixLink");
     const errorDisplay = document.getElementById("error");
     const noBGPFeeds = document.getElementById("noBGPFeeds");
+    const mainInfoDiv = document.getElementById("mainInfo");
 
     const prefix = new URL(location.href).searchParams.get("prefix");
     if (prefix === null) {
+        loadingScreen.style.display = "none";
+        mainInfoDiv.style.display = "none";
         errorDisplay.innerText = "Prefix not provided";
         errorDisplay.style.display = "block";
         return
     }
+
     const evtSource = new EventSource(`../userDefined/subscribe?prefix=${encodeURIComponent(prefix)}`);
 
     let lastValue = null;
     evtSource.addEventListener("e", (event) => {
         errorDisplay.innerText = event.data;
         errorDisplay.style.display = "block";
+        fatalErrorReported = true;
+        mainInfoDiv.style.display = "none";
+        evtSource.close();
     });
+    evtSource.addEventListener("valid", (_) => {
+        prefixDisplay.innerText = prefix;
+        prefixLink.href = `../analyze/?prefix=${prefix}&userDefined=true`;
+    })
     evtSource.addEventListener("u", (event) => {
         const js = JSON.parse(event.data);
         const firstRun = lastValue === null;
@@ -117,15 +129,15 @@ const liveRouteChart = new Chart(
         console.log(err);
     };
     evtSource.onopen = () => {
-        prefixDisplay.innerText = prefix;
-        prefixLink.href = `../analyze/?prefix=${prefix}&userDefined=true`;
-
         loadingScreen.style.display = "none";
         handleConnectionLost(false);
     };
 })();
 
 function handleConnectionLost(lost) {
+    if (fatalErrorReported) {
+        return;
+    }
     if (lost) {
         document.getElementById("connectionLost").style.display = "block";
     } else {

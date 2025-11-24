@@ -31,7 +31,6 @@ func main() {
 	bgpListenAddress := flag.String("bgpListenAddress", ":1790", "Address to listen on for incoming BGP connections")
 	enableDebug := flag.Bool("debug", false, "Enable debug mode (produces a lot of output)")
 	importLimitThousands := flag.Uint("importLimitThousands", 10000, "Maximum number of allowed routes per session")
-	maxUserDefined := flag.Uint("maxUserDefined", 0, "Maximum number of user-defined tracked prefixes. Use zero to disable.")
 
 	flag.Parse()
 
@@ -61,7 +60,6 @@ func main() {
 	conf.Debug = *enableDebug
 	conf.BgpListenAddress = *bgpListenAddress
 	conf.ImportLimit = int(*importLimitThousands * 1000)
-	conf.MaxUserDefined = int(*maxUserDefined)
 
 	if conf.Asn == 0 {
 		fmt.Println("ASN value not specified")

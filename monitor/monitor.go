@@ -24,7 +24,7 @@ func StartMonitoring(conf config.UserConfig) {
 	go notificationHandler(notificationStartChannel, notificationEndChannel)
 	go statTracker()
 	go recordPathChanges(pathChangeChan, userPathChangeChan)
-	go recordUserDefined(userPathChangeChan)
+	go recordUserDefinedMonitors(userPathChangeChan)
 	bgp.StartBGP(config.GlobalConf.BgpListenAddress, pathChangeChan)
 }
 

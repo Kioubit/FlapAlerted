@@ -22,6 +22,8 @@ var (
 	globalListedRouteChangeCounter atomic.Uint64
 )
 
+var sendUserDefined atomic.Bool
+
 type FlapEvent struct {
 	Prefix           netip.Prefix
 	PathHistory      *PathTracker
@@ -86,7 +88,7 @@ func recordPathChanges(pathChan, userPathChangeChan chan table.PathChange) {
 		case pathChange = <-pathChan:
 		}
 
-		if hasUserDefined.Load() {
+		if sendUserDefined.Load() {
 			userPathChangeChan <- pathChange
 		}
 

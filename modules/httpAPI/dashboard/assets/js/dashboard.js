@@ -184,10 +184,10 @@ async function updateCapabilities() {
     } else {
         infoBox.innerText = `A route for a prefix needs to change at least ${data.UserParameters.RouteChangeCounter} times in 1 minute and remain active for at least ${data.UserParameters.OverThresholdTarget} minutes for it to be shown in the table.`;
     }
-    gageMaxValue = data.gageMaxValue;
+    gageMaxValue = data.modHttp.gageMaxValue;
 
-    if (data.UserParameters.MaxUserDefined > 0) {
-        userDefinedTracking.classList.remove("noDisplay");
+    if (data.modHttp.maxUserDefined > 0) {
+        userDefinedTracking.style.display = "block";
     }
 }
 

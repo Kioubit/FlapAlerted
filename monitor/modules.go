@@ -89,7 +89,6 @@ type UserParameters struct {
 	UnderThresholdTarget int
 	KeepPathInfo         bool
 	AddPath              bool
-	MaxUserDefined       int
 }
 
 func GetCapabilities() Capabilities {
@@ -102,7 +101,6 @@ func GetCapabilities() Capabilities {
 			UnderThresholdTarget: config.GlobalConf.UnderThresholdTarget,
 			KeepPathInfo:         config.GlobalConf.KeepPathInfo,
 			AddPath:              config.GlobalConf.UseAddPath,
-			MaxUserDefined:       config.GlobalConf.MaxUserDefined,
 		},
 	}
 }

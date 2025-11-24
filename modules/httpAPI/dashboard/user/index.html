@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>FlapAlerted</title>
+    <title>FlapAlerted - User defined</title>
     <meta http-equiv="Content-Security-Policy"
           content="default-src 'none'; base-uri 'none'; form-action 'none'; style-src 'self'; style-src-elem 'self'; script-src 'self'; connect-src 'self'; img-src 'self';">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -25,13 +25,20 @@
     <div class="error" id="noBGPFeeds">
         <p>No BGP feeds are connected to this instance</p>
     </div>
-    <div>
-        <span id="prefix"></span>
-        <a id="prefixLink" href="#">View paths</a>
-    </div>
-    <div id="totalChanges"></div>
-    <div class="chartContainer">
-        <canvas id="chartRouteChange"></canvas>
+    <div id="mainInfo">
+        <div>
+            <span id="prefix"></span>
+            <a id="prefixLink" target="_blank" href="#">View paths</a>
+        </div>
+        <div id="totalChanges"></div>
+        <div class="chartContainer">
+            <canvas id="chartRouteChange"></canvas>
+        </div>
+        <div id="infoBox">
+            <div>This prefix is only monitored as long as this tab is kept open by at least one user.</div>
+            <a href="../">Back to the main page</a>
+        </div>
+
     </div>
 </div>
 

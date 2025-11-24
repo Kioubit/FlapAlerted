@@ -26,12 +26,14 @@ var dashboardContent embed.FS
 var limitedHttpAPI *bool
 var httpAPIListenAddress *string
 var gageMaxValue *uint
+var maxUserDefinedMonitors *uint
 
 func init() {
 	limitedHttpAPI = flag.Bool("limitedHttpApi", false, "Disable http API endpoints not needed for"+
 		" the user interface")
 	httpAPIListenAddress = flag.String("httpAPIListenAddress", ":8699", "Listen address for the http api")
 	gageMaxValue = flag.Uint("httpGageMaxValue", 400, "HTTP dashboard Gage max value")
+	maxUserDefinedMonitors = flag.Uint("maxUserDefined", 0, "Maximum number of user-defined tracked prefixes. Use zero to disable")
 
 	monitor.RegisterModule(&monitor.Module{
 		Name:            moduleName,
@@ -59,8 +61,10 @@ func startComplete() {
 		mux.HandleFunc("/flaps/metrics/prometheus", prometheus)
 	}
 
-	mux.HandleFunc("/userDefined/subscribe", getUserDefinedStatisticStream)
-	mux.HandleFunc("/userDefined/prefix", getUserDefinedStatistic)
+	if *maxUserDefinedMonitors != 0 {
+		mux.HandleFunc("/userDefined/subscribe", getUserDefinedStatisticStream)
+		mux.HandleFunc("/userDefined/prefix", getUserDefinedStatistic)
+	}
 
 	s := &http.Server{
 		Addr:              *httpAPIListenAddress,
@@ -110,12 +114,20 @@ func mainPageHandler() http.Handler {
 func showCapabilities(w http.ResponseWriter, _ *http.Request) {
 	caps := monitor.GetCapabilities()
 
+	type ModHttpCaps struct {
+		GageMaxValue   uint `json:"gageMaxValue"`
+		MaxUserDefined uint `json:"maxUserDefined"`
+	}
+
 	fullCaps := struct {
 		monitor.Capabilities
-		GageMaxValue int `json:"gageMaxValue"`
+		ModHttpCaps ModHttpCaps `json:"modHttp"`
 	}{
 		Capabilities: caps,
-		GageMaxValue: int(*gageMaxValue),
+		ModHttpCaps: ModHttpCaps{
+			GageMaxValue:   *gageMaxValue,
+			MaxUserDefined: *maxUserDefinedMonitors,
+		},
 	}
 
 	b, err := json.Marshal(fullCaps)

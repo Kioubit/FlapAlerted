@@ -1,4 +1,5 @@
 import "./chartjs/4.5.0/chart.umd.min.js";
+import "./chartjs/chartjs-adapter-date-fns.bundle.min.js";
 
 window.onload = () => {
     display();
@@ -31,7 +32,7 @@ const dataRouteChangeCount = {
     labels: [],
     datasets: [
         {
-            label: "Route Changes",
+            label: "Route Changes per second",
             fill: false,
             backgroundColor: "rgba(75,192,192,0.4)",
             borderColor: "rgba(75,192,192,1)",

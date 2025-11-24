@@ -16,10 +16,6 @@ body {
     color: var(--text-primary);
 }
 
-.noDisplay {
-    display: none !important;
-}
-
 .loader {
     position: absolute;
     left: 50%;
@@ -248,6 +244,7 @@ a:hover {
 }
 
 #userDefinedTracking {
+    display: none;
     margin-top: 2em;
 }
 
@@ -282,7 +279,7 @@ a:hover {
 .gauge-only #prefixTableBox,
 .gauge-only .footer,
 .gauge-only #mainHeading,
-.gauge-only .error,
+.gauge-only #userDefinedTracking,
 .gauge-only #sessionCountLink {
     display: none !important;
 }
