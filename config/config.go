@@ -15,4 +15,5 @@ type UserConfig struct {
 	Debug                bool
 	RouterID             netip.Addr
 	BgpListenAddress     string
+	MaxUserDefined       int
 }

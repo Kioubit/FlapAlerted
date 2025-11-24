@@ -39,7 +39,7 @@ type FlapEvent struct {
 
 const intervalSec = 60
 
-func recordPathChanges(pathChan chan table.PathChange) {
+func recordPathChanges(pathChan, userPathChangeChan chan table.PathChange) {
 	cleanupTicker := time.NewTicker(intervalSec * time.Second)
 	counterMap := make(map[netip.Prefix]uint32)
 	now := time.Now()
@@ -84,6 +84,10 @@ func recordPathChanges(pathChan chan table.PathChange) {
 			activeMapLock.Unlock()
 			continue
 		case pathChange = <-pathChan:
+		}
+
+		if hasUserDefined.Load() {
+			userPathChangeChan <- pathChange
 		}
 
 		globalTotalRouteChangeCounter.Add(1)

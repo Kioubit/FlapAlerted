@@ -176,6 +176,7 @@ async function updateCapabilities() {
     const data = await response.json();
     const versionBox = document.getElementById("version");
     const infoBox = document.getElementById("info");
+    const userDefinedTracking = document.getElementById("userDefinedTracking");
 
     versionBox.innerText = ` ${data.Version}`;
     if (data.UserParameters.RouteChangeCounter === 0) {
@@ -184,6 +185,10 @@ async function updateCapabilities() {
         infoBox.innerText = `A route for a prefix needs to change at least ${data.UserParameters.RouteChangeCounter} times in 1 minute and remain active for at least ${data.UserParameters.OverThresholdTarget} minutes for it to be shown in the table.`;
     }
     gageMaxValue = data.gageMaxValue;
+
+    if (data.UserParameters.MaxUserDefined > 0) {
+        userDefinedTracking.classList.remove("noDisplay");
+    }
 }
 
 function addToChart(liveChart, point, unixTime, dataInterval) {

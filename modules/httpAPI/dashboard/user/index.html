@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>FlapAlerted</title>
+    <meta http-equiv="Content-Security-Policy"
+          content="default-src 'none'; base-uri 'none'; form-action 'none'; style-src 'self'; style-src-elem 'self'; script-src 'self'; connect-src 'self'; img-src 'self';">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="../assets/css/dashboard.css">
+    <link rel="stylesheet" href="../assets/css/user.css">
+    <script type="module" src="../assets/js/user.js"></script>
+</head>
+
+<body>
+<div id="loadingScreen">
+    <div class="loader"></div>
+</div>
+
+<div id="mainContainer">
+    <h2 id="mainHeading">FlapAlerted - User defined prefix</h2>
+    <div class="error" id="connectionLost">
+        <p>Connection lost</p>
+    </div>
+    <div class="error" id="error"></div>
+    <div class="error" id="noBGPFeeds">
+        <p>No BGP feeds are connected to this instance</p>
+    </div>
+    <div>
+        <span id="prefix"></span>
+        <a id="prefixLink" href="#">View paths</a>
+    </div>
+    <div id="totalChanges"></div>
+    <div class="chartContainer">
+        <canvas id="chartRouteChange"></canvas>
+    </div>
+</div>
+
+</body>
+</html>

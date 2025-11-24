@@ -19,10 +19,12 @@ func StartMonitoring(conf config.UserConfig) {
 	config.GlobalConf = conf
 
 	pathChangeChan := make(chan table.PathChange, 1000)
+	userPathChangeChan := make(chan table.PathChange, 1000)
 
 	go notificationHandler(notificationStartChannel, notificationEndChannel)
 	go statTracker()
-	go recordPathChanges(pathChangeChan)
+	go recordPathChanges(pathChangeChan, userPathChangeChan)
+	go recordUserDefined(userPathChangeChan)
 	bgp.StartBGP(config.GlobalConf.BgpListenAddress, pathChangeChan)
 }
 

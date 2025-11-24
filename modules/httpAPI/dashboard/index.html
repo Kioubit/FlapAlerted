@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <title>FlapAlerted</title>
     <meta http-equiv="Content-Security-Policy"
-          content="default-src 'none'; base-uri 'none'; form-action 'none'; style-src 'self'; style-src-elem 'self'; script-src 'self'; connect-src 'self'; img-src 'self';">
+          content="default-src 'none'; base-uri 'none'; form-action 'self'; style-src 'self'; style-src-elem 'self'; script-src 'self'; connect-src 'self'; img-src 'self';">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="assets/css/dashboard.css">
     <script type="module" src="assets/js/dashboard.js"></script>
@@ -69,8 +69,14 @@
             </div>
         </div>
     </div>
+    <div id="userDefinedTracking" class="noDisplay">
+        <div class="title">User-defined tracking</div>
+        <form action="user/" method="GET">
+            <input type="text" name="prefix" placeholder="Enter prefix" required>
+            <input type="submit" value="Track">
+        </form>
+    </div>
 </div>
-
 <button id="gaugeOnlyToggle" class="view-toggle">Gauge-only view</button>
 
 <dialog id="sessionsDialog">

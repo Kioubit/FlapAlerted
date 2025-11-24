@@ -59,6 +59,9 @@ func startComplete() {
 		mux.HandleFunc("/flaps/metrics/prometheus", prometheus)
 	}
 
+	mux.HandleFunc("/userDefined/subscribe", getUserDefinedStatisticStream)
+	mux.HandleFunc("/userDefined/prefix", getUserDefinedStatistic)
+
 	s := &http.Server{
 		Addr:              *httpAPIListenAddress,
 		ReadHeaderTimeout: 10 * time.Second,

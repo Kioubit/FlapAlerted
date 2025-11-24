@@ -243,6 +243,17 @@ a:hover {
     overflow-x: auto;
 }
 
+#userDefinedTracking {
+    margin-top: 2em;
+}
+
+#userDefinedTracking .title {
+    font-size: 1.3em;
+    font-weight: bold;
+    margin-bottom: 2px;
+    color: #333;
+}
+
 /* View Toggle Button - positioned below footer in normal view */
 .view-toggle {
     display: block;

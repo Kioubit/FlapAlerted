@@ -54,13 +54,20 @@ const dataRouteChangeCount = {
 
 
 function display() {
-    const prefix = new URL(location.href).searchParams.get("prefix");
+    const ownURL = new URL(location.href);
+    const prefix = ownURL.searchParams.get("prefix");
+    const userDefined = ownURL.searchParams.get("userDefined") === "true";
     if (prefix === null) {
         document.getElementById("loader").style.display = "none";
         document.getElementById("loaderText").innerText = "Invalid link";
         return;
     }
-    fetch(`../flaps/prefix?prefix=${encodeURIComponent(prefix)}`).then((response) => response.json()).then((json) => {
+
+    let prefixInfoEndpoint = `../flaps/prefix?prefix=${encodeURIComponent(prefix)}`;
+    if (userDefined) {
+        prefixInfoEndpoint = `../userDefined/prefix?prefix=${encodeURIComponent(prefix)}`;
+    }
+    fetch(prefixInfoEndpoint).then((response) => response.json()).then((json) => {
         if (json === null) {
             document.getElementById("loader").style.display = "none";
             document.getElementById("loaderText").innerText = "Prefix not found. The link may have expired";
@@ -150,70 +157,73 @@ function display() {
         console.log(error);
     });
 
-
-    fetch(`../flaps/active/history?cidr=${encodeURIComponent(prefix)}`).then((response) => response.json()).then((json) => {
-        const dataIntervalSeconds = 60;
-        if (json === null) {
-            return;
-        }
-        document.getElementById("chartRouteCount-outerContainer").classList.remove("noDisplay");
-        const RouteChangeChart = new Chart(ctxRouteCount, {
-            type: "line",
-            plugins: [noDataPlugin],
-            data: dataRouteChangeCount,
-            options: {
-                animation: false,
-                scales: {
-                    y: {
-                        suggestedMin: 0,
-                        suggestedMax: 15
-                    }
-                },
-                maintainAspectRatio: false,
-                plugins: {
-                    tooltip: {
-                        callbacks: {
-                            label: (context) => `${context.dataset.label}: ${context.parsed.y}/sec`
+    if (!userDefined) {
+        fetch(`../flaps/active/history?cidr=${encodeURIComponent(prefix)}`).then((response) => response.json()).then((json) => {
+            const dataIntervalSeconds = 60;
+            if (json === null) {
+                return;
+            }
+            document.getElementById("chartRouteCount-outerContainer").classList.remove("noDisplay");
+            const RouteChangeChart = new Chart(ctxRouteCount, {
+                type: "line",
+                plugins: [noDataPlugin],
+                data: dataRouteChangeCount,
+                options: {
+                    animation: false,
+                    scales: {
+                        y: {
+                            suggestedMin: 0,
+                            suggestedMax: 15
+                        }
+                    },
+                    maintainAspectRatio: false,
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => `${context.dataset.label}: ${context.parsed.y}/sec`
+                            }
                         }
                     }
                 }
+            });
+            window.addEventListener("beforeprint", () => {
+                RouteChangeChart.resize(700, 150);
+            });
+            window.addEventListener("afterprint", () => {
+                RouteChangeChart.resize();
+            });
+
+            if (json.length === 0) {
+                return;
             }
-        });
-        window.addEventListener("beforeprint", () => {
-            RouteChangeChart.resize(700, 150);
-        });
-        window.addEventListener("afterprint", () => {
-            RouteChangeChart.resize();
-        });
+            const t = Date.now();
+            const labels = [];
+            const data = [];
+            for (let i = 1; i < json.length; i++) {
+                // Timestamps are within an accuracy of about 60 seconds
+                const ts = new Date(t - (1000 * dataIntervalSeconds * (json.length - i)));
+                const timeStamp = `${String(ts.getHours()).padStart(2, "0")}:${String(ts.getMinutes()).padStart(2, "0")}:${String(ts.getSeconds()).padStart(2, "0")}`;
+                labels.push(timeStamp);
+                data.push(json[i]);
+            }
+            if (data.length === 0) {
+                return;
+            }
 
-        if (json.length === 0) {
-            return;
-        }
-        const t = Date.now();
-        const labels = [];
-        const data = [];
-        for (let i = 1; i < json.length; i++) {
-            // Timestamps are within an accuracy of about 60 seconds
-            const ts = new Date(t - (1000 * dataIntervalSeconds * (json.length - i)));
-            const timeStamp = `${String(ts.getHours()).padStart(2, "0")}:${String(ts.getMinutes()).padStart(2, "0")}:${String(ts.getSeconds()).padStart(2, "0")}`;
-            labels.push(timeStamp);
-            data.push(json[i]);
-        }
-        if (data.length === 0) {
-            return;
-        }
+            const dataSum = data.reduce((s, a) => s + a, 0);
+            const avg = ((dataSum / data.length)).toFixed(2);
+            document.getElementById("averageDisplay").innerText = `${avg}/s during the last ${toTimeElapsed(data.length * dataIntervalSeconds)}`;
 
-        const dataSum = data.reduce((s, a) => s + a, 0);
-        const avg = ((dataSum / data.length)).toFixed(2);
-        document.getElementById("averageDisplay").innerText = `${avg}/s during the last ${toTimeElapsed(data.length * dataIntervalSeconds)}`;
-
-        RouteChangeChart.data.labels = labels;
-        RouteChangeChart.data.datasets[0].data = data;
-        RouteChangeChart.update();
-    }).catch((error) => {
-        alert("Network error");
-        console.log(error);
-    });
+            RouteChangeChart.data.labels = labels;
+            RouteChangeChart.data.datasets[0].data = data;
+            RouteChangeChart.update();
+        }).catch((error) => {
+            alert("Network error");
+            console.log(error);
+        });
+    } else {
+        document.getElementById("averageDisplay").innerText = "Not available for user-defined"
+    }
 }
 
 function asnToColor(input) {
