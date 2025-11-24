@@ -76,6 +76,8 @@ Provides the following http API endpoints on port `8699`:
 It also provides a user interface (on the same port) at path:
 - `/`
 
+View the usage information using `-h` to view all configuration options for this module.
+
 To disable this module, add the following tag to the `MODULES` variable in the `Makefile`: `disable_mod_httpAPI`
 
 #### mod_log (Enabled by default)
