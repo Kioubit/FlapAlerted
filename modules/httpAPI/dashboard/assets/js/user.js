@@ -91,6 +91,7 @@ let fatalErrorReported = false;
         evtSource.close();
     });
     evtSource.addEventListener("valid", (_) => {
+        lastValue = null;
         prefixDisplay.innerText = prefix;
         prefixLink.href = `../analyze/?prefix=${prefix}&userDefined=true`;
     })
