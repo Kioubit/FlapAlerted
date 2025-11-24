@@ -16,6 +16,10 @@ body {
     color: var(--text-primary);
 }
 
+.noDisplay {
+    display: none !important;
+}
+
 .loader {
     position: absolute;
     left: 50%;
