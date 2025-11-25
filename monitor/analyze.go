@@ -25,18 +25,21 @@ var (
 var sendUserDefined atomic.Bool
 
 type FlapEvent struct {
+	// ===== Core data =====
 	Prefix           netip.Prefix
 	PathHistory      *PathTracker `json:"-"`
 	TotalPathChanges uint64
 
-	RateSec           int
-	lastIntervalCount uint64
+	// ===== Rate calculation =====
 	RateSecHistory    []int
+	lastIntervalCount uint64
+	RateSec           int
 
-	hasTriggered        bool
+	// ===== State tracking =====
 	FirstSeen           int64
-	underThresholdCount int
 	overThresholdCount  int
+	underThresholdCount int
+	hasTriggered        bool
 }
 
 const intervalSec = 60
