@@ -176,7 +176,6 @@ async function updateCapabilities() {
     const data = await response.json();
     const versionBox = document.getElementById("version");
     const infoBox = document.getElementById("info");
-    const userDefinedTracking = document.getElementById("userDefinedTracking");
 
     versionBox.innerText = ` ${data.Version}`;
     if (data.UserParameters.RouteChangeCounter === 0) {
@@ -186,8 +185,12 @@ async function updateCapabilities() {
     }
     gageMaxValue = data.modHttp.gageMaxValue;
 
-    if (data.modHttp.maxUserDefined > 0) {
-        userDefinedTracking.style.display = "block";
+    if (data.modHttp.maxUserDefined === 0) {
+        const userDefinedTrackingForm = document.querySelector("#userDefinedTracking form");
+        userDefinedTrackingForm.addEventListener("submit", (e) => {
+            e.preventDefault();
+            alert("This feature is disabled on this instance");
+        })
     }
 }
 

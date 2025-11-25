@@ -71,7 +71,7 @@ let fatalErrorReported = false;
     const noBGPFeeds = document.getElementById("noBGPFeeds");
     const mainInfoDiv = document.getElementById("mainInfo");
 
-    const prefix = new URL(location.href).searchParams.get("prefix");
+    const prefix = new URL(location.href).searchParams.get("prefix").trim();
     if (prefix === null) {
         loadingScreen.style.display = "none";
         mainInfoDiv.style.display = "none";
