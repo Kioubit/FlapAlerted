@@ -64,14 +64,15 @@ func recordPathChanges(pathChan, userPathChangeChan chan table.PathChange) {
 				}
 
 				if intervalCount < uint64(config.GlobalConf.RouteChangeCounter) {
-					event.overThresholdCount = 0
-					if event.underThresholdCount == config.GlobalConf.UnderThresholdTarget {
-						delete(activeMap, prefix)
-						if event.hasTriggered {
+					if event.hasTriggered {
+						if event.underThresholdCount == config.GlobalConf.UnderThresholdTarget {
+							delete(activeMap, prefix)
 							notificationEndChannel <- *event
+						} else {
+							event.underThresholdCount++
 						}
 					} else {
-						event.underThresholdCount++
+						delete(activeMap, prefix)
 					}
 				} else {
 					event.underThresholdCount = 0
