@@ -8,7 +8,7 @@ import (
 type Module struct {
 	Name            string
 	CallbackStart   func(event FlapEvent)
-	CallbackOnceEnd func(event FlapEvent)
+	CallbackEnd     func(event FlapEvent)
 	OnStartComplete func()
 }
 
@@ -33,8 +33,8 @@ func notificationHandler(c, cEnd chan FlapEvent) {
 		}
 		for _, m := range moduleList {
 			if endNotification {
-				if m.CallbackOnceEnd != nil {
-					go m.CallbackOnceEnd(f)
+				if m.CallbackEnd != nil {
+					go m.CallbackEnd(f)
 				}
 				continue
 			}

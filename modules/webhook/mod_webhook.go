@@ -33,9 +33,9 @@ func init() {
 	webhookTimeout = flag.Duration("webhookTimeout", 10*time.Second, "Timeout for webhook HTTP requests")
 
 	monitor.RegisterModule(&monitor.Module{
-		Name:            moduleName,
-		CallbackStart:   logFlapStart,
-		CallbackOnceEnd: logFlapEnd,
+		Name:          moduleName,
+		CallbackStart: logFlapStart,
+		CallbackEnd:   logFlapEnd,
 	})
 }
 

@@ -13,9 +13,9 @@ var moduleName = "mod_log"
 
 func init() {
 	monitor.RegisterModule(&monitor.Module{
-		Name:            moduleName,
-		CallbackStart:   logFlapStart,
-		CallbackOnceEnd: logFlapEnd,
+		Name:          moduleName,
+		CallbackStart: logFlapStart,
+		CallbackEnd:   logFlapEnd,
 	})
 }
 
