@@ -138,7 +138,7 @@ func statTracker() {
 		for i, f := range aFlap {
 			jsFlapList[i] = FlapSummary{
 				Prefix:     f.Prefix.String(),
-				FirstSeen:  f.FirstSeen.Unix(),
+				FirstSeen:  f.FirstSeen,
 				RateSec:    f.RateSec,
 				TotalCount: f.TotalPathChanges,
 			}

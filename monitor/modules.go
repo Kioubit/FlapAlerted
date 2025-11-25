@@ -36,10 +36,10 @@ func notificationHandler(c, cEnd chan FlapEvent) {
 				if m.CallbackEnd != nil {
 					go m.CallbackEnd(f)
 				}
-				continue
-			}
-			if m.CallbackStart != nil {
-				go m.CallbackStart(f)
+			} else {
+				if m.CallbackStart != nil {
+					go m.CallbackStart(f)
+				}
 			}
 		}
 	}

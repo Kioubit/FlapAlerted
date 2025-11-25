@@ -33,8 +33,8 @@ type FlapEvent struct {
 	lastIntervalCount uint64
 	RateSecHistory    []int
 
-	IsActive            bool
-	FirstSeen           time.Time
+	hasTriggered        bool
+	FirstSeen           int64
 	underThresholdCount int
 	overThresholdCount  int
 }
@@ -44,12 +44,13 @@ const intervalSec = 60
 func recordPathChanges(pathChan, userPathChangeChan chan table.PathChange) {
 	cleanupTicker := time.NewTicker(intervalSec * time.Second)
 	counterMap := make(map[netip.Prefix]uint32)
-	now := time.Now()
+	now := time.Now().Unix()
 
 	for {
 		var pathChange table.PathChange
 		select {
-		case now = <-cleanupTicker.C:
+		case t := <-cleanupTicker.C:
+			now = t.Unix()
 			counterMap = make(map[netip.Prefix]uint32)
 			activeMapLock.Lock()
 			for prefix, event := range activeMap {
@@ -66,7 +67,7 @@ func recordPathChanges(pathChan, userPathChangeChan chan table.PathChange) {
 					event.overThresholdCount = 0
 					if event.underThresholdCount == config.GlobalConf.UnderThresholdTarget {
 						delete(activeMap, prefix)
-						if event.IsActive {
+						if event.hasTriggered {
 							notificationEndChannel <- *event
 						}
 					} else {
@@ -75,7 +76,7 @@ func recordPathChanges(pathChan, userPathChangeChan chan table.PathChange) {
 				} else {
 					event.underThresholdCount = 0
 					if event.overThresholdCount == config.GlobalConf.OverThresholdTarget {
-						event.IsActive = true
+						event.hasTriggered = true
 						event.overThresholdCount++
 						notificationStartChannel <- *event
 					} else {
@@ -98,7 +99,7 @@ func recordPathChanges(pathChan, userPathChangeChan chan table.PathChange) {
 		if val, exists := activeMap[pathChange.Prefix]; exists {
 			incrementUint64(&val.TotalPathChanges)
 			val.PathHistory.record(pathChange.OldPath, pathChange.IsWithdrawal)
-			if val.IsActive {
+			if val.hasTriggered {
 				globalListedRouteChangeCounter.Add(1)
 			}
 		} else {
@@ -112,7 +113,7 @@ func recordPathChanges(pathChan, userPathChangeChan chan table.PathChange) {
 					FirstSeen:          now,
 					overThresholdCount: 1,
 					// Special case for the 'display all route changes' mode
-					IsActive: config.GlobalConf.RouteChangeCounter == 0,
+					hasTriggered: config.GlobalConf.RouteChangeCounter == 0,
 				}
 			} else {
 				counterMap[pathChange.Prefix]++

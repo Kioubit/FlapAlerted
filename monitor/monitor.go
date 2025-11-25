@@ -34,7 +34,7 @@ func getEvent(k netip.Prefix) (event FlapEvent, found bool) {
 		return FlapEvent{}, false
 	}
 
-	if !activeMap[k].IsActive {
+	if !activeMap[k].hasTriggered {
 		return FlapEvent{}, false
 	}
 

@@ -89,7 +89,7 @@ func getUserDefinedStatistic(w http.ResponseWriter, r *http.Request) {
 		Paths      []monitor.PathInfo
 	}{
 		f.Prefix.String(),
-		f.FirstSeen.Unix(),
+		f.FirstSeen,
 		f.RateSec,
 		f.TotalPathChanges,
 		pathList,

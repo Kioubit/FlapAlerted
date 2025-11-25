@@ -26,5 +26,5 @@ func logFlapStart(f monitor.FlapEvent) {
 }
 
 func logFlapEnd(f monitor.FlapEvent) {
-	logger.Info("event", "type", "end", "prefix", f.Prefix.String(), "duration", time.Since(f.FirstSeen).Seconds(), "total_path_changes", f.TotalPathChanges)
+	logger.Info("event", "type", "end", "prefix", f.Prefix.String(), "duration", int(time.Since(time.Unix(f.FirstSeen, 0)).Seconds()), "total_path_changes", f.TotalPathChanges)
 }

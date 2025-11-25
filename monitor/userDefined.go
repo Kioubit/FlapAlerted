@@ -37,8 +37,8 @@ func NewUserDefinedMonitor(prefix netip.Prefix) (chan UserDefinedMonitorStatisti
 			PathHistory:      newPathTracker(1000),
 			TotalPathChanges: 0,
 			RateSecHistory:   []int{},
-			IsActive:         true,
-			FirstSeen:        time.Now(),
+			hasTriggered:     true,
+			FirstSeen:        time.Now().Unix(),
 		}
 	}
 
