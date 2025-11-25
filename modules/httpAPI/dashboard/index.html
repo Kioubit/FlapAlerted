@@ -69,12 +69,22 @@
             </div>
         </div>
     </div>
-    <div id="userDefinedTracking">
-        <div class="title">User-defined tracking</div>
-        <form action="user/" method="GET">
-            <input type="text" name="prefix" placeholder="Enter prefix" required>
-            <input type="submit" value="Track">
-        </form>
+    <div class="controls-section">
+        <div class="controls-grid">
+            <div id="userDefinedTracking">
+                <div class="title">User-defined tracking</div>
+                <form action="user/" method="GET">
+                    <input type="text" name="prefix" placeholder="Enter prefix" required>
+                    <input type="submit" value="Track">
+                </form>
+            </div>
+            <div class="control-item">
+                <label>
+                    <input id="hideZeroRateEventsCheckbox" type="checkbox">
+                    Hide events with a rate of zero
+                </label>
+            </div>
+        </div>
     </div>
 </div>
 <button id="gaugeOnlyToggle" class="view-toggle">Gauge-only view</button>

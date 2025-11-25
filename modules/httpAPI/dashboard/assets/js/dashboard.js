@@ -191,6 +191,12 @@ async function updateCapabilities() {
     }
 }
 
+let hideZeroRateEvents = false;
+document.getElementById("hideZeroRateEventsCheckbox").addEventListener("click", (e) => {
+    hideZeroRateEvents = e.target.checked;
+})
+
+
 function addToChart(liveChart, point, unixTime, dataInterval) {
     let shifted = false;
     for (let i = 0; i < point.length; i++) {
@@ -225,7 +231,14 @@ function updateList(flapList) {
         for (let i = 0; i < flapList.length; i++) {
             //const duration = toTimeElapsed(flapList[i].LastSeen - flapList[i].FirstSeen);
             const duration = toTimeElapsed(unixTime - flapList[i].FirstSeen);
-            prefixTableHtml += '<tr>';
+            if (flapList[i].RateSec < 1) {
+                if (hideZeroRateEvents) {
+                    continue
+                }
+                prefixTableHtml += '<tr class="inactive">';
+            } else {
+                prefixTableHtml += '<tr>';
+            }
             prefixTableHtml += `<td><a target="_blank" href='analyze/?prefix=${encodeURIComponent(flapList[i].Prefix)}'>${flapList[i].Prefix}</a></td>`;
             prefixTableHtml += `<td>${duration}</td>`;
             prefixTableHtml += `<td>${truncateRouteChanges(flapList[i].TotalCount)}</td>`;
