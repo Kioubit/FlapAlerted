@@ -5,6 +5,7 @@ import (
 	"FlapAlerted/config"
 	"container/list"
 	"encoding/binary"
+	"encoding/json"
 	"math"
 	"sync"
 )
@@ -26,6 +27,21 @@ type pathEntry struct {
 	key   string
 	info  *PathInfo
 	ticks int
+}
+
+func (pt *PathTracker) MarshalJSON() ([]byte, error) {
+	pt.lock.RLock()
+	defer pt.lock.RUnlock()
+	var mostRecentPath common.AsPath
+	firstElem := pt.order.Back()
+	if firstElem != nil {
+		mostRecentPath = firstElem.Value.(*pathEntry).info.Path
+	}
+	return json.Marshal(struct {
+		MostRecentPath common.AsPath
+	}{
+		MostRecentPath: mostRecentPath,
+	})
 }
 
 func (pt *PathTracker) record(path common.AsPath, isWithdrawal bool) {

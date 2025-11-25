@@ -27,7 +27,7 @@ var sendUserDefined atomic.Bool
 type FlapEvent struct {
 	// ===== Core data =====
 	Prefix           netip.Prefix
-	PathHistory      *PathTracker `json:"-"`
+	PathHistory      *PathTracker
 	TotalPathChanges uint64
 
 	// ===== Rate calculation =====
