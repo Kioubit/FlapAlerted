@@ -361,7 +361,7 @@ a:hover {
 .gauge-only #prefixTableBox,
 .gauge-only .footer,
 .gauge-only #mainHeading,
-.gauge-only #userDefinedTracking,
+.gauge-only .controls-section,
 .gauge-only #sessionCountLink {
     display: none !important;
 }
