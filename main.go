@@ -20,17 +20,19 @@ func main() {
 	_, _ = fmt.Fprintln(os.Stderr, "FlapAlerted", Version)
 	monitor.SetProgramVersion(Version)
 
-	routeChangeCounter := flag.Uint("routeChangeCounter", 600, "Number of times a route path needs"+
-		" to change to list a prefix. Use '0' to show all route changes.")
-	asn := flag.Uint("asn", 0, "Your ASN number")
-	overThresholdTarget := flag.Uint("overThresholdTarget", 9, "Number of consecutive intervals with rate at or above the routeChangeCounter to trigger an event")
-	underThresholdTarget := flag.Uint("underThresholdTarget", 10, "Number of consecutive intervals with rate below routeChangeCounter to remove an event")
-	routerID := flag.String("routerID", "0.0.0.51", "BGP Router ID for this program")
-	noPathInfo := flag.Bool("noPathInfo", false, "Disable keeping path information")
-	disableAddPath := flag.Bool("disableAddPath", false, "Disable BGP AddPath support. (Setting must be replicated in BGP daemon)")
-	bgpListenAddress := flag.String("bgpListenAddress", ":1790", "Address to listen on for incoming BGP connections")
-	enableDebug := flag.Bool("debug", false, "Enable debug mode (produces a lot of output)")
-	importLimitThousands := flag.Uint("importLimitThousands", 10000, "Maximum number of allowed routes per session")
+	// Flags
+	var (
+		routeChangeCounter   = flag.Uint("routeChangeCounter", 600, "Number of times a route path needs to change within a minute to list a prefix. Use '0' to show all route changes.")
+		asn                  = flag.Uint("asn", 0, "Your ASN number")
+		overThresholdTarget  = flag.Uint("overThresholdTarget", 10, "Number of consecutive intervals with rate at or above the routeChangeCounter to trigger an event")
+		underThresholdTarget = flag.Uint("underThresholdTarget", 15, "Number of consecutive intervals with rate below routeChangeCounter to remove an event")
+		routerID             = flag.String("routerID", "0.0.0.51", "BGP Router ID for this program")
+		noPathInfo           = flag.Bool("noPathInfo", false, "Disable keeping path information")
+		disableAddPath       = flag.Bool("disableAddPath", false, "Disable BGP AddPath support. (Setting must be replicated in BGP daemon)")
+		bgpListenAddress     = flag.String("bgpListenAddress", ":1790", "Address to listen on for incoming BGP connections")
+		enableDebug          = flag.Bool("debug", false, "Enable debug mode (produces a lot of output)")
+		importLimitThousands = flag.Uint("importLimitThousands", 10000, "Maximum number of allowed routes per session")
+	)
 
 	flag.Parse()
 

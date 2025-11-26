@@ -181,7 +181,7 @@ async function updateCapabilities() {
     if (data.UserParameters.RouteChangeCounter === 0) {
         infoBox.innerText = "Displaying every BGP update received. Removing entries after 1 minute of inactivity.";
     } else {
-        infoBox.innerText = `A route for a prefix needs to change at least ${data.UserParameters.RouteChangeCounter} times in 1 minute and remain active for at least ${data.UserParameters.OverThresholdTarget} minutes for it to be shown in the table.`;
+        infoBox.innerText = `Table listing criteria: ≥ ${data.UserParameters.RouteChangeCounter} route changes/min for ${data.UserParameters.OverThresholdTarget}min to list; ${data.UserParameters.UnderThresholdTarget}min below threshold to expire.`;
     }
     gageMaxValue = data.modHttp.gageMaxValue;
 

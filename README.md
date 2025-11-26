@@ -9,7 +9,7 @@
 ### Setup notes
 
 The program will listen on port `1790` for incoming BGP sessions (passive mode - no outgoing connections).
-It is recommended to adjust the `routeChangeCounter` and `overThresholdTarget` parameters (see usage) to produce the desired result.
+It is recommended to adjust the `routeChangeCounter`, `overThresholdTarget` and `underThresholdTarget` parameters (see usage) to produce the desired result.
 
 ### Usage
 ```
@@ -27,13 +27,13 @@ Usage:
   -noPathInfo
         Disable keeping path information
   -overThresholdTarget uint
-        Number of consecutive intervals with rate at or above the routeChangeCounter to trigger an event (default 5)
+        Number of consecutive intervals with rate at or above the routeChangeCounter to trigger an event (default 10)
   -routeChangeCounter uint
-        Number of times a route path needs to change to list a prefix. Use '0' to show all route changes. (default 200)
+        Number of times a route path needs to change within a minute to list a prefix. Use '0' to show all route changes. (default 600)
   -routerID string
         BGP Router ID for this program (default "0.0.0.51")
   -underThresholdTarget uint
-        Number of consecutive intervals with rate below routeChangeCounter to remove an event (default 10)
+        Number of consecutive intervals with rate below routeChangeCounter to remove an event (default 15)
 ```
 #### Using environment variables
 Environment variables can configure options by prefixing `FA_` to any command-line flag name (optionally in uppercase). For example, set the ASN number with `FA_ASN=<asn>` or the router ID using `FA_routerID=<router id>`.
