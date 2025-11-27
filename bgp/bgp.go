@@ -141,7 +141,7 @@ func newBGPConnection(ctx context.Context, logger *slog.Logger, conn net.Conn, s
 					hasMultiProtocolIPv6 = true
 				}
 			case open.HostnameCapability:
-				remoteHostname = v.Hostname + v.DomainName
+				remoteHostname = v.String()
 				logger = logger.With("hostname", remoteHostname)
 			case open.ExtendedNextHopCapabilityList:
 				for _, ec := range v {
