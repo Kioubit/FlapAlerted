@@ -66,13 +66,15 @@ func recordPathChanges(pathChan, userPathChangeChan chan table.PathChange) {
 					event.RateSecHistory = event.RateSecHistory[1:]
 				}
 
-				if intervalCount < uint64(config.GlobalConf.RouteChangeCounter) {
+				if intervalCount <= uint64(config.GlobalConf.RouteChangeCounter) {
 					if event.hasTriggered {
-						if event.underThresholdCount == config.GlobalConf.UnderThresholdTarget {
-							delete(activeMap, prefix)
-							notificationEndChannel <- *event
-						} else {
-							event.underThresholdCount++
+						if intervalCount <= uint64(config.GlobalConf.ExpiryRouteChangeCounter) {
+							if event.underThresholdCount == config.GlobalConf.UnderThresholdTarget {
+								delete(activeMap, prefix)
+								notificationEndChannel <- *event
+							} else {
+								event.underThresholdCount++
+							}
 						}
 					} else {
 						delete(activeMap, prefix)

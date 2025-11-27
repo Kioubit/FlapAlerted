@@ -84,11 +84,12 @@ type Capabilities struct {
 }
 
 type UserParameters struct {
-	RouteChangeCounter   int
-	OverThresholdTarget  int
-	UnderThresholdTarget int
-	KeepPathInfo         bool
-	AddPath              bool
+	RouteChangeCounter       int
+	OverThresholdTarget      int
+	UnderThresholdTarget     int
+	ExpiryRouteChangeCounter int
+	KeepPathInfo             bool
+	AddPath                  bool
 }
 
 func GetCapabilities() Capabilities {
@@ -96,11 +97,12 @@ func GetCapabilities() Capabilities {
 		Version: programVersion,
 		Modules: getModuleNameList(),
 		UserParameters: UserParameters{
-			RouteChangeCounter:   config.GlobalConf.RouteChangeCounter,
-			OverThresholdTarget:  config.GlobalConf.OverThresholdTarget,
-			UnderThresholdTarget: config.GlobalConf.UnderThresholdTarget,
-			KeepPathInfo:         config.GlobalConf.KeepPathInfo,
-			AddPath:              config.GlobalConf.UseAddPath,
+			RouteChangeCounter:       config.GlobalConf.RouteChangeCounter,
+			OverThresholdTarget:      config.GlobalConf.OverThresholdTarget,
+			UnderThresholdTarget:     config.GlobalConf.UnderThresholdTarget,
+			ExpiryRouteChangeCounter: config.GlobalConf.ExpiryRouteChangeCounter,
+			KeepPathInfo:             config.GlobalConf.KeepPathInfo,
+			AddPath:                  config.GlobalConf.UseAddPath,
 		},
 	}
 }

@@ -181,7 +181,7 @@ async function updateCapabilities() {
     if (data.UserParameters.RouteChangeCounter === 0) {
         infoBox.innerText = "Displaying every BGP update received. Removing entries after 1 minute of inactivity.";
     } else {
-        infoBox.innerText = `Table listing criteria: ≥ ${data.UserParameters.RouteChangeCounter} route changes/min for ${data.UserParameters.OverThresholdTarget}min to list; ${data.UserParameters.UnderThresholdTarget}min below threshold to expire.`;
+        infoBox.innerText = `Table listing criteria: > ${data.UserParameters.RouteChangeCounter} route changes/min for ${data.UserParameters.OverThresholdTarget}min to list; ${data.UserParameters.UnderThresholdTarget}min below ${data.UserParameters.ExpiryRouteChangeCounter}/min to expire.`;
     }
     gageMaxValue = data.modHttp.gageMaxValue;
 
@@ -190,14 +190,14 @@ async function updateCapabilities() {
         userDefinedTrackingForm.addEventListener("submit", (e) => {
             e.preventDefault();
             alert("This feature is disabled on this instance");
-        })
+        });
     }
 }
 
 let hideZeroRateEvents = false;
 document.getElementById("hideZeroRateEventsCheckbox").addEventListener("click", (e) => {
     hideZeroRateEvents = e.target.checked;
-})
+});
 
 
 function addToChart(liveChart, point, unixTime, dataInterval) {
@@ -236,7 +236,7 @@ function updateList(flapList) {
             const duration = toTimeElapsed(unixTime - flapList[i].FirstSeen);
             if (flapList[i].RateSec < 1) {
                 if (hideZeroRateEvents) {
-                    continue
+                    continue;
                 }
                 prefixTableHtml += '<tr class="inactive">';
             } else {
