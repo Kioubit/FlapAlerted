@@ -54,7 +54,7 @@ func recordPathChanges(pathChan, userPathChangeChan chan table.PathChange) {
 		select {
 		case t := <-cleanupTicker.C:
 			now = t.Unix()
-			counterMap = make(map[netip.Prefix]uint32)
+			clear(counterMap)
 			activeMapLock.Lock()
 			for prefix, event := range activeMap {
 				intervalCount := event.TotalPathChanges - event.lastIntervalCount
@@ -115,7 +115,7 @@ func recordPathChanges(pathChan, userPathChangeChan chan table.PathChange) {
 					PathHistory:        newPathTracker(pathHistoryLimit),
 					TotalPathChanges:   uint64(counterMap[pathChange.Prefix]) + 1,
 					RateSec:            -1,
-					RateSecHistory:     make([]int, 0),
+					RateSecHistory:     make([]int, 0, 1),
 					FirstSeen:          now,
 					overThresholdCount: 1,
 					// Special case for the 'display all route changes' mode
@@ -131,10 +131,9 @@ func recordPathChanges(pathChan, userPathChangeChan chan table.PathChange) {
 }
 
 func incrementUint64(n *uint64) {
-	if *n == math.MaxUint64 {
-		return
+	if *n != math.MaxUint64 {
+		*n++
 	}
-	*n = *n + 1
 }
 
 func safeAddUint64(a, b uint64) uint64 {

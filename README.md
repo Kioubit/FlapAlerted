@@ -22,6 +22,8 @@ Usage:
         Enable debug mode (produces a lot of output)
   -disableAddPath
         Disable BGP AddPath support. (Setting must be replicated in BGP daemon)
+  -expiryRouteChangeCounter uint
+        Minimum change per minute threshold to keep detected flaps. Defaults to the same value as routeChangeCounter.
   -importLimitThousands uint
         Maximum number of allowed routes per session (default 10000)
   -noPathInfo
