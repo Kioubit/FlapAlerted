@@ -109,6 +109,7 @@ func newBGPConnection(ctx context.Context, logger *slog.Logger, conn net.Conn, s
 	hasAddPathIPv6 := false
 	hasFourByteAsn := false
 	hasExtendedNextHopV4 := false
+	hasExtendedMessages := false
 	var remoteASN uint32 = 0
 	var remoteHostname = ""
 	for _, p := range msg.Body.(open.Msg).OptionalParameters {
@@ -149,6 +150,8 @@ func newBGPConnection(ctx context.Context, logger *slog.Logger, conn net.Conn, s
 						hasExtendedNextHopV4 = true
 					}
 				}
+			case open.ExtendedMessageCapability:
+				hasExtendedMessages = true
 			}
 		}
 	}
@@ -224,7 +227,7 @@ func newBGPConnection(ctx context.Context, logger *slog.Logger, conn net.Conn, s
 	defer close(keepAliveChan)
 	keepAliveHandler(logger, keepAliveChan, conn, applicableHoldTime)
 
-	err = handleIncoming(ctx, logger, conn, session, updateChannel, keepAliveChan)
+	err = handleIncoming(ctx, logger, conn, session, updateChannel, keepAliveChan, hasExtendedMessages)
 	if err != nil {
 		if errors.Is(err, &table.ImportLimitError{}) {
 			if nMsg, err := notification.GetNotification(notification.Cease, notification.CeaseMaxNumberOfPrefixes, []byte{}); err == nil {
@@ -281,8 +284,12 @@ func keepAliveHandler(logger *slog.Logger, in chan bool, conn net.Conn, holdTime
 	}()
 }
 
-func handleIncoming(ctx context.Context, logger *slog.Logger, conn io.Reader, session *common.LocalSession, updateChannel chan table.SessionUpdateMessage, keepAliveChan chan bool) error {
-	conn = bufio.NewReader(conn)
+func handleIncoming(ctx context.Context, logger *slog.Logger, conn io.Reader, session *common.LocalSession, updateChannel chan table.SessionUpdateMessage, keepAliveChan chan bool, hasExtendedMessages bool) error {
+	bufferSize := 4096
+	if hasExtendedMessages {
+		bufferSize = 4096 * 10
+	}
+	conn = bufio.NewReaderSize(conn, bufferSize)
 	for {
 		select {
 		case <-ctx.Done():
