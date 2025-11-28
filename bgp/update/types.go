@@ -74,7 +74,11 @@ type originAttribute struct {
 }
 
 type asPathAttribute struct {
+	Segments []asPathAttributeSegment
+}
+
+type asPathAttributeSegment struct {
 	PathSegmentType  pathSegmentType
 	PathSegmentCount uint8
-	Value            []uint32
+	Value            common.AsPath
 }

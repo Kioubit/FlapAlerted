@@ -245,25 +245,31 @@ func parseAsPathAttribute(a pathAttribute) (pathAttributeBody, error) {
 		return nil, errors.New("well-known flag not set")
 	}
 	r := bytes.NewReader(a.Body)
-	result := asPathAttribute{}
-	if err := binary.Read(r, binary.BigEndian, &result.PathSegmentType); err != nil {
-		if errors.Is(err, io.EOF) {
-			// The AS path can be empty in case of iBGP when in the same ASN
-			return asPathAttribute{}, nil
-		}
-		return nil, err
+	result := asPathAttribute{
+		Segments: make([]asPathAttributeSegment, 0, 1),
 	}
-	if err := binary.Read(r, binary.BigEndian, &result.PathSegmentCount); err != nil {
-		return nil, err
-	}
-	result.Value = make([]uint32, result.PathSegmentCount)
-	for i := 0; i < int(result.PathSegmentCount); i++ {
-		var asn uint32
-		if err := binary.Read(r, binary.BigEndian, &asn); err != nil {
+	for {
+		newSegment := asPathAttributeSegment{}
+		if err := binary.Read(r, binary.BigEndian, &newSegment.PathSegmentType); err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
 			return nil, err
 		}
-		result.Value[i] = asn
+		if err := binary.Read(r, binary.BigEndian, &newSegment.PathSegmentCount); err != nil {
+			return nil, err
+		}
+		newSegment.Value = make([]uint32, newSegment.PathSegmentCount)
+		for i := 0; i < int(newSegment.PathSegmentCount); i++ {
+			var asn uint32
+			if err := binary.Read(r, binary.BigEndian, &asn); err != nil {
+				return nil, err
+			}
+			newSegment.Value[i] = asn
+		}
+		result.Segments = append(result.Segments, newSegment)
 	}
+
 	return result, nil
 }
 
@@ -312,19 +318,25 @@ func (u Msg) GetMpUnReachNLRI(session *common.LocalSession) (MPUnReachNLRI, bool
 }
 
 func (u Msg) GetAsPath(session *common.LocalSession) (common.AsPath, bool, error) {
-	path := make([]uint32, 0)
+	path := make(common.AsPath, 0)
 	found := false
+
+OuterLoop:
 	for _, a := range u.PathAttributes {
 		switch a.TypeCode {
 		case AsPathAttr:
 			found = true
 			attribute, err := a.GetAttribute(session)
 			if err != nil {
-				return common.AsPath{}, false, err
+				return nil, false, err
 			}
-			if attribute.(asPathAttribute).PathSegmentType == AsSequence {
-				path = append(path, attribute.(asPathAttribute).Value...)
+			for _, segment := range attribute.(asPathAttribute).Segments {
+				if segment.PathSegmentType == AsSequence {
+					path = append(path, segment.Value...)
+				}
 			}
+			// A path attribute of a given type can only appear once
+			break OuterLoop
 		}
 	}
 
@@ -333,6 +345,7 @@ func (u Msg) GetAsPath(session *common.LocalSession) (common.AsPath, bool, error
 	}
 
 	if len(path) == 0 {
+		// The AS path can be completely empty in case of iBGP when in the same ASN
 		path = append(path, session.Asn)
 	}
 	return path, true, nil
