@@ -61,7 +61,7 @@ func ParseMsgUpdate(r io.Reader, defaultAFI common.AFI, addPathEnabled bool) (ms
 
 		attribute.Body = make([]byte, bodyLength)
 
-		if err := binary.Read(aR, binary.BigEndian, &attribute.Body); err != nil {
+		if _, err := io.ReadFull(aR, attribute.Body); err != nil {
 			return Msg{}, err
 		}
 		msg.PathAttributes = append(msg.PathAttributes, attribute)
@@ -106,7 +106,7 @@ func parsePrefixList(r io.Reader, afi common.AFI, addPathEnabled bool) ([]prefix
 		}
 		expectedLength := (p.LengthBits / 8) + additive
 		p.Prefix = make([]byte, expectedLength)
-		if err := binary.Read(r, binary.BigEndian, &p.Prefix); err != nil {
+		if _, err := io.ReadFull(r, p.Prefix); err != nil {
 			return nil, err
 		}
 		prefixList = append(prefixList, p)
@@ -194,7 +194,7 @@ func parseMultiProtocolReachableNLRI(a pathAttribute, session *common.LocalSessi
 		result.NextHop = make([]netip.Addr, 0, result.NextHopLength/4)
 		ip := [4]byte{}
 		for {
-			if err := binary.Read(afiReader, binary.BigEndian, &ip); err != nil {
+			if _, err := io.ReadFull(afiReader, ip[:]); err != nil {
 				if errors.Is(err, io.EOF) {
 					break
 				}
@@ -206,7 +206,7 @@ func parseMultiProtocolReachableNLRI(a pathAttribute, session *common.LocalSessi
 		result.NextHop = make([]netip.Addr, 0, result.NextHopLength/16)
 		ip := [16]byte{}
 		for {
-			if err := binary.Read(afiReader, binary.BigEndian, &ip); err != nil {
+			if _, err := io.ReadFull(afiReader, ip[:]); err != nil {
 				if errors.Is(err, io.EOF) {
 					break
 				}
@@ -341,20 +341,20 @@ func (u Msg) GetAsPath(session *common.LocalSession) (common.AsPath, bool, error
 func (p prefix) ToNetCidr() netip.Prefix {
 	switch p.AFI {
 	case common.AFI6:
-		needBytes := 16 - len(p.Prefix)
-		if needBytes < 0 {
+		if len(p.Prefix) > 16 {
 			return netip.MustParsePrefix("::/0")
 		}
-		toAppend := make([]byte, needBytes)
-		addr := netip.AddrFrom16([16]byte(append(p.Prefix, toAppend...)))
+		var addrBytes [16]byte
+		copy(addrBytes[:], p.Prefix)
+		addr := netip.AddrFrom16(addrBytes)
 		return netip.PrefixFrom(addr, int(p.LengthBits))
 	case common.AFI4:
-		needBytes := 4 - len(p.Prefix)
-		if needBytes < 0 {
+		if len(p.Prefix) > 4 {
 			return netip.MustParsePrefix("0.0.0.0/0")
 		}
-		toAppend := make([]byte, needBytes)
-		addr := netip.AddrFrom4([4]byte(append(p.Prefix, toAppend...)))
+		var addrBytes [4]byte
+		copy(addrBytes[:], p.Prefix)
+		addr := netip.AddrFrom4(addrBytes)
 		return netip.PrefixFrom(addr, int(p.LengthBits))
 	}
 	return netip.MustParsePrefix("::/0")

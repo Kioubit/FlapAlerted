@@ -2,7 +2,6 @@ package open
 
 import (
 	"FlapAlerted/bgp/common"
-	"fmt"
 )
 
 type Msg struct {
@@ -91,13 +90,6 @@ type ExtendedMessageCapability struct{}
 type HostnameCapability struct {
 	Hostname   string
 	DomainName string
-}
-
-func (c HostnameCapability) String() string {
-	if c.DomainName == "" {
-		return c.Hostname
-	}
-	return fmt.Sprintf("%s.%s", c.Hostname, c.DomainName)
 }
 
 type ExtendedNextHopCapabilityList []ExtendedNextHopCapability

@@ -196,3 +196,10 @@ func GetOpen(holdTime int, routerID netip.Addr, capabilities ...CapabilityOption
 
 	return msg.MarshalBinary()
 }
+
+func (c HostnameCapability) String() string {
+	if c.DomainName == "" {
+		return c.Hostname
+	}
+	return fmt.Sprintf("%s.%s", c.Hostname, c.DomainName)
+}
