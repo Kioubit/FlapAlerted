@@ -139,7 +139,6 @@ function display() {
 
         document.getElementById("pathChangeDisplay").innerText = json.TotalCount;
         document.getElementById("fistSeenDisplay").innerText = timeConverter(json.FirstSeen);
-        //document.getElementById("lastSeenDisplay").innerText = timeConverter(json.LastSeen);
         document.getElementById("durationDisplay").innerText = toTimeElapsed(Math.floor(Date.now() / 1000) - json.FirstSeen);
 
         document.getElementById("informationText1").style.display = "block";

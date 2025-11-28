@@ -187,7 +187,7 @@ async function updateCapabilities() {
 
     if (data.modHttp.maxUserDefined === 0) {
         const userDefinedTrackingForm = document.querySelector("#userDefinedTracking form");
-        userDefinedTrackingForm.addEventListener("submit", (e) => {
+        userDefinedTrackingForm?.addEventListener("submit", (e) => {
             e.preventDefault();
             alert("This feature is disabled on this instance");
         });
@@ -200,67 +200,63 @@ document.getElementById("hideZeroRateEventsCheckbox").addEventListener("click", 
 });
 
 
-function addToChart(liveChart, point, unixTime, dataInterval) {
-    let shifted = false;
-    for (let i = 0; i < point.length; i++) {
-        if (liveChart.data.datasets.length <= i) {
-            continue;
-        }
-        liveChart.data.datasets[i].data.push(point[i] / dataInterval);
+function addToChart(liveChart, points, unixTime, dataInterval) {
+    const timestamp = unixTime * 1000;
+    const shouldShift = liveChart.data.labels.length > 50;
 
-        if (liveChart.data.datasets[i].data.length > 50) {
-            shifted = true;
-            liveChart.data.datasets[i].data.shift();
+    liveChart.data.datasets.forEach((dataset, i) => {
+        if (i >= points.length) {
+            return;
         }
-    }
-    if (shifted) {
+        dataset.data.push(points[i] / dataInterval);
+        if (shouldShift) {
+            dataset.data.shift();
+        }
+    })
+
+    liveChart.data.labels.push(timestamp);
+    if (shouldShift) {
         liveChart.data.labels.shift();
     }
-    liveChart.data.labels.push(unixTime * 1000);
     liveChart.update();
 }
 
 const prefixTable = document.getElementById("prefixTableBody");
 
 function updateList(flapList) {
-    let prefixTableHtml = "";
-    const unixTime = Math.floor(Date.now() / 1000);
-
     if (flapList === null) {
-        prefixTableHtml = '<tr><td colspan="4" class="centerText"><b>Please wait</b></td></tr>';
-    } else {
-        flapList.sort((a, b) => b.TotalCount - a.TotalCount);
-
-        for (let i = 0; i < flapList.length; i++) {
-            //const duration = toTimeElapsed(flapList[i].LastSeen - flapList[i].FirstSeen);
-            const duration = toTimeElapsed(unixTime - flapList[i].FirstSeen);
-            if (flapList[i].RateSec < 1) {
-                if (hideZeroRateEvents) {
-                    continue;
-                }
-                prefixTableHtml += '<tr class="inactive">';
-            } else {
-                prefixTableHtml += '<tr>';
-            }
-            prefixTableHtml += `<td><a target="_blank" href='analyze/?prefix=${encodeURIComponent(flapList[i].Prefix)}'>${flapList[i].Prefix}</a></td>`;
-            prefixTableHtml += `<td>${duration}</td>`;
-            prefixTableHtml += `<td>${truncateRouteChanges(flapList[i].TotalCount)}</td>`;
-            let rateDisplay = "..";
-            if (flapList[i].RateSec !== -1) {
-                rateDisplay = `${flapList[i].RateSec}/s`;
-            }
-            prefixTableHtml += `<td>${rateDisplay}</td>`;
-            prefixTableHtml += '</tr>';
-            if (i >= 100) {
-                break;
-            }
-        }
-        if (flapList.length === 0) {
-            prefixTableHtml = '<tr><td colspan="4" class="centerText">No flapping prefixes detected</td></tr>';
-        }
+        prefixTable.innerHTML = '<tr><td colspan="4" class="centerText"><b>Please wait</b></td></tr>';
+        return;
     }
 
-    prefixTable.innerHTML = prefixTableHtml;
+    if (flapList.length === 0) {
+        prefixTable.innerHTML = '<tr><td colspan="4" class="centerText">No flapping prefixes detected</td></tr>';
+        return;
+    }
+
+    const unixTime = Math.floor(Date.now() / 1000);
+    const rows = [];
+
+    flapList.sort((a, b) => b.TotalCount - a.TotalCount);
+    const limit = Math.min(101, flapList.length);
+
+    for (let i = 0; i < limit; i++) {
+        const item = flapList[i];
+
+        if (hideZeroRateEvents && item.RateSec < 1) continue;
+
+        const rowClass = item.RateSec < 1 ? ' class="inactive"' : "";
+        const rateDisplay = item.RateSec !== -1 ? `${item.RateSec}/s` : "..";
+
+        rows.push(`<tr${rowClass}>
+            <td><a target="_blank" href='analyze/?prefix=${encodeURIComponent(item.Prefix)}'>${item.Prefix}</a></td>
+            <td>${toTimeElapsed(unixTime - item.FirstSeen)}</td>
+            <td>${truncateRouteChanges(item.TotalCount)}</td>
+            <td>${rateDisplay}</td>
+        </tr>`);
+    }
+
+    prefixTable.innerHTML = rows.join('');
 }
 
 const loadingScreen = document.getElementById("loadingScreen");
@@ -393,6 +389,8 @@ updateCapabilities().catch((err) => {
 
             const now = Math.floor(Date.now() / 1000);
             const fragment = document.createDocumentFragment();
+
+            data.sort((a,b) => a.RouterID.localeCompare(b.RouterID))
 
             data.forEach((entry) => {
                 const row = document.createElement("tr");
