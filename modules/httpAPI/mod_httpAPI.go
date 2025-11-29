@@ -33,7 +33,7 @@ func init() {
 		" the user interface")
 	httpAPIListenAddress = flag.String("httpAPIListenAddress", ":8699", "Listen address for the http api")
 	gageMaxValue = flag.Uint("httpGageMaxValue", 400, "HTTP dashboard Gage max value")
-	maxUserDefinedMonitors = flag.Uint("maxUserDefined", 0, "Maximum number of user-defined tracked prefixes. Use zero to disable")
+	maxUserDefinedMonitors = flag.Uint("maxUserDefined", 5, "Maximum number of user-defined tracked prefixes. Use zero to disable")
 
 	monitor.RegisterModule(&monitor.Module{
 		Name:            moduleName,
