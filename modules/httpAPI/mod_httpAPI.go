@@ -33,7 +33,7 @@ var maxUserDefinedMonitors *uint
 func init() {
 	limitedHttpAPI = flag.Bool("limitedHttpApi", false, "Disable http API endpoints not needed for"+
 		" the user interface")
-	httpAPIListenAddress = flag.String("httpAPIListenAddress", ":8699", "Listen address for the http api")
+	httpAPIListenAddress = flag.String("httpAPIListenAddress", ":8699", "Listen address for the HTTP API (TCP address like :8699 or Unix socket path)")
 	gageMaxValue = flag.Uint("httpGageMaxValue", 400, "HTTP dashboard Gage max value")
 	maxUserDefinedMonitors = flag.Uint("maxUserDefined", 5, "Maximum number of user-defined tracked prefixes. Use zero to disable")
 
@@ -75,22 +75,22 @@ func startComplete() {
 	var listener net.Listener
 	var err error
 	if strings.HasPrefix(*httpAPIListenAddress, "/") {
-		os.Remove(*httpAPIListenAddress)
+		_ = os.Remove(*httpAPIListenAddress)
 		listener, err = net.Listen("unix", *httpAPIListenAddress)
 		if err != nil {
-			logger.Error("["+moduleName+"] Error creating Unix listener", "error", err)
+			logger.Error("Error creating Unix listener", "error", err)
 			return
 		}
 	} else {
 		listener, err = net.Listen("tcp", *httpAPIListenAddress)
 		if err != nil {
-			logger.Error("["+moduleName+"] Error creating TCP listener", "error", err)
+			logger.Error("Error creating TCP listener", "error", err)
 			return
 		}
 	}
 	err = s.Serve(listener)
 	if err != nil {
-		logger.Error("["+moduleName+"] Error starting HTTP api server", "error", err)
+		logger.Error("Error starting HTTP api server", "error", err)
 	}
 }
 
