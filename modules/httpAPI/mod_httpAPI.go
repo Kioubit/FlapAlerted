@@ -59,6 +59,7 @@ func startComplete() {
 	if !*limitedHttpAPI {
 		mux.HandleFunc("/flaps/avgRouteChanges90", getAvgRouteChanges)
 		mux.HandleFunc("/flaps/active/compact", getActiveFlaps)
+		mux.HandleFunc("/flaps/active/rpki", getActiveFlapsRpki)
 		mux.HandleFunc("/flaps/metrics/json", metrics)
 		mux.HandleFunc("/flaps/metrics/prometheus", prometheus)
 	}
