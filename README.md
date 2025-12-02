@@ -69,6 +69,7 @@ Provides the following http API endpoints on port `8699`:
 - `/capabilities`
 - `/sessions`
 - `/flaps/active/compact`
+- `/flaps/active/roa`
 - `/flaps/prefix?prefix=<cidr value>`
 - `/flaps/active/history?cidr=<cidr value>`
 - `/flaps/metrics/json`

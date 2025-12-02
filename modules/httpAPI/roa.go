@@ -10,7 +10,12 @@ import (
 	"time"
 )
 
-type RpkiMetadata struct {
+type RoaResponse struct {
+	Metadata   RoaMetadata `json:"metadata"`
+	RoaEntries []RoaEntry  `json:"roas"`
+}
+
+type RoaMetadata struct {
 	Counts    int   `json:"counts"`
 	Generated int64 `json:"generated"`
 	Valid     int64 `json:"valid"`
@@ -22,16 +27,11 @@ type RoaEntry struct {
 	ASN       string `json:"asn"`
 }
 
-type RpkiResponse struct {
-	Metadata RpkiMetadata `json:"metadata"`
-	Roas     []RoaEntry   `json:"roas"`
-}
-
-func getActiveFlapsRpki(w http.ResponseWriter, r *http.Request) {
+func getActiveFlapsRoa(w http.ResponseWriter, _ *http.Request) {
 	activeFlaps := monitor.GetActiveFlapsSummary()
 
 	// Build ROA entries
-	roas := make([]RoaEntry, len(activeFlaps))
+	roaEntries := make([]RoaEntry, len(activeFlaps))
 	for i, flap := range activeFlaps {
 		// Determine maxLength based on IPv4 or IPv6
 		maxLength := 32
@@ -39,30 +39,30 @@ func getActiveFlapsRpki(w http.ResponseWriter, r *http.Request) {
 			maxLength = 128
 		}
 
-		roas[i] = RoaEntry{
+		roaEntries[i] = RoaEntry{
 			Prefix:    flap.Prefix,
 			MaxLength: maxLength,
-			ASN:       "AS0",
+			ASN:       "0",
 		}
 	}
 
 	// Generate timestamps
-	currentTime := time.Now().Unix()
-	validTime := currentTime + 3600 // +1 hour
+	currentTime := time.Now()
+	validTime := currentTime.Add(1 * time.Hour)
 
 	// Build response
-	response := RpkiResponse{
-		Metadata: RpkiMetadata{
+	response := RoaResponse{
+		Metadata: RoaMetadata{
 			Counts:    len(activeFlaps),
-			Generated: currentTime,
-			Valid:     validTime,
+			Generated: currentTime.Unix(),
+			Valid:     validTime.Unix(),
 		},
-		Roas: roas,
+		RoaEntries: roaEntries,
 	}
 
 	b, err := json.Marshal(response)
 	if err != nil {
-		logger.Warn("Failed to marshal list to JSON", "error", err)
+		logger.Warn("Failed to marshal ROA data to JSON", "error", err)
 		w.WriteHeader(500)
 		return
 	}
