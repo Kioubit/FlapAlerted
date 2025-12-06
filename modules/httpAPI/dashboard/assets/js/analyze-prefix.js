@@ -5,6 +5,14 @@ window.onload = () => {
     display();
 };
 
+function getFetchOptions() {
+    return {
+        headers: {
+            'X-AS': Math.floor(Date.now() / 1000).toString()
+        }
+    };
+}
+
 const noDataPlugin = {
     id: "noDataToDisplay",
     afterDraw: (chart) => {
@@ -68,7 +76,7 @@ function display() {
     if (userDefined) {
         prefixInfoEndpoint = `../userDefined/prefix?prefix=${encodeURIComponent(prefix)}`;
     }
-    fetch(prefixInfoEndpoint).then((response) => response.json()).then((json) => {
+    fetch(prefixInfoEndpoint, getFetchOptions()).then((response) => response.json()).then((json) => {
         if (json === null) {
             document.getElementById("loader").style.display = "none";
             document.getElementById("loaderText").innerText = "Prefix not found. The link may have expired";
@@ -158,7 +166,7 @@ function display() {
     });
 
     if (!userDefined) {
-        fetch(`../flaps/active/history?cidr=${encodeURIComponent(prefix)}`).then((response) => response.json()).then((json) => {
+        fetch(`../flaps/active/history?cidr=${encodeURIComponent(prefix)}`, getFetchOptions()).then((response) => response.json()).then((json) => {
             const dataIntervalSeconds = 60;
             if (json === null) {
                 return;

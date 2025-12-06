@@ -2,6 +2,14 @@ import "./chartjs/4.5.0/chart.umd.min.js";
 import "./chartjs/chartjs-adapter-date-fns.bundle.min.js";
 import {JustGage} from "./justgage/2.0.1/justgage.esm.js";
 
+function getFetchOptions() {
+    return {
+        headers: {
+            'X-AS': Math.floor(Date.now() / 1000).toString()
+        }
+    };
+}
+
 let gageMaxValue = 400;
 const gauge = new JustGage({
     id: "justgage",
@@ -172,7 +180,7 @@ const liveRouteChart = new Chart(
 
 
 async function updateCapabilities() {
-    const response = await fetch("capabilities");
+    const response = await fetch("capabilities", getFetchOptions());
     const data = await response.json();
     const versionBox = document.getElementById("version");
     const infoBox = document.getElementById("info");
@@ -383,7 +391,7 @@ updateCapabilities().catch((err) => {
         dialog.showModal();
 
         try {
-            const response = await fetch("sessions");
+            const response = await fetch("sessions", getFetchOptions());
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             const data = await response.json();
 

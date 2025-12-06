@@ -32,7 +32,7 @@ var maxUserDefinedMonitors *uint
 
 func init() {
 	limitedHttpAPI = flag.Bool("limitedHttpApi", false, "Disable http API endpoints not needed for"+
-		" the user interface")
+		" the user interface & be less friendly to scraping")
 	httpAPIListenAddress = flag.String("httpAPIListenAddress", ":8699", "Listen address for the HTTP API (TCP address like :8699 or Unix socket path)")
 	gageMaxValue = flag.Uint("httpGageMaxValue", 400, "HTTP dashboard Gage max value")
 	maxUserDefinedMonitors = flag.Uint("maxUserDefined", 5, "Maximum number of user-defined tracked prefixes. Use zero to disable")
@@ -50,11 +50,11 @@ func startComplete() {
 
 	mux := http.NewServeMux()
 	mux.Handle("/", mainPageHandler())
-	mux.HandleFunc("/capabilities", showCapabilities)
-	mux.HandleFunc("/flaps/prefix", getPrefix)
+	mux.HandleFunc("/capabilities", antiScrapeMiddleware(showCapabilities))
+	mux.HandleFunc("/flaps/prefix", antiScrapeMiddleware(getPrefix))
 	mux.HandleFunc("/flaps/statStream", getStatisticStream)
-	mux.HandleFunc("/flaps/active/history", getFlapHistory)
-	mux.HandleFunc("/sessions", getBgpSessions)
+	mux.HandleFunc("/flaps/active/history", antiScrapeMiddleware(getFlapHistory))
+	mux.HandleFunc("/sessions", antiScrapeMiddleware(getBgpSessions))
 
 	if !*limitedHttpAPI {
 		mux.HandleFunc("/flaps/avgRouteChanges90", getAvgRouteChanges)
@@ -66,7 +66,7 @@ func startComplete() {
 
 	if *maxUserDefinedMonitors != 0 {
 		mux.HandleFunc("/userDefined/subscribe", getUserDefinedStatisticStream)
-		mux.HandleFunc("/userDefined/prefix", getUserDefinedStatistic)
+		mux.HandleFunc("/userDefined/prefix", antiScrapeMiddleware(getUserDefinedStatistic))
 	}
 
 	s := &http.Server{
@@ -92,6 +92,37 @@ func startComplete() {
 	err = s.Serve(listener)
 	if err != nil {
 		logger.Error("Error starting HTTP api server", "error", err)
+	}
+}
+
+func antiScrapeMiddleware(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !*limitedHttpAPI {
+			next(w, r)
+			return
+		}
+
+		headerValue := r.Header.Get("X-AS")
+		timestamp, err := strconv.ParseInt(headerValue, 10, 64)
+		if err != nil {
+			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+			return
+		}
+
+		now := time.Now().Unix()
+		diff := now - timestamp
+
+		if diff < 0 {
+			diff = -diff
+		}
+
+		// Check if timestamp is within 1 hour (3600 seconds)
+		if diff > 3600 {
+			http.Error(w, http.StatusText(http.StatusRequestTimeout), http.StatusRequestTimeout)
+			return
+		}
+
+		next(w, r)
 	}
 }
 
