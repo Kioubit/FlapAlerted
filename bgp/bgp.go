@@ -92,8 +92,14 @@ func newBGPConnection(ctx context.Context, logger *slog.Logger, conn net.Conn, s
 		return fmt.Errorf("error reading OPEN message from peer %w", err), false
 	}
 	if msg.Header.BgpType != common.MsgOpen {
-		if nMsg, err := notification.GetNotification(notification.FiniteStateMachineError, 0, []byte{}); err == nil {
-			_, _ = conn.Write(nMsg)
+		if msg.Header.BgpType == common.MsgNotification {
+			if notificationMsg, err := notification.ParseMsgNotification(r); err == nil {
+				return fmt.Errorf("notification during open: %w", notificationMsg), false
+			}
+		} else {
+			if nMsg, err := notification.GetNotification(notification.FiniteStateMachineError, 0, []byte{}); err == nil {
+				_, _ = conn.Write(nMsg)
+			}
 		}
 		return fmt.Errorf("unexpected message of type '%s', expected open", msg.Header.BgpType), false
 	}
