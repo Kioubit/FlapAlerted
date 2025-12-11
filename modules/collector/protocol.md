@@ -26,6 +26,7 @@ Communication is a **request/response** model where the collector sends a comman
 | **ACTIVE\_FLAPS**                     | None      | JSON string of active flaps              | Returns a JSON string of active flaps.                                      |
 | **AVERAGE\_ROUTE\_CHANGES\_90**       | None      | Floating point number (2 decimal places) | Returns the current 90th percentile average route change value.             |
 | **CAPABILITIES**                      | None      | JSON string of capabilities              | Returns the settings of the program.                                        |
+| **NOTIFY_ERROR**                      | None      | `OK`                                     | Notify the user of an error condition.                                      |
 | **INSTANCE**                          | None      | String                                   | The instance name supplied during initialization (`collectorInstanceName`). |
 | **VERSION**                           | None      | String                                   | The program version.                                                        |
 

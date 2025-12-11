@@ -30,7 +30,7 @@ const (
 func init() {
 	collectorInstanceName = flag.String("collectorInstanceName", "", "Instance name for this instance to send to the flap collector")
 	collectorEndpoint = flag.String("collectorEndpoint", "", "Flap collector TCP endpoint")
-	useTLS = flag.Bool("collectorUseTLS", false, "Whether to use TLS to the endpoint")
+	useTLS = flag.Bool("collectorUseTLS", false, "Whether to use TLS to the collector endpoint")
 
 	monitor.RegisterModule(&monitor.Module{
 		Name:            moduleName,

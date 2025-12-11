@@ -18,7 +18,6 @@ var lock sync.Mutex
 
 func init() {
 	roaJsonFile = flag.String("roaJson", "", "File path of source ROA JSON")
-
 	monitor.RegisterModule(&monitor.Module{
 		Name:          moduleName,
 		CallbackStart: change,
@@ -43,62 +42,56 @@ func filter(filePath string, cidr string) {
 		return
 	}
 	defer lock.Unlock()
-	inFile, err := os.ReadFile(filePath)
+
+	data, err := readROAFile(filePath)
 	if err != nil {
-		logger.Error("roaFilter error reading file", "error", err)
+		logger.Error("failed to read ROA file", "error", err)
 		return
+	}
+
+	roas, ok := data["roas"].([]any)
+	if !ok {
+		logger.Error("invalid 'roas' field")
+		return
+	}
+
+	filtered := filterPrefix(roas, cidr)
+	data["roas"] = filtered
+
+	if err := writeROAFile(filePath, data); err != nil {
+		logger.Error("failed to write ROA file", "error", err)
+		return
+	}
+
+	logger.Info("wrote filtered ROA file")
+}
+
+func readROAFile(path string) (map[string]any, error) {
+	file, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
 	}
 
 	var data map[string]any
-	err = json.Unmarshal(inFile, &data)
-	if err != nil {
-		logger.Error("roaFilter json unmarshal failed", "error", err)
-		return
-	}
-	roas, ok := data["roas"]
-	if !ok {
-		logger.Error("roaFilter json 'roas' key not found")
-		return
-	}
+	err = json.Unmarshal(file, &data)
+	return data, err
+}
 
-	prefixList, ok := roas.([]any)
-	if !ok {
-		logger.Error("roaFilter json 'roas' key is not an array")
-		return
+func filterPrefix(roas []any, cidr string) []any {
+	filtered := make([]any, 0, len(roas))
+	for _, roa := range roas {
+		prefixObj, ok := roa.(map[string]any)
+		if !ok || prefixObj["prefix"] != cidr {
+			filtered = append(filtered, roa)
+		}
 	}
-	tmp := prefixList[:0]
-	for _, prefix := range prefixList {
-		prefixType, ok := prefix.(map[string]any)
-		if !ok {
-			logger.Error("roaFilter json 'roas' array elements are not json objects")
-			return
-		}
-		prefixKey, ok := prefixType["prefix"]
-		if !ok {
-			logger.Error("roaFilter json 'prefix' key not found in an element of the 'roas' array")
-			return
-		}
-		prefixString, ok := prefixKey.(string)
-		if !ok {
-			logger.Error("roaFilter json 'prefix' key not a string")
-			return
-		}
+	return filtered
+}
 
-		if prefixString != cidr {
-			tmp = append(tmp, prefix)
-		}
-	}
-	prefixList = tmp
-	data["roas"] = prefixList
-	outputJson, err := json.Marshal(data)
+func writeROAFile(path string, data map[string]any) error {
+	output, err := json.Marshal(data)
 	if err != nil {
-		logger.Error("roaFilter json marshal failed", "error", err)
-		return
+		return err
 	}
-	err = os.WriteFile(filePath, outputJson, 0644)
-	if err != nil {
-		logger.Error("roaFilter error writing", "error", err)
-		return
-	}
-	logger.Info("roaFilter wrote filtered ROA file")
+	return os.WriteFile(path, output, 0644)
 }

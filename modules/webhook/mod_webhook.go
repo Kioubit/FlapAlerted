@@ -74,9 +74,10 @@ func callWebHook(URL string, f monitor.FlapEvent) {
 	if URL == "" {
 		return
 	}
+	l := logger.With("url", URL, "prefix", f.Prefix)
 	eventJSON, err := json.Marshal(f)
 	if err != nil {
-		logger.Error("Marshalling flap information failed", "error", err.Error())
+		l.Error("Marshalling flap information failed", "error", err.Error())
 		return
 	}
 
@@ -84,7 +85,7 @@ func callWebHook(URL string, f monitor.FlapEvent) {
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, URL, bytes.NewReader(eventJSON))
 	if err != nil {
-		logger.Error("Failed to create webhook request", "error", err, "url", URL)
+		l.Error("Failed to create webhook request", "error", err, "url", URL)
 		return
 	}
 	req.Header.Set("Content-Type", "application/json")
@@ -96,13 +97,13 @@ func callWebHook(URL string, f monitor.FlapEvent) {
 
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		logger.Error("Failed to send webhook", "error", err, "url", URL)
+		l.Error("Failed to send webhook", "error", err, "url", URL)
 		return
 	}
 	defer func(Body io.ReadCloser) {
 		_ = Body.Close()
 	}(resp.Body)
 	if resp.StatusCode != 200 {
-		logger.Error("Webhook returned error status", "url", URL, "status", resp.StatusCode)
+		l.Error("Webhook returned error status", "url", URL, "status", resp.StatusCode)
 	}
 }

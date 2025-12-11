@@ -40,13 +40,14 @@ func runScript(path string, f monitor.FlapEvent) {
 	if path == "" {
 		return
 	}
+	l := logger.With("path", path, "prefix", f.Prefix)
 	eventJSON, err := json.Marshal(f)
 	if err != nil {
-		logger.Error("Marshalling flap information failed", "error", err.Error())
+		l.Error("Marshalling flap information failed", "error", err.Error())
 		return
 	}
 	err = exec.Command(path, string(eventJSON)).Run()
 	if err != nil {
-		logger.Error("Error executing script", "path", path, "error", err.Error())
+		l.Error("Error executing script", "error", err.Error())
 	}
 }

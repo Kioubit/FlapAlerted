@@ -37,6 +37,9 @@ func processCommand(command string) (response string, err error) {
 		response = strconv.FormatFloat(monitor.GetAverageRouteChanges90(), 'f', 2, 64)
 	case "CAPABILITIES":
 		response, err = getCapabilities()
+	case "NOTIFY_ERROR":
+		logger.Warn("Collector error notification")
+		response = "OK"
 	case "INSTANCE":
 		response = *collectorInstanceName
 	case "VERSION":
