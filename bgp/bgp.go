@@ -79,17 +79,17 @@ func newBGPConnection(ctx context.Context, logger *slog.Logger, conn net.Conn, s
 		},
 	)
 	if err != nil {
-		return fmt.Errorf("error marshalling OPEN message %w", err), false
+		return fmt.Errorf("error marshalling OPEN message: %w", err), false
 	}
 	_, err = conn.Write(openMessage)
 	if err != nil {
-		return fmt.Errorf("error writing OPEN message %w", err), false
+		return fmt.Errorf("error writing OPEN message: %w", err), false
 	}
 
 	// Read peer OPEN message
 	msg, r, err := common.ReadMessage(conn)
 	if err != nil {
-		return fmt.Errorf("error reading OPEN message from peer %w", err), false
+		return fmt.Errorf("error reading OPEN message from peer: %w", err), false
 	}
 	if msg.Header.BgpType != common.MsgOpen {
 		if msg.Header.BgpType == common.MsgNotification {
@@ -188,7 +188,7 @@ func newBGPConnection(ctx context.Context, logger *slog.Logger, conn net.Conn, s
 		if nMsg, err := notification.GetNotification(notification.OpenMessageError, notification.OpenUnsupportedOptionalParameter, []byte{}); err == nil {
 			_, _ = conn.Write(nMsg)
 		}
-		return fmt.Errorf("multiprotocol capbility is not supported by peer"), false
+		return fmt.Errorf("multiprotocol capability is not supported by peer"), false
 	}
 
 	if session.AddPathEnabled && (!hasAddPathIPv6 || !hasAddPathIPv4) {
@@ -201,18 +201,18 @@ func newBGPConnection(ctx context.Context, logger *slog.Logger, conn net.Conn, s
 	keepAliveBytes, _ := GetKeepAlive()
 	_, err = conn.Write(keepAliveBytes)
 	if err != nil {
-		return fmt.Errorf("error writing keep alive message %w", err), false
+		return fmt.Errorf("error writing keep alive message: %w", err), false
 	}
 
 	msg, r, err = common.ReadMessage(conn)
 	if err != nil {
-		return fmt.Errorf("error reading KEEPALIVE message from peer %w", err), false
+		return fmt.Errorf("error reading KEEPALIVE message from peer: %w", err), false
 	}
 	if msg.Header.BgpType != common.MsgKeepAlive {
 		if msg.Header.BgpType == common.MsgNotification {
 			notificationMsg, err := notification.ParseMsgNotification(r)
 			if err != nil {
-				return fmt.Errorf("error parsing notification message %w", err), false
+				return fmt.Errorf("error parsing notification message: %w", err), false
 			}
 			return fmt.Errorf("peer reported an error: %w", notificationMsg), false
 		}
