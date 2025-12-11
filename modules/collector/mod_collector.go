@@ -183,7 +183,7 @@ func getActiveFlapJSON() string {
 	b, err := json.Marshal(activeFlaps)
 	if err != nil {
 		logger.Warn("Failed to marshal list to JSON", "error", err)
-		return ""
+		return "ERROR: failed to marshal list to JSON"
 	}
 	return string(b)
 }
