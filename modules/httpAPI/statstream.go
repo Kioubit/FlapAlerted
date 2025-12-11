@@ -12,7 +12,7 @@ import (
 
 var (
 	clientMutex sync.Mutex
-	clients     = make([]chan string, 0)
+	clients     = make(map[chan string]struct{})
 )
 
 func getStatisticStream(w http.ResponseWriter, r *http.Request) {
@@ -27,24 +27,16 @@ func getStatisticStream(w http.ResponseWriter, r *http.Request) {
 	messageChan := make(chan string, 40)
 
 	clientMutex.Lock()
-	clients = append(clients, messageChan)
+	clients[messageChan] = struct{}{}
 	clientMutex.Unlock()
 
-	var channelClosedFirst = false
-	go func() {
-		// Listen for connection close
-		<-r.Context().Done()
+	defer func() {
 		clientMutex.Lock()
-		if !channelClosedFirst {
-			for i := 0; i < len(clients); i++ {
-				if clients[i] == messageChan {
-					clients[i] = clients[len(clients)-1]
-					clients = clients[:len(clients)-1]
-					break
-				}
-			}
+		if _, ok := clients[messageChan]; ok {
+			// If it was not already closed and deleted by streamServe
+			delete(clients, messageChan)
+			close(messageChan)
 		}
-		close(messageChan)
 		clientMutex.Unlock()
 	}()
 
@@ -54,18 +46,28 @@ func getStatisticStream(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			continue
 		}
-		_, _ = w.Write([]byte(formatEventStreamMessage("u", string(m))))
+		_, err = w.Write([]byte(formatEventStreamMessage("u", string(m))))
+		if err != nil {
+			return
+		}
 	}
 	flusher.Flush()
 
 	for {
-		data, ok := <-messageChan
-		if !ok {
-			channelClosedFirst = true
+		select {
+		case data, ok := <-messageChan:
+			if !ok {
+				return
+			}
+			_, err := w.Write([]byte(data))
+			if err != nil {
+				return
+			}
+			flusher.Flush()
+		case <-r.Context().Done():
+			// Listen for connection close
 			return
 		}
-		_, _ = w.Write([]byte(data))
-		flusher.Flush()
 	}
 }
 
@@ -78,17 +80,15 @@ func streamServe() {
 			continue
 		}
 		clientMutex.Lock()
-		tmp := clients[:0]
-		for _, c := range clients {
+		for c := range clients {
 			select {
 			case c <- formatEventStreamMessage("u", string(m)):
 			default:
+				delete(clients, c)
 				close(c)
 				continue
 			}
-			tmp = append(tmp, c)
 		}
-		clients = tmp
 		clientMutex.Unlock()
 	}
 }

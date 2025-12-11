@@ -33,35 +33,40 @@ func getUserDefinedStatisticStream(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var statisticChannel chan monitor.UserDefinedMonitorStatistic
+	statisticChannel, err := monitor.NewUserDefinedMonitor(prefix)
+	if err != nil {
+		_, _ = w.Write([]byte(formatEventStreamMessage("e", err.Error())))
+		return
+	}
 
-	go func() {
-		// Listen for connection close
-		<-r.Context().Done()
+	defer func() {
 		// Give the user time to potentially retrieve path statistics via the view paths page
 		time.Sleep(2 * time.Second)
 		monitor.RemoveUserDefinedMonitor(prefix, statisticChannel)
 	}()
 
-	if statisticChannel, err = monitor.NewUserDefinedMonitor(prefix); err != nil {
-		_, _ = w.Write([]byte(formatEventStreamMessage("e", err.Error())))
-		return
-	}
-
 	_, _ = w.Write([]byte(formatEventStreamMessage("valid", "")))
 
 	for {
-		data, ok := <-statisticChannel
-		if !ok {
-			return
-		}
-		result, err := json.Marshal(data)
-		if err != nil {
-			return
-		}
+		select {
+		case data, ok := <-statisticChannel:
+			if !ok {
+				return
+			}
+			result, err := json.Marshal(data)
+			if err != nil {
+				return
+			}
 
-		_, _ = w.Write([]byte(formatEventStreamMessage("u", string(result))))
-		flusher.Flush()
+			_, err = w.Write([]byte(formatEventStreamMessage("u", string(result))))
+			if err != nil {
+				return
+			}
+			flusher.Flush()
+		case <-r.Context().Done():
+			// Listen for connection close
+			return
+		}
 	}
 }
 
