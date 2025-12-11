@@ -208,7 +208,7 @@ document.getElementById("hideZeroRateEventsCheckbox").addEventListener("click", 
 });
 
 
-function addToChart(liveChart, points, unixTime, dataInterval) {
+function addToChart(liveChart, points, unixTime, dataInterval, update) {
     const timestamp = unixTime * 1000;
     const shouldShift = liveChart.data.labels.length > 50;
 
@@ -226,7 +226,9 @@ function addToChart(liveChart, points, unixTime, dataInterval) {
     if (shouldShift) {
         liveChart.data.labels.shift();
     }
-    liveChart.update();
+    if (update) {
+        liveChart.update();
+    }
 }
 
 const prefixTable = document.getElementById("prefixTableBody");
@@ -270,11 +272,23 @@ function updateList(flapList) {
 const loadingScreen = document.getElementById("loadingScreen");
 
 function getStats() {
-    const avgArray = [];
     const sessionCountElem = document.getElementById("sessionCount");
     const noBGPFeedsElem = document.getElementById("noBGPFeeds");
     const evtSource = new EventSource("flaps/statStream");
     evtSource.addEventListener("u", (event) => {
+        dataUpdate(event, true)
+    });
+    evtSource.addEventListener("ready", (_) => {
+        liveRouteChart.update('none');
+        liveFlapChart.update('none');
+        loadingScreen.style.display = "none";
+    });
+    evtSource.addEventListener("c", (event) => {
+        dataUpdate(event, false)
+    });
+
+    const avgArray = [];
+    function dataUpdate(event, update) {
         try {
             const js = JSON.parse(event.data);
 
@@ -294,8 +308,8 @@ function getStats() {
             updateList(flapList);
 
 
-            addToChart(liveRouteChart, [stats["Changes"], stats["ListedChanges"]], stats["Time"], 5);
-            addToChart(liveFlapChart, [stats["Active"]], stats["Time"], 1);
+            addToChart(liveRouteChart, [stats["Changes"], stats["ListedChanges"]], stats["Time"], 5, update);
+            addToChart(liveFlapChart, [stats["Active"]], stats["Time"], 1, update);
 
             avgArray.push(stats["Changes"]);
             if (avgArray.length > 50) {
@@ -311,14 +325,14 @@ function getStats() {
         } catch (err) {
             console.log(err);
         }
-    });
+    }
+
     evtSource.onerror = (err) => {
         loadingScreen.style.display = "none";
         handleConnectionLost(true);
         console.log(err);
     };
     evtSource.onopen = () => {
-        loadingScreen.style.display = "none";
         handleConnectionLost(false);
     };
 }

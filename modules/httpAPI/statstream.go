@@ -46,10 +46,15 @@ func getStatisticStream(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			continue
 		}
-		_, err = w.Write([]byte(formatEventStreamMessage("u", string(m))))
+		_, err = w.Write([]byte(formatEventStreamMessage("c", string(m))))
 		if err != nil {
 			return
 		}
+	}
+
+	_, err := w.Write([]byte(formatEventStreamMessage("ready", "u")))
+	if err != nil {
+		return
 	}
 	flusher.Flush()
 
