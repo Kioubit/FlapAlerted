@@ -214,10 +214,9 @@ func newBGPConnection(ctx context.Context, logger *slog.Logger, conn net.Conn, s
 			if err != nil {
 				return fmt.Errorf("error parsing notification message %w", err), false
 			}
-			return fmt.Errorf("peer reported an error %s", notificationMsg), false
-		} else {
-			return fmt.Errorf("unexpected message of type '%s', expected keepalive", msg.Header.BgpType), false
+			return fmt.Errorf("peer reported an error: %w", notificationMsg), false
 		}
+		return fmt.Errorf("unexpected message of type '%s', expected keepalive", msg.Header.BgpType), false
 	}
 
 	logger.Info("BGP session established", "routerID", remoteRouterID)
