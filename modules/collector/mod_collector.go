@@ -6,14 +6,12 @@ import (
 	"FlapAlerted/monitor"
 	"bufio"
 	"crypto/tls"
-	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
 	"log/slog"
 	"net"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -44,9 +42,12 @@ var logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{})).Wi
 
 func startComplete() {
 	if *collectorEndpoint == "" || *collectorInstanceName == "" {
+		if *collectorEndpoint != "" {
+			logger.Error("Collector endpoint specified but no instance name given!")
+		}
 		return
 	}
-	go connectAndListen()
+	connectAndListen()
 }
 
 func connectAndListen() {
@@ -77,7 +78,7 @@ func connectAndListen() {
 		}
 
 		_ = conn.Close()
-		logger.Info("disconnected from collector, retrying in 30 seconds")
+		logger.Info("disconnected from collector, reconnecting in 30 seconds")
 		time.Sleep(30 * time.Second)
 	}
 }
@@ -116,6 +117,7 @@ func handleConnection(conn net.Conn) (err error) {
 		}
 
 		if commandCount >= maxCommandsPerMinute {
+			time.Sleep(5 * time.Minute)
 			return errors.New("rate limit exceeded")
 		}
 		commandCount++
@@ -127,10 +129,14 @@ func handleConnection(conn net.Conn) (err error) {
 			return nil
 		}
 
-		command := strings.TrimSpace(scanner.Text())
+		command := scanner.Text()
 		logger.Debug("received command", "command", command)
 
-		response := processCommand(command)
+		response, err := processCommand(command)
+		if err != nil {
+			response = fmt.Sprintf("ERROR:%s", err.Error())
+		}
+		response = strings.ReplaceAll(response, "\n", "")
 
 		// Send response
 		_ = conn.SetWriteDeadline(time.Now().Add(15 * time.Second))
@@ -146,44 +152,4 @@ func handleConnection(conn net.Conn) (err error) {
 
 		logger.Debug("sent response", "response", response)
 	}
-}
-
-func processCommand(command string) string {
-	parts := strings.Fields(command)
-	if len(parts) == 0 {
-		return "ERROR: empty command"
-	}
-
-	cmd := strings.ToUpper(parts[0])
-
-	switch cmd {
-	case "PING":
-		return "PONG"
-
-	case "ACTIVE_FLAPS":
-		return getActiveFlapJSON()
-
-	case "AVERAGE_ROUTE_CHANGES_90":
-		return strconv.FormatFloat(monitor.GetAverageRouteChanges90(), 'f', 2, 64)
-
-	case "INSTANCE":
-		return *collectorInstanceName
-
-	case "VERSION":
-		return monitor.GetProgramVersion()
-
-	default:
-		return "ERROR: received unknown command"
-	}
-}
-
-func getActiveFlapJSON() string {
-	activeFlaps := monitor.GetActiveFlapsSummary()
-
-	b, err := json.Marshal(activeFlaps)
-	if err != nil {
-		logger.Warn("Failed to marshal list to JSON", "error", err)
-		return "ERROR: failed to marshal list to JSON"
-	}
-	return string(b)
 }
