@@ -6,9 +6,13 @@ import (
 )
 
 type Module struct {
-	Name            string
-	CallbackStart   func(event FlapEvent)
-	CallbackEnd     func(event FlapEvent)
+	// Module name
+	Name string
+	// Function called after an event starts. (Runs in a goroutine)
+	CallbackStart func(event FlapEvent)
+	// Function called after an event ends. (Runs in a goroutine)
+	CallbackEnd func(event FlapEvent)
+	// Function called after the program has started. (Runs in a goroutine)
 	OnStartComplete func()
 }
 
@@ -23,6 +27,16 @@ var notificationEndChannel = make(chan FlapEvent, 10)
 func notificationHandler(c, cEnd chan FlapEvent) {
 	modulesStarted = true
 	moduleCallbackStartComplete()
+
+	sem := make(chan struct{}, 20)
+
+	modulesWithCallbacks := make([]*Module, 0)
+	for _, module := range moduleList {
+		if module.CallbackStart != nil || module.CallbackEnd != nil {
+			modulesWithCallbacks = append(modulesWithCallbacks, module)
+		}
+	}
+
 	for {
 		var f FlapEvent
 		endNotification := false
@@ -31,18 +45,29 @@ func notificationHandler(c, cEnd chan FlapEvent) {
 		case f = <-cEnd:
 			endNotification = true
 		}
-		for _, m := range moduleList {
-			if endNotification {
-				if m.CallbackEnd != nil {
-					go m.CallbackEnd(f)
-				}
-			} else {
-				if m.CallbackStart != nil {
-					go m.CallbackStart(f)
-				}
+		for _, m := range modulesWithCallbacks {
+			callback := getCallback(m, endNotification)
+			if callback == nil {
+				continue
+			}
+			select {
+			case sem <- struct{}{}:
+				go func() {
+					defer func() { <-sem }()
+					callback(f)
+				}()
+			default:
+				slog.Warn("modules cannot keep up with event notifications")
 			}
 		}
 	}
+}
+
+func getCallback(m *Module, endNotification bool) func(FlapEvent) {
+	if endNotification {
+		return m.CallbackEnd
+	}
+	return m.CallbackStart
 }
 
 func RegisterModule(module *Module) {
