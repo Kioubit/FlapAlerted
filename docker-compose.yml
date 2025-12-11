@@ -4,10 +4,10 @@ services:
     container_name: flapalerted
     restart: always
     ports:
-      - "8699"
-      - "1790"
+      - "1790:1790"
+      - "8699:8699"
     environment:
       - FA_ASN=4242423914
     logging:
       options:
-        max-size: "10M"
+        max-size: "5M"

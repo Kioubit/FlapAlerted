@@ -109,7 +109,7 @@ The scripts receive flap event data as a JSON string via command line argument.
 
 To disable this module, add the following tag to the `MODULES` variable in the `Makefile`: `disable_mod_script`
 
-#### mod_webhook (Enabled by default in docker builds)
+#### mod_webhook (Enabled by default)
 
 Sends HTTP POST requests to specified URLs when BGP flap events are detected (at start and end).
 
