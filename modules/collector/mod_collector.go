@@ -5,6 +5,7 @@ package collector
 import (
 	"FlapAlerted/monitor"
 	"bufio"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -21,6 +22,7 @@ var moduleName = "mod_collector"
 
 var collectorInstanceName *string
 var collectorEndpoint *string
+var useTLS *bool
 
 const (
 	maxCommandLength     = 1024
@@ -30,6 +32,7 @@ const (
 func init() {
 	collectorInstanceName = flag.String("collectorInstanceName", "", "Instance name for this instance to send to the flap collector")
 	collectorEndpoint = flag.String("collectorEndpoint", "", "Flap collector TCP endpoint")
+	useTLS = flag.Bool("collectorUseTLS", false, "Whether to use TLS to the endpoint")
 
 	monitor.RegisterModule(&monitor.Module{
 		Name:            moduleName,
@@ -53,6 +56,18 @@ func connectAndListen() {
 			logger.Error("failed to connect to collector", "endpoint", *collectorEndpoint, "error", err)
 			time.Sleep(5 * time.Minute)
 			continue
+		}
+
+		if *useTLS {
+			tlsConn := tls.Server(conn, &tls.Config{})
+			err = tlsConn.Handshake()
+			if err != nil {
+				logger.Error("TLS handshake failed", "error", err)
+				_ = conn.Close()
+				time.Sleep(5 * time.Minute)
+				continue
+			}
+			conn = tlsConn
 		}
 
 		logger.Info("connected to collector", "endpoint", *collectorEndpoint)

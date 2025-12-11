@@ -130,6 +130,7 @@ Connects to a FlapAlerted collector via TCP and allows it to retrieve event info
 Configuration:
 - `-collectorInstanceName`: Instance name to send to the collector
 - `-collectorEndpoint`: TCP endpoint of the collector
+- `-useTLS`: Whether to use TLS
 
 To disable this module, add the following tag to the `MODULES` variable in the Makefile: `disable_mod_collector`
 
