@@ -12,6 +12,7 @@ import (
 	"log/slog"
 	"net"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -146,6 +147,9 @@ func processCommand(command string) string {
 
 	case "ACTIVE_FLAPS":
 		return getActiveFlapJSON()
+
+	case "AVERAGE_ROUTE_CHANGES_90":
+		return strconv.FormatFloat(monitor.GetAverageRouteChanges90(), 'f', 2, 64)
 
 	case "INSTANCE":
 		return *collectorInstanceName
