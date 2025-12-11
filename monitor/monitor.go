@@ -15,6 +15,10 @@ func SetProgramVersion(v string) {
 	programVersion = v
 }
 
+func GetProgramVersion() string {
+	return programVersion
+}
+
 func StartMonitoring(conf config.UserConfig) {
 	config.GlobalConf = conf
 

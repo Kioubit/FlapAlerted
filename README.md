@@ -113,6 +113,16 @@ Payload: Flap event data is sent as a JSON string in the request body.
 
 To disable this module, add the following tag to the `MODULES` variable in the Makefile: `disable_mod_webhook`
 
+#### mod_collector (Enabled by default)
+
+Connects to a FlapAlerted collector via TCP and allows it to retrieve event information.
+
+Configuration:
+- `-collectorInstanceName`: Instance name to send to the collector
+- `-collectorEndpoint`: TCP endpoint of the collector
+
+To disable this module, add the following tag to the `MODULES` variable in the Makefile: `disable_mod_collector`
+
 #### mod_roaFilter (Disabled by default)
 Filters a ROA file in JSON format to remove flapping prefixes.
 The filtered prefixes are to be re-added by the external program updating the ROA file at regular intervals.
