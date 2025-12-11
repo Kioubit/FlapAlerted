@@ -25,7 +25,7 @@ func main() {
 		routeChangeCounter       = flag.Uint("routeChangeCounter", 600, "Number of times a route path needs to change within a minute to list a prefix. Use '0' to show all route changes.")
 		asn                      = flag.Uint("asn", 0, "Your ASN number")
 		overThresholdTarget      = flag.Uint("overThresholdTarget", 10, "Number of consecutive intervals with rate at or above the routeChangeCounter to trigger an event")
-		underThresholdTarget     = flag.Uint("underThresholdTarget", 15, "Number of consecutive intervals with rate below routeChangeCounter to remove an event")
+		underThresholdTarget     = flag.Uint("underThresholdTarget", 15, "Number of consecutive intervals with rate below expiryRouteChangeCounter to remove an event")
 		expiryRouteChangeCounter = flag.Uint("expiryRouteChangeCounter", 0, "Minimum change per minute threshold to keep detected flaps. Defaults to the same value as routeChangeCounter.")
 		routerID                 = flag.String("routerID", "0.0.0.51", "BGP Router ID for this program")
 		noPathInfo               = flag.Bool("noPathInfo", false, "Disable keeping path information")

@@ -35,7 +35,7 @@ Usage:
   -routerID string
         BGP Router ID for this program (default "0.0.0.51")
   -underThresholdTarget uint
-        Number of consecutive intervals with rate below routeChangeCounter to remove an event (default 15)
+        Number of consecutive intervals with rate below expiryRouteChangeCounter to remove an event (default 15)
 ```
 #### Using environment variables
 Environment variables can configure options by prefixing `FA_` to any command-line flag name (optionally in uppercase). For example, set the ASN number with `FA_ASN=<asn>` or the router ID using `FA_routerID=<router id>`.
