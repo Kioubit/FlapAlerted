@@ -19,6 +19,8 @@ var moduleName = "mod_webhook"
 var webhookUrlStart *string
 var webhookUrlEnd *string
 var webhookTimeout *time.Duration
+var webhookInstanceName *string
+
 var httpClient = &http.Client{
 	Transport: &http.Transport{
 		MaxIdleConns:       2,
@@ -31,6 +33,7 @@ func init() {
 	webhookUrlStart = flag.String("webhookUrlStart", "", "Optional webhook URL for when a flap event is detected (start)")
 	webhookUrlEnd = flag.String("webhookUrlEnd", "", "Optional webhook URL for when a flap event is detected (end)")
 	webhookTimeout = flag.Duration("webhookTimeout", 10*time.Second, "Timeout for webhook HTTP requests")
+	webhookInstanceName = flag.String("webhookInstanceName", "", "Optional webhook instance name to set as X-Instance-Name")
 
 	monitor.RegisterModule(&monitor.Module{
 		Name:          moduleName,
@@ -68,6 +71,11 @@ func callWebHook(URL string, f monitor.FlapEvent) {
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", "FlapAlerted-Webhook")
+
+	if *webhookInstanceName != "" {
+		req.Header.Set("X-Instance-Name", *webhookInstanceName)
+	}
+
 	resp, err := httpClient.Do(req)
 	if err != nil {
 		logger.Error("Failed to send webhook", "error", err, "url", URL)
