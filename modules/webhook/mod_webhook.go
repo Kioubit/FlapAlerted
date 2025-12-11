@@ -12,12 +12,26 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 )
 
 var moduleName = "mod_webhook"
-var webhookUrlStart *string
-var webhookUrlEnd *string
+
+// stringSlice implements flag.Value to allow multiple string values for a flag
+type stringSlice []string
+
+func (s *stringSlice) String() string {
+	return strings.Join(*s, ",")
+}
+
+func (s *stringSlice) Set(value string) error {
+	*s = append(*s, value)
+	return nil
+}
+
+var webhookUrlsStart stringSlice
+var webhookUrlsEnd stringSlice
 var webhookTimeout *time.Duration
 var webhookInstanceName *string
 
@@ -30,8 +44,8 @@ var httpClient = &http.Client{
 }
 
 func init() {
-	webhookUrlStart = flag.String("webhookUrlStart", "", "Optional webhook URL for when a flap event is detected (start)")
-	webhookUrlEnd = flag.String("webhookUrlEnd", "", "Optional webhook URL for when a flap event is detected (end)")
+	flag.Var(&webhookUrlsStart, "webhookUrlStart", "Optional webhook URL for when a flap event is detected (start); can be specified multiple times")
+	flag.Var(&webhookUrlsEnd, "webhookUrlEnd", "Optional webhook URL for when a flap event is detected (end); can be specified multiple times")
 	webhookTimeout = flag.Duration("webhookTimeout", 10*time.Second, "Timeout for webhook HTTP requests")
 	webhookInstanceName = flag.String("webhookInstanceName", "", "Optional webhook instance name to set as X-Instance-Name")
 
@@ -45,11 +59,15 @@ func init() {
 var logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{})).With("module", moduleName)
 
 func logFlapStart(f monitor.FlapEvent) {
-	callWebHook(*webhookUrlStart, f)
+	for _, url := range webhookUrlsStart {
+		callWebHook(url, f)
+	}
 }
 
 func logFlapEnd(f monitor.FlapEvent) {
-	callWebHook(*webhookUrlEnd, f)
+	for _, url := range webhookUrlsEnd {
+		callWebHook(url, f)
+	}
 }
 
 func callWebHook(URL string, f monitor.FlapEvent) {

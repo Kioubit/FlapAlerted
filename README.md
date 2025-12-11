@@ -104,9 +104,10 @@ To disable this module, add the following tag to the `MODULES` variable in the `
 Sends HTTP POST requests to specified URLs when BGP flap events are detected (at start and end).
 
 Configuration:
-- `-webhookUrlStart`: URL for when a flap event starts
-- `-webhookUrlEnd`: URL for when a flap event ends
+- `-webhookUrlStart`: URL for when a flap event starts; can be specified multiple times
+- `-webhookUrlEnd`: URL for when a flap event ends; can be specified multiple times
 - `-webhookTimeout`: Timeout for HTTP requests
+- `webhookInstanceName`: Optional instance name to send as a header
 
 Payload: Flap event data is sent as a JSON string in the request body.
 
