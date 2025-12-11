@@ -7,6 +7,7 @@ RUN make release MODULES="disable_mod_script"
 
 FROM scratch
 WORKDIR /
+COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=build /go/src/project/bin/FlapAlerted /bin/FlapAlerted
 
 EXPOSE 1790
