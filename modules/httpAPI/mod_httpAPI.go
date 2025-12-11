@@ -5,6 +5,7 @@ package httpAPI
 import (
 	"FlapAlerted/config"
 	"FlapAlerted/monitor"
+	"crypto/subtle"
 	"embed"
 	"encoding/json"
 	"flag"
@@ -29,10 +30,12 @@ var limitedHttpAPI *bool
 var httpAPIListenAddress *string
 var gageMaxValue *uint
 var maxUserDefinedMonitors *uint
+var apiKey *string
 
 func init() {
 	limitedHttpAPI = flag.Bool("limitedHttpApi", false, "Disable http API endpoints not needed for"+
-		" the user interface & be less friendly to scraping")
+		" the user interface and be activate basic scraping protection")
+	apiKey = flag.String("apiKey", "", "API key to access limited endpoints, when 'limitedHttpApi' is set. Empty to disable")
 	httpAPIListenAddress = flag.String("httpAPIListenAddress", ":8699", "Listen address for the HTTP API (TCP address like :8699 or Unix socket path)")
 	gageMaxValue = flag.Uint("httpGageMaxValue", 400, "HTTP dashboard Gage max value")
 	maxUserDefinedMonitors = flag.Uint("maxUserDefined", 5, "Maximum number of user-defined tracked prefixes. Use zero to disable")
@@ -56,13 +59,11 @@ func startComplete() {
 	mux.HandleFunc("/flaps/active/history", antiScrapeMiddleware(getFlapHistory))
 	mux.HandleFunc("/sessions", antiScrapeMiddleware(getBgpSessions))
 
-	if !*limitedHttpAPI {
-		mux.HandleFunc("/flaps/avgRouteChanges90", getAvgRouteChanges)
-		mux.HandleFunc("/flaps/active/compact", getActiveFlaps)
-		mux.HandleFunc("/flaps/active/roa", getActiveFlapsRoa)
-		mux.HandleFunc("/flaps/metrics/json", metrics)
-		mux.HandleFunc("/flaps/metrics/prometheus", prometheus)
-	}
+	mux.HandleFunc("/flaps/avgRouteChanges90", requireAPIKeyWhenLimited(getAvgRouteChanges))
+	mux.HandleFunc("/flaps/active/compact", requireAPIKeyWhenLimited(getActiveFlaps))
+	mux.HandleFunc("/flaps/active/roa", requireAPIKeyWhenLimited(getActiveFlapsRoa))
+	mux.HandleFunc("/flaps/metrics/json", requireAPIKeyWhenLimited(metrics))
+	mux.HandleFunc("/flaps/metrics/prometheus", requireAPIKeyWhenLimited(prometheus))
 
 	if *maxUserDefinedMonitors != 0 {
 		mux.HandleFunc("/userDefined/subscribe", getUserDefinedStatisticStream)
@@ -92,6 +93,26 @@ func startComplete() {
 	err = s.Serve(listener)
 	if err != nil {
 		logger.Error("Error starting HTTP api server", "error", err)
+	}
+}
+
+func requireAPIKeyWhenLimited(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !*limitedHttpAPI {
+			next(w, r)
+			return
+		}
+		if *apiKey == "" {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		key := r.Header.Get("X-API-Key")
+		if subtle.ConstantTimeCompare([]byte(key), []byte(*apiKey)) != 1 {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+		next(w, r)
 	}
 }
 
