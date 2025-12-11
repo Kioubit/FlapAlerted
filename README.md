@@ -11,7 +11,7 @@
 The program will listen on port `1790` for incoming BGP sessions (passive mode - no outgoing connections).
 It is recommended to adjust the `routeChangeCounter`, `expiryRouteChangeCounter`, `overThresholdTarget` and `underThresholdTarget` parameters (see usage) to produce the desired result.
 
-### Usage
+### Basic Usage
 ```
 Usage:
   -asn uint
