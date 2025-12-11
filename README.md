@@ -13,29 +13,28 @@ It is recommended to adjust the `routeChangeCounter`, `expiryRouteChangeCounter`
 
 ### Basic Usage
 ```
-Usage:
-  -asn uint
-        Your ASN number
-  -bgpListenAddress string
-        Address to listen on for incoming BGP connections (default ":1790")
-  -debug
-        Enable debug mode (produces a lot of output)
-  -disableAddPath
-        Disable BGP AddPath support. (Setting must be replicated in BGP daemon)
-  -expiryRouteChangeCounter uint
-        Minimum change per minute threshold to keep detected flaps. Defaults to the same value as routeChangeCounter.
-  -importLimitThousands uint
-        Maximum number of allowed routes per session (default 10000)
-  -noPathInfo
-        Disable keeping path information
-  -overThresholdTarget uint
-        Number of consecutive intervals with rate at or above the routeChangeCounter to trigger an event (default 10)
-  -routeChangeCounter uint
-        Number of times a route path needs to change within a minute to list a prefix. Use '0' to show all route changes. (default 600)
-  -routerID string
-        BGP Router ID for this program (default "0.0.0.51")
-  -underThresholdTarget uint
-        Number of consecutive intervals with rate below expiryRouteChangeCounter to remove an event (default 15)
+-asn uint
+    Your ASN number
+-bgpListenAddress string
+    Address to listen on for incoming BGP connections (default ":1790")
+-debug
+    Enable debug mode (produces a lot of output)
+-disableAddPath
+    Disable BGP AddPath support. (Setting must be replicated in BGP daemon)
+-expiryRouteChangeCounter uint
+    Minimum change per minute threshold to keep detected flaps. Defaults to the same value as 'routeChangeCounter'.
+-importLimitThousands uint
+    Maximum number of allowed routes per session in thousands (default 10000)
+-noPathInfo
+    Disable keeping path information
+-overThresholdTarget uint
+    Number of consecutive minutes with route change rate at or above the 'routeChangeCounter' to trigger an event (default 10)
+-routeChangeCounter uint
+    Minimum change per minute threshold to detect a flap. Use '0' to show all route changes. (default 600)
+-routerID string
+    BGP router ID for this program (default "0.0.0.51")
+-underThresholdTarget uint
+    Number of consecutive minutes with route change rate below 'expiryRouteChangeCounter' to remove an event (default 15)
 ```
 #### Using environment variables
 Environment variables can configure options by prefixing `FA_` to any command-line flag name (optionally in uppercase). For example, set the ASN number with `FA_ASN=<asn>` or the router ID using `FA_routerID=<router id>`.
@@ -79,8 +78,19 @@ Provides the following http API endpoints on port `8699`:
 It also provides a user interface (on the same port) at path:
 - `/`
 
-*View the usage information using `-h` to view all configuration options for this module.*
-
+Configuration:
+```
+-apiKey string
+    API key to access limited endpoints, when 'limitedHttpApi' is set. Empty to disable
+-httpAPIListenAddress string
+    Listen address for the HTTP API (TCP address like :8699 or Unix socket path) (default ":8699")
+-httpGageMaxValue uint
+    HTTP dashboard Gage max value (default 400)
+-limitedHttpApi
+    Disable http API endpoints not needed for the user interface and activate basic scraping protection
+-maxUserDefined uint
+    Maximum number of user-defined tracked prefixes. Use zero to disable (default 5)
+```
 To disable this module, add the following tag to the `MODULES` variable in the `Makefile`: `disable_mod_httpAPI`
 
 #### mod_log (Enabled by default)
@@ -91,7 +101,7 @@ To disable this module, add the following tag to the `MODULES` variable in the `
 #### mod_script (Enabled by default, except for docker builds)
 Allows executing custom scripts when BGP flap events are detected. Scripts can be triggered at both the start and end of flap events.
 
-Command Line Arguments:
+Configuration:
 - `-detectionScriptStart`: Path to script executed when a flap event starts
 - `-detectionScriptEnd`: Path to script executed when a flap event ends
 
