@@ -132,6 +132,8 @@ Configuration:
 - `-collectorEndpoint`: TCP endpoint of the collector
 - `-collectorUseTLS`: Whether to use TLS
 
+[Protocol documentation](modules/collector/protocol.md)
+
 To disable this module, add the following tag to the `MODULES` variable in the Makefile: `disable_mod_collector`
 
 #### mod_roaFilter (Disabled by default)
