@@ -2,6 +2,7 @@ package table
 
 import (
 	"FlapAlerted/bgp/common"
+	"FlapAlerted/bgp/notification"
 	"FlapAlerted/config"
 	"context"
 	"net/netip"
@@ -63,13 +64,7 @@ func (t *PrefixTable) update(prefix netip.Prefix, pathID uint32, isWithdrawal bo
 		}
 		entry.Paths[pathID] = asPath
 		if t.importCount > config.GlobalConf.ImportLimit {
-			t.sessionCancellation(&ImportLimitError{})
+			t.sessionCancellation(notification.ImportLimitError)
 		}
 	}
-}
-
-type ImportLimitError struct{}
-
-func (e *ImportLimitError) Error() string {
-	return "import limit reached"
 }

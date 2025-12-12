@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-func newBGPConnection(ctx context.Context, logger *slog.Logger, conn net.Conn, session *common.LocalSession, updateChannel chan table.SessionUpdateMessage) (err error, wasEstablished bool) {
+func newBGPConnection(ctx context.Context, ctxCancel context.CancelCauseFunc, logger *slog.Logger, conn net.Conn, session *common.LocalSession, updateChannel chan table.SessionUpdateMessage) (err error, wasEstablished bool) {
 	const ownHoldTime = 240
 	err = conn.SetDeadline(time.Now().Add(ownHoldTime * time.Second))
 	if err != nil {
@@ -230,16 +230,24 @@ func newBGPConnection(ctx context.Context, logger *slog.Logger, conn net.Conn, s
 
 	keepAliveChan := make(chan bool, 1)
 	defer close(keepAliveChan)
-	keepAliveHandler(logger, keepAliveChan, conn, applicableHoldTime)
+	keepAliveHandler(ctxCancel, logger, keepAliveChan, conn, applicableHoldTime)
 
 	err = handleIncoming(ctx, logger, conn, session, updateChannel, keepAliveChan, hasExtendedMessages)
 	if err != nil {
-		if errors.Is(err, &table.ImportLimitError{}) {
+		if errors.Is(err, notification.ImportLimitError) {
 			if nMsg, err := notification.GetNotification(notification.Cease, notification.CeaseMaxNumberOfPrefixes, []byte{}); err == nil {
 				_, _ = conn.Write(nMsg)
 			}
+		} else if errors.Is(err, notification.AdministrativeShutdownError) {
+			if nMsg, err := notification.GetNotification(notification.Cease, notification.CeaseAdministrativeShutdown, []byte{}); err == nil {
+				_, _ = conn.Write(nMsg)
+			}
+		} else if errors.Is(err, notification.HoldTimeExpiredError) {
+			if nMsg, err := notification.GetNotification(notification.HoldTimerExpiredError, 0, []byte{}); err == nil {
+				_, _ = conn.Write(nMsg)
+			}
 		} else {
-			if nMsg, err := notification.GetNotification(notification.UpdateMessageError, 0, []byte{}); err == nil {
+			if nMsg, err := notification.GetNotification(notification.UpdateMessageError, notification.UpdateMessageErrorUnspecific, []byte{}); err == nil {
 				_, _ = conn.Write(nMsg)
 			}
 		}
@@ -251,7 +259,7 @@ func newBGPConnection(ctx context.Context, logger *slog.Logger, conn net.Conn, s
 	return nil, true
 }
 
-func keepAliveHandler(logger *slog.Logger, in chan bool, conn net.Conn, holdTime int) {
+func keepAliveHandler(ctxCancel context.CancelCauseFunc, logger *slog.Logger, in chan bool, conn net.Conn, holdTime int) {
 	if holdTime == 0 {
 		return
 	}
@@ -262,6 +270,7 @@ func keepAliveHandler(logger *slog.Logger, in chan bool, conn net.Conn, holdTime
 			_, err := conn.Write(keepAliveBytes)
 			if err != nil {
 				logger.Debug("Error sending keepalive", "error", err)
+				ctxCancel(err)
 				return
 			}
 		}
@@ -277,12 +286,12 @@ func keepAliveHandler(logger *slog.Logger, in chan bool, conn net.Conn, holdTime
 				if !ok {
 					return
 				}
+				_ = conn.SetDeadline(time.Now().Add(time.Duration(holdTime)*time.Second + 2*time.Second)) // Allow time for error handling
 				holdTimeRemaining = holdTime
 			default:
 			}
 			if holdTimeRemaining <= 0 {
-				logger.Warn("hold time expired")
-				_ = conn.Close()
+				ctxCancel(notification.HoldTimeExpiredError)
 				return
 			}
 		}

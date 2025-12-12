@@ -1,6 +1,7 @@
 package notification
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"strconv"
@@ -54,7 +55,12 @@ const (
 )
 
 const (
-	CeaseMaxNumberOfPrefixes ErrorSubCode = 1
+	UpdateMessageErrorUnspecific ErrorSubCode = 0
+)
+
+const (
+	CeaseMaxNumberOfPrefixes    ErrorSubCode = 1
+	CeaseAdministrativeShutdown ErrorSubCode = 2
 )
 
 func (m Msg) LogValue() slog.Value {
@@ -63,3 +69,7 @@ func (m Msg) LogValue() slog.Value {
 		slog.Int("error_sub_code", int(m.ErrorSubCode)),
 	)
 }
+
+var ImportLimitError = errors.New("import limit reached")
+var AdministrativeShutdownError = errors.New("administrative session shutdown")
+var HoldTimeExpiredError = errors.New("hold timer expired")

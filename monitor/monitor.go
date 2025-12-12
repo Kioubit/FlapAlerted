@@ -4,6 +4,7 @@ import (
 	"FlapAlerted/bgp"
 	"FlapAlerted/bgp/table"
 	"FlapAlerted/config"
+	"context"
 	"net/netip"
 )
 
@@ -21,15 +22,13 @@ func GetProgramVersion() string {
 
 func StartMonitoring(conf config.UserConfig) {
 	config.GlobalConf = conf
-
-	pathChangeChan := make(chan table.PathChange, 1000)
 	userPathChangeChan := make(chan table.PathChange, 1000)
 
-	go notificationHandler(notificationStartChannel, notificationEndChannel)
-	go statTracker()
+	pathChangeChan := bgp.StartBGP(context.Background(), config.GlobalConf.BgpListenAddress)
 	go recordPathChanges(pathChangeChan, userPathChangeChan)
 	go recordUserDefinedMonitors(userPathChangeChan)
-	bgp.StartBGP(config.GlobalConf.BgpListenAddress, pathChangeChan)
+	go statTracker()
+	notificationHandler(notificationStartChannel, notificationEndChannel)
 }
 
 func getEvent(k netip.Prefix) (event FlapEvent, found bool) {
