@@ -70,6 +70,6 @@ func (m Msg) LogValue() slog.Value {
 	)
 }
 
-var ImportLimitError = errors.New("import limit reached")
-var AdministrativeShutdownError = errors.New("administrative session shutdown")
-var HoldTimeExpiredError = errors.New("hold timer expired")
+var ErrImportLimit = errors.New("import limit reached")
+var ErrAdministrativeShutdown = errors.New("administrative session shutdown")
+var ErrHoldTimeExpired = errors.New("hold timer expired")

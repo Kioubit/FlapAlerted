@@ -64,7 +64,7 @@ func (t *PrefixTable) update(prefix netip.Prefix, pathID uint32, isWithdrawal bo
 		}
 		entry.Paths[pathID] = asPath
 		if t.importCount > config.GlobalConf.ImportLimit {
-			t.sessionCancellation(notification.ImportLimitError)
+			t.sessionCancellation(notification.ErrImportLimit)
 		}
 	}
 }

@@ -69,7 +69,7 @@ func handleConnection(parent context.Context, wg *sync.WaitGroup, conn net.Conn,
 	updateChannel := make(chan table.SessionUpdateMessage, 10000)
 	ctx, cancel := context.WithCancelCause(context.WithoutCancel(parent))
 	stop := context.AfterFunc(parent, func() {
-		cancel(notification.AdministrativeShutdownError)
+		cancel(notification.ErrAdministrativeShutdown)
 	})
 	defer stop()
 
@@ -86,7 +86,7 @@ func handleConnection(parent context.Context, wg *sync.WaitGroup, conn net.Conn,
 	}
 	err, wasEstablished := newBGPConnection(ctx, cancel, logger, conn, newSession, updateChannel)
 	if err != nil {
-		if !errors.Is(err, notification.AdministrativeShutdownError) {
+		if !errors.Is(err, notification.ErrAdministrativeShutdown) {
 			logger.Error("connection encountered an error", "error", err.Error())
 		}
 	}

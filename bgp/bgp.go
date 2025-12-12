@@ -234,15 +234,15 @@ func newBGPConnection(ctx context.Context, ctxCancel context.CancelCauseFunc, lo
 
 	err = handleIncoming(ctx, logger, conn, session, updateChannel, keepAliveChan, hasExtendedMessages)
 	if err != nil {
-		if errors.Is(err, notification.ImportLimitError) {
+		if errors.Is(err, notification.ErrImportLimit) {
 			if nMsg, err := notification.GetNotification(notification.Cease, notification.CeaseMaxNumberOfPrefixes, []byte{}); err == nil {
 				_, _ = conn.Write(nMsg)
 			}
-		} else if errors.Is(err, notification.AdministrativeShutdownError) {
+		} else if errors.Is(err, notification.ErrAdministrativeShutdown) {
 			if nMsg, err := notification.GetNotification(notification.Cease, notification.CeaseAdministrativeShutdown, []byte{}); err == nil {
 				_, _ = conn.Write(nMsg)
 			}
-		} else if errors.Is(err, notification.HoldTimeExpiredError) {
+		} else if errors.Is(err, notification.ErrHoldTimeExpired) {
 			if nMsg, err := notification.GetNotification(notification.HoldTimerExpiredError, 0, []byte{}); err == nil {
 				_, _ = conn.Write(nMsg)
 			}
@@ -291,7 +291,7 @@ func keepAliveHandler(ctxCancel context.CancelCauseFunc, logger *slog.Logger, in
 			default:
 			}
 			if holdTimeRemaining <= 0 {
-				ctxCancel(notification.HoldTimeExpiredError)
+				ctxCancel(notification.ErrHoldTimeExpired)
 				return
 			}
 		}
