@@ -203,8 +203,13 @@ function updateCapabilities(response) {
 }
 
 let hideZeroRateEvents = false;
+if (localStorage.getItem("hideZeroRate") === "true") {
+    hideZeroRateEvents = true;
+    document.getElementById("hideZeroRateEventsCheckbox").checked = true;
+}
 document.getElementById("hideZeroRateEventsCheckbox").addEventListener("click", (e) => {
     hideZeroRateEvents = e.target.checked;
+    localStorage.setItem("hideZeroRate", hideZeroRateEvents.toString());
 });
 
 
