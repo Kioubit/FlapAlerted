@@ -52,7 +52,11 @@ func getStatisticStream(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	_, err := w.Write([]byte(formatEventStreamMessage("ready", "u")))
+	capabilities, err := getCapsWithModHttpJSON()
+	if err != nil {
+		capabilities = []byte("{}")
+	}
+	_, err = w.Write([]byte(formatEventStreamMessage("ready", string(capabilities))))
 	if err != nil {
 		return
 	}

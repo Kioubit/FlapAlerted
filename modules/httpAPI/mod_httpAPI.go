@@ -53,12 +53,12 @@ func startComplete() {
 
 	mux := http.NewServeMux()
 	mux.Handle("/", mainPageHandler())
-	mux.HandleFunc("/capabilities", antiScrapeMiddleware(showCapabilities))
 	mux.HandleFunc("/flaps/prefix", antiScrapeMiddleware(getPrefix))
 	mux.HandleFunc("/flaps/statStream", getStatisticStream)
 	mux.HandleFunc("/flaps/active/history", antiScrapeMiddleware(getFlapHistory))
 	mux.HandleFunc("/sessions", antiScrapeMiddleware(getBgpSessions))
 
+	mux.HandleFunc("/capabilities", requireAPIKeyWhenLimited(showCapabilities))
 	mux.HandleFunc("/flaps/avgRouteChanges90", requireAPIKeyWhenLimited(getAvgRouteChanges))
 	mux.HandleFunc("/flaps/active/compact", requireAPIKeyWhenLimited(getActiveFlaps))
 	mux.HandleFunc("/flaps/active/roa", requireAPIKeyWhenLimited(getActiveFlapsRoa))
@@ -182,8 +182,17 @@ func mainPageHandler() http.Handler {
 }
 
 func showCapabilities(w http.ResponseWriter, _ *http.Request) {
-	caps := monitor.GetCapabilities()
+	b, err := json.Marshal(monitor.GetCapabilities())
+	if err != nil {
+		logger.Warn("JSON marshal failed for showCapabilities", "error", err)
+		w.WriteHeader(500)
+		return
+	}
+	_, _ = w.Write(b)
+}
 
+func getCapsWithModHttpJSON() ([]byte, error) {
+	caps := monitor.GetCapabilities()
 	type ModHttpCaps struct {
 		GageMaxValue   uint `json:"gageMaxValue"`
 		MaxUserDefined uint `json:"maxUserDefined"`
@@ -199,14 +208,7 @@ func showCapabilities(w http.ResponseWriter, _ *http.Request) {
 			MaxUserDefined: *maxUserDefinedMonitors,
 		},
 	}
-
-	b, err := json.Marshal(fullCaps)
-	if err != nil {
-		logger.Warn("JSON marshal failed for showCapabilities", "error", err)
-		w.WriteHeader(500)
-		return
-	}
-	_, _ = w.Write(b)
+	return json.Marshal(fullCaps)
 }
 
 func getActiveFlaps(w http.ResponseWriter, _ *http.Request) {

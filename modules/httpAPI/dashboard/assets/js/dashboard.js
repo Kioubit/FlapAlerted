@@ -179,9 +179,8 @@ const liveRouteChart = new Chart(
 );
 
 
-async function updateCapabilities() {
-    const response = await fetch("capabilities", getFetchOptions());
-    const data = await response.json();
+function updateCapabilities(response) {
+    const data = JSON.parse(response);
     const versionBox = document.getElementById("version");
     const infoBox = document.getElementById("info");
 
@@ -192,6 +191,7 @@ async function updateCapabilities() {
         infoBox.innerText = `Table listing criteria: > ${data.UserParameters.RouteChangeCounter} route changes/min for ${data.UserParameters.OverThresholdTarget}min to list; ${data.UserParameters.UnderThresholdTarget}min below ${data.UserParameters.ExpiryRouteChangeCounter}/min to expire.`;
     }
     gageMaxValue = data.modHttp.gageMaxValue;
+    gauge.refresh(lastGageValue, gageMaxValue);
 
     if (data.modHttp.maxUserDefined === 0) {
         const userDefinedTrackingForm = document.querySelector("#userDefinedTracking form");
@@ -271,6 +271,7 @@ function updateList(flapList) {
 
 const loadingScreen = document.getElementById("loadingScreen");
 
+let lastGageValue = 0;
 function getStats() {
     const sessionCountElem = document.getElementById("sessionCount");
     const noBGPFeedsElem = document.getElementById("noBGPFeeds");
@@ -278,7 +279,12 @@ function getStats() {
     evtSource.addEventListener("u", (event) => {
         dataUpdate(event, true)
     });
-    evtSource.addEventListener("ready", (_) => {
+    evtSource.addEventListener("ready", (event) => {
+        try {
+        updateCapabilities(event.data);
+        } catch (error) {
+            console.error("updateCapabilities failed:", error);
+        }
         liveRouteChart.update('none');
         liveFlapChart.update('none');
         loadingScreen.style.display = "none";
@@ -287,6 +293,7 @@ function getStats() {
         dataUpdate(event, false)
     });
 
+    const dataIntervalSec = 5;
     const avgArray = [];
     function dataUpdate(event, update) {
         try {
@@ -308,7 +315,7 @@ function getStats() {
             updateList(flapList);
 
 
-            addToChart(liveRouteChart, [stats["Changes"], stats["ListedChanges"]], stats["Time"], 5, update);
+            addToChart(liveRouteChart, [stats["Changes"], stats["ListedChanges"]], stats["Time"], dataIntervalSec, update);
             addToChart(liveFlapChart, [stats["Active"]], stats["Time"], 1, update);
 
             avgArray.push(stats["Changes"]);
@@ -320,7 +327,8 @@ function getStats() {
             percentile = percentile.slice(0, Math.ceil(percentile.length * 0.90));
             const sum = percentile.reduce((s, a) => s + a, 0);
             const avg = sum / percentile.length;
-            gauge.refresh(avg / 5, gageMaxValue);
+            lastGageValue = avg;
+            gauge.refresh(avg / dataIntervalSec, gageMaxValue);
 
         } catch (err) {
             console.log(err);
@@ -380,9 +388,6 @@ function handleConnectionLost(lost) {
 }
 
 getStats();
-updateCapabilities().catch((err) => {
-    console.log(err);
-});
 
 {
     const dialog = document.getElementById("sessionsDialog");
