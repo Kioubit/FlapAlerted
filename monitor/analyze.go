@@ -58,13 +58,21 @@ func recordPathChanges(pathChan <-chan table.PathChange) (<-chan table.PathChang
 		counterMap := make(map[netip.Prefix]uint32)
 		now := time.Now().Unix()
 
+		lc := 0
+
 		for {
 			var pathChange table.PathChange
 			var ok bool
 			select {
 			case t := <-cleanupTicker.C:
 				now = t.Unix()
-				clear(counterMap)
+				if lc > 30 {
+					lc = 0
+					counterMap = make(map[netip.Prefix]uint32)
+				} else {
+					lc++
+					clear(counterMap)
+				}
 				activeMapLock.Lock()
 				for prefix, event := range activeMap {
 					intervalCount := event.TotalPathChanges - event.lastIntervalCount
