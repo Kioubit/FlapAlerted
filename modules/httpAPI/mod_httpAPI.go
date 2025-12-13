@@ -33,12 +33,12 @@ var maxUserDefinedMonitors *uint
 var apiKey *string
 
 func init() {
-	limitedHttpAPI = flag.Bool("limitedHttpApi", false, "Disable http API endpoints not needed for"+
+	limitedHttpAPI = flag.Bool("httpAPILimit", false, "Disable http API endpoints not needed for"+
 		" the user interface and activate basic scraping protection")
-	apiKey = flag.String("apiKey", "", "API key to access limited endpoints, when 'limitedHttpApi' is set. Empty to disable")
+	apiKey = flag.String("httpAPIKey", "", "API key to access limited endpoints, when 'limitedHttpApi' is set. Empty to disable")
 	httpAPIListenAddress = flag.String("httpAPIListenAddress", ":8699", "Listen address for the HTTP API (TCP address like :8699 or Unix socket path)")
 	gageMaxValue = flag.Uint("httpGageMaxValue", 400, "HTTP dashboard Gage max value")
-	maxUserDefinedMonitors = flag.Uint("maxUserDefined", 5, "Maximum number of user-defined tracked prefixes. Use zero to disable")
+	maxUserDefinedMonitors = flag.Uint("httpMaxUserDefined", 5, "Maximum number of user-defined tracked prefixes. Use zero to disable")
 
 	monitor.RegisterModule(&monitor.Module{
 		Name:            moduleName,
