@@ -20,15 +20,15 @@ Communication is a **request/response** model where the collector sends a comman
 
 ### Commands and Responses
 
-| Command (Collector $\to$ FlapAlerted) | Arguments | FlapAlerted Response                     | Notes                                                                       |
-|:--------------------------------------|:----------|:-----------------------------------------|:----------------------------------------------------------------------------|
-| **PING**                              | None      | `PONG`                                   | Keep the connection alive if no other commands are received.                |
-| **ACTIVE\_FLAPS**                     | None      | JSON string of active flaps              | Returns a JSON string of active flaps.                                      |
-| **AVERAGE\_ROUTE\_CHANGES\_90**       | None      | Floating point number (2 decimal places) | Returns the current 90th percentile average route change value.             |
-| **CAPABILITIES**                      | None      | JSON string of capabilities              | Returns the settings of the program.                                        |
-| **NOTIFY_ERROR**                      | None      | `OK`                                     | Notify the user of an error condition.                                      |
-| **INSTANCE**                          | None      | String                                   | The instance name supplied during initialization (`collectorInstanceName`). |
-| **VERSION**                           | None      | String                                   | The program version.                                                        |
+| Command (Collector $\to$ FlapAlerted) | Arguments              | FlapAlerted Response                     | Notes                                                                       |
+|:--------------------------------------|:-----------------------|:-----------------------------------------|:----------------------------------------------------------------------------|
+| **PING**                              | None                   | `PONG`                                   | Keep the connection alive if no other commands are received.                |
+| **ACTIVE\_FLAPS**                     | None                   | JSON string of active flaps              | Returns a JSON string of active flaps.                                      |
+| **AVERAGE\_ROUTE\_CHANGES\_90**       | None                   | Floating point number (2 decimal places) | Returns the current 90th percentile average route change value.             |
+| **CAPABILITIES**                      | None                   | JSON string of capabilities              | Returns the settings of the program.                                        |
+| **NOTIFY_ERROR**                      | Error message (String) | `OK`                                     | Notify the user of an error condition. The program will not re-connect.     |
+| **INSTANCE**                          | None                   | String                                   | The instance name supplied during initialization (`collectorInstanceName`). |
+| **VERSION**                           | None                   | String                                   | The program version.                                                        |
 
 ### Error Handling (Collector Side)
 

@@ -5,6 +5,7 @@ package collector
 import (
 	"FlapAlerted/monitor"
 	"bufio"
+	"context"
 	"crypto/tls"
 	"errors"
 	"flag"
@@ -22,11 +23,6 @@ var collectorInstanceName *string
 var collectorEndpoint *string
 var useTLS *bool
 
-const (
-	maxCommandLength     = 1024
-	maxCommandsPerMinute = 15
-)
-
 func init() {
 	collectorInstanceName = flag.String("collectorInstanceName", "", "Instance name for this instance to send to the flap collector")
 	collectorEndpoint = flag.String("collectorEndpoint", "", "Flap collector TCP endpoint")
@@ -40,6 +36,11 @@ func init() {
 
 var logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{})).With("module", moduleName)
 
+const (
+	maxCommandLength     = 1024
+	maxCommandsPerMinute = 15
+)
+
 func startComplete() {
 	if *collectorEndpoint == "" || *collectorInstanceName == "" {
 		if *collectorEndpoint != "" {
@@ -47,16 +48,26 @@ func startComplete() {
 		}
 		return
 	}
-	connectAndListen()
+	ctx, cancel := context.WithCancel(context.Background())
+	connectAndListen(ctx, cancel)
 }
 
-func connectAndListen() {
+func connectAndListen(ctx context.Context, cancel context.CancelFunc) {
 	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
 		conn, err := net.DialTimeout("tcp", *collectorEndpoint, 15*time.Second)
 		if err != nil {
-			logger.Error("failed to connect to collector", "endpoint", *collectorEndpoint, "error", err)
-			time.Sleep(5 * time.Minute)
-			continue
+			logger.Error("Failed to connect to collector. Retry in 5 minutes", "endpoint", *collectorEndpoint, "error", err)
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(5 * time.Minute):
+				continue
+			}
 		}
 
 		if *useTLS {
@@ -65,25 +76,45 @@ func connectAndListen() {
 			if err != nil {
 				logger.Error("TLS handshake failed", "error", err)
 				_ = conn.Close()
-				time.Sleep(5 * time.Minute)
-				continue
+				select {
+				case <-ctx.Done():
+					return
+				case <-time.After(5 * time.Minute):
+					continue
+				}
 			}
 			conn = tlsConn
 		}
 
-		logger.Info("connected to collector", "endpoint", *collectorEndpoint)
+		logger.Info("Connected to collector", "endpoint", *collectorEndpoint)
 
-		if err := handleConnection(conn); err != nil {
-			logger.Error("connection error", "error", err)
+		if err := handleConnection(ctx, cancel, conn); err != nil {
+			if ctx.Err() == nil {
+				logger.Error("connection error", "error", err)
+			}
 		}
 
 		_ = conn.Close()
-		logger.Info("disconnected from collector, reconnecting in 30 seconds")
-		time.Sleep(30 * time.Second)
+		if ctx.Err() != nil {
+			logger.Error("Disconnected from collector. Won't reconnect.")
+			return
+		}
+		logger.Warn("Disconnected from collector, reconnecting in 30 seconds")
+
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(30 * time.Second):
+		}
 	}
 }
 
-func handleConnection(conn net.Conn) (err error) {
+func handleConnection(ctx context.Context, cancel context.CancelFunc, conn net.Conn) (err error) {
+	stop := context.AfterFunc(ctx, func() {
+		_ = conn.Close()
+	})
+	defer stop()
+
 	// Send Instance name
 	_, err = fmt.Fprintf(conn, "HELLO %s\n", *collectorInstanceName)
 	if err != nil {
@@ -105,6 +136,12 @@ func handleConnection(conn net.Conn) (err error) {
 	resetTime := time.Now().Add(time.Minute)
 
 	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
 		// Set read deadline to detect connection issues
 		err = conn.SetReadDeadline(time.Now().Add(5 * time.Minute))
 		if err != nil {
@@ -132,7 +169,7 @@ func handleConnection(conn net.Conn) (err error) {
 		command := scanner.Text()
 		logger.Debug("received command", "command", command)
 
-		response, err := processCommand(command)
+		response, err := processCommand(command, cancel)
 		if err != nil {
 			response = fmt.Sprintf("ERROR:%s", err.Error())
 		}

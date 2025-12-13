@@ -4,6 +4,7 @@ package collector
 
 import (
 	"FlapAlerted/monitor"
+	"context"
 	"encoding/json"
 	"errors"
 	"strconv"
@@ -21,9 +22,10 @@ func parseCommand(input string) (cmd string, args []string, err error) {
 	return
 }
 
-func processCommand(command string) (response string, err error) {
+func processCommand(command string, cancel context.CancelFunc) (response string, err error) {
 	var cmd string
-	cmd, _, err = parseCommand(command)
+	var args []string
+	cmd, args, err = parseCommand(command)
 	if err != nil {
 		return
 	}
@@ -38,8 +40,9 @@ func processCommand(command string) (response string, err error) {
 	case "CAPABILITIES":
 		response, err = getCapabilities()
 	case "NOTIFY_ERROR":
-		logger.Warn("Collector error notification")
 		response = "OK"
+		logger.Warn("Collector error notification", "collector_message", strings.Join(args, " "))
+		cancel()
 	case "INSTANCE":
 		response = *collectorInstanceName
 	case "VERSION":
