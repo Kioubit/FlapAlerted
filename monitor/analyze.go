@@ -44,94 +44,108 @@ type FlapEvent struct {
 
 const intervalSec = 60
 
-func recordPathChanges(pathChan <-chan table.PathChange, userPathChangeChan chan table.PathChange) {
-	cleanupTicker := time.NewTicker(intervalSec * time.Second)
-	counterMap := make(map[netip.Prefix]uint32)
-	now := time.Now().Unix()
+func recordPathChanges(pathChan <-chan table.PathChange) (<-chan table.PathChange, <-chan FlapEvent, <-chan FlapEvent) {
+	userPathChangeChan := make(chan table.PathChange, 1000)
+	notificationStartChannel := make(chan FlapEvent, 10)
+	notificationEndChannel := make(chan FlapEvent, 10)
 
-	for {
-		var pathChange table.PathChange
-		var ok bool
-		select {
-		case t := <-cleanupTicker.C:
-			now = t.Unix()
-			clear(counterMap)
-			activeMapLock.Lock()
-			for prefix, event := range activeMap {
-				intervalCount := event.TotalPathChanges - event.lastIntervalCount
-				event.RateSec = int(intervalCount / intervalSec)
-				event.lastIntervalCount = event.TotalPathChanges
+	go func() {
+		defer close(userPathChangeChan)
+		defer close(notificationStartChannel)
+		defer close(notificationEndChannel)
 
-				event.RateSecHistory = append(event.RateSecHistory, event.RateSec)
-				if len(event.RateSecHistory) > 60 {
-					event.RateSecHistory = event.RateSecHistory[1:]
-				}
+		cleanupTicker := time.NewTicker(intervalSec * time.Second)
+		counterMap := make(map[netip.Prefix]uint32)
+		now := time.Now().Unix()
 
-				if intervalCount <= uint64(config.GlobalConf.RouteChangeCounter) {
-					if event.hasTriggered {
-						if intervalCount <= uint64(config.GlobalConf.ExpiryRouteChangeCounter) {
-							if event.underThresholdCount == config.GlobalConf.UnderThresholdTarget {
-								delete(activeMap, prefix)
-								notificationEndChannel <- *event
-							} else {
-								event.underThresholdCount++
+		for {
+			var pathChange table.PathChange
+			var ok bool
+			select {
+			case t := <-cleanupTicker.C:
+				now = t.Unix()
+				clear(counterMap)
+				activeMapLock.Lock()
+				for prefix, event := range activeMap {
+					intervalCount := event.TotalPathChanges - event.lastIntervalCount
+					event.RateSec = int(intervalCount / intervalSec)
+					event.lastIntervalCount = event.TotalPathChanges
+
+					event.RateSecHistory = append(event.RateSecHistory, event.RateSec)
+					if len(event.RateSecHistory) > 60 {
+						event.RateSecHistory = event.RateSecHistory[1:]
+					}
+
+					if intervalCount <= uint64(config.GlobalConf.RouteChangeCounter) {
+						if event.hasTriggered {
+							if intervalCount <= uint64(config.GlobalConf.ExpiryRouteChangeCounter) {
+								if event.underThresholdCount == config.GlobalConf.UnderThresholdTarget {
+									delete(activeMap, prefix)
+									notificationEndChannel <- *event
+								} else {
+									event.underThresholdCount++
+								}
 							}
+						} else {
+							delete(activeMap, prefix)
 						}
 					} else {
-						delete(activeMap, prefix)
+						event.underThresholdCount = 0
+						if event.overThresholdCount == config.GlobalConf.OverThresholdTarget {
+							event.hasTriggered = true
+							event.overThresholdCount++
+							notificationStartChannel <- *event
+						} else {
+							event.overThresholdCount++
+						}
+					}
+				}
+				activeMapLock.Unlock()
+				continue
+			case pathChange, ok = <-pathChan:
+				if !ok {
+					return
+				}
+			}
+
+			if sendUserDefined.Load() {
+				select {
+				case userPathChangeChan <- pathChange:
+				default:
+				}
+			}
+
+			globalTotalRouteChangeCounter.Add(1)
+
+			activeMapLock.Lock()
+			if val, exists := activeMap[pathChange.Prefix]; exists {
+				incrementUint64(&val.TotalPathChanges)
+				val.PathHistory.record(pathChange.OldPath, pathChange.IsWithdrawal)
+				if val.hasTriggered {
+					globalListedRouteChangeCounter.Add(1)
+				}
+			} else {
+				if counterMap[pathChange.Prefix] == uint32(config.GlobalConf.RouteChangeCounter) {
+					activeMap[pathChange.Prefix] = &FlapEvent{
+						Prefix:             pathChange.Prefix,
+						PathHistory:        newPathTracker(pathHistoryLimit),
+						TotalPathChanges:   uint64(counterMap[pathChange.Prefix]) + 1,
+						RateSec:            -1,
+						RateSecHistory:     make([]int, 0, 1),
+						FirstSeen:          now,
+						overThresholdCount: 1,
+						// Special case for the 'display all route changes' mode
+						hasTriggered: config.GlobalConf.RouteChangeCounter == 0,
 					}
 				} else {
-					event.underThresholdCount = 0
-					if event.overThresholdCount == config.GlobalConf.OverThresholdTarget {
-						event.hasTriggered = true
-						event.overThresholdCount++
-						notificationStartChannel <- *event
-					} else {
-						event.overThresholdCount++
-					}
+					counterMap[pathChange.Prefix]++
 				}
 			}
 			activeMapLock.Unlock()
-			continue
-		case pathChange, ok = <-pathChan:
-			if !ok {
-				return
-			}
+
 		}
-
-		if sendUserDefined.Load() {
-			userPathChangeChan <- pathChange
-		}
-
-		globalTotalRouteChangeCounter.Add(1)
-
-		activeMapLock.Lock()
-		if val, exists := activeMap[pathChange.Prefix]; exists {
-			incrementUint64(&val.TotalPathChanges)
-			val.PathHistory.record(pathChange.OldPath, pathChange.IsWithdrawal)
-			if val.hasTriggered {
-				globalListedRouteChangeCounter.Add(1)
-			}
-		} else {
-			if counterMap[pathChange.Prefix] == uint32(config.GlobalConf.RouteChangeCounter) {
-				activeMap[pathChange.Prefix] = &FlapEvent{
-					Prefix:             pathChange.Prefix,
-					PathHistory:        newPathTracker(pathHistoryLimit),
-					TotalPathChanges:   uint64(counterMap[pathChange.Prefix]) + 1,
-					RateSec:            -1,
-					RateSecHistory:     make([]int, 0, 1),
-					FirstSeen:          now,
-					overThresholdCount: 1,
-					// Special case for the 'display all route changes' mode
-					hasTriggered: config.GlobalConf.RouteChangeCounter == 0,
-				}
-			} else {
-				counterMap[pathChange.Prefix]++
-			}
-		}
-		activeMapLock.Unlock()
-
-	}
+	}()
+	return userPathChangeChan, notificationStartChannel, notificationEndChannel
 }
 
 func incrementUint64(n *uint64) {

@@ -13,36 +13,65 @@ import (
 	"io"
 	"log/slog"
 	"net"
+	"sync"
 	"time"
 )
 
-func newBGPConnection(ctx context.Context, ctxCancel context.CancelCauseFunc, logger *slog.Logger, conn net.Conn, session *common.LocalSession, updateChannel chan table.SessionUpdateMessage) (err error, wasEstablished bool) {
+func newBGPConnection(ctx context.Context, logger *slog.Logger, conn net.Conn, session *common.LocalSession) (err error) {
+	stop := context.AfterFunc(ctx, func() {
+		_ = conn.Close()
+	})
+	defer stop()
+
 	const ownHoldTime = 240
 	err = conn.SetDeadline(time.Now().Add(ownHoldTime * time.Second))
 	if err != nil {
 		logger.Warn("Failed to set connection deadline", "error", err)
 	}
 
-	openMessage, err := open.GetOpen(ownHoldTime, session.RouterID,
-		open.CapabilityOptionalParameter{
+	myCapabilities := []open.CapabilityOptionalParameter{
+		{
 			CapabilityCode:  open.CapabilityCodeFourByteASN,
 			CapabilityValue: open.FourByteASNCapability{ASN: session.Asn},
 		},
-		open.CapabilityOptionalParameter{
+		{
 			CapabilityCode: open.CapabilityCodeMultiProtocol,
 			CapabilityValue: open.MultiProtocolCapability{
 				AFI:  common.AFI4,
 				SAFI: common.UNICAST,
 			},
 		},
-		open.CapabilityOptionalParameter{
+		{
 			CapabilityCode: open.CapabilityCodeMultiProtocol,
 			CapabilityValue: open.MultiProtocolCapability{
 				AFI:  common.AFI6,
 				SAFI: common.UNICAST,
 			},
 		},
-		open.CapabilityOptionalParameter{
+		{
+			CapabilityCode:  open.CapabilityCodeExtendedMessage,
+			CapabilityValue: open.ExtendedMessageCapability{},
+		},
+		{
+			CapabilityCode: open.CapabilityCodeHostname,
+			CapabilityValue: open.HostnameCapability{
+				Hostname: "flapalerted",
+			},
+		},
+		{
+			CapabilityCode: open.CapabilityCodeExtendedNextHop,
+			CapabilityValue: open.ExtendedNextHopCapabilityList{
+				open.ExtendedNextHopCapability{
+					AFI:        common.AFI4,
+					SAFI:       common.UNICAST,
+					NextHopAFI: common.AFI6,
+				},
+			},
+		},
+	}
+
+	if session.AddPathEnabled {
+		myCapabilities = append(myCapabilities, open.CapabilityOptionalParameter{
 			CapabilityCode: open.CapabilityCodeAddPath,
 			CapabilityValue: open.AddPathCapabilityList{
 				open.AddPathCapability{
@@ -56,57 +85,39 @@ func newBGPConnection(ctx context.Context, ctxCancel context.CancelCauseFunc, lo
 					TXRX: open.ReceiveOnly,
 				},
 			},
-		},
-		open.CapabilityOptionalParameter{
-			CapabilityCode:  open.CapabilityCodeExtendedMessage,
-			CapabilityValue: open.ExtendedMessageCapability{},
-		},
-		open.CapabilityOptionalParameter{
-			CapabilityCode: open.CapabilityCodeHostname,
-			CapabilityValue: open.HostnameCapability{
-				Hostname: "flapalerted",
-			},
-		},
-		open.CapabilityOptionalParameter{
-			CapabilityCode: open.CapabilityCodeExtendedNextHop,
-			CapabilityValue: open.ExtendedNextHopCapabilityList{
-				open.ExtendedNextHopCapability{
-					AFI:        common.AFI4,
-					SAFI:       common.UNICAST,
-					NextHopAFI: common.AFI6,
-				},
-			},
-		},
-	)
+		})
+	}
+
+	openMessage, err := open.GetOpen(ownHoldTime, session.OwnRouterID, myCapabilities...)
 	if err != nil {
-		return fmt.Errorf("error marshalling OPEN message: %w", err), false
+		return fmt.Errorf("error marshalling OPEN message: %w", err)
 	}
 	_, err = conn.Write(openMessage)
 	if err != nil {
-		return fmt.Errorf("error writing OPEN message: %w", err), false
+		return fmt.Errorf("error writing OPEN message: %w", err)
 	}
 
 	// Read peer OPEN message
 	msg, r, err := common.ReadMessage(conn)
 	if err != nil {
-		return fmt.Errorf("error reading OPEN message from peer: %w", err), false
+		return fmt.Errorf("error reading OPEN message from peer: %w", err)
 	}
 	if msg.Header.BgpType != common.MsgOpen {
 		if msg.Header.BgpType == common.MsgNotification {
 			if notificationMsg, err := notification.ParseMsgNotification(r); err == nil {
-				return fmt.Errorf("notification during open: %w", notificationMsg), false
+				return fmt.Errorf("notification during open: %w", notificationMsg)
 			}
 		} else {
 			if nMsg, err := notification.GetNotification(notification.FiniteStateMachineError, 0, []byte{}); err == nil {
 				_, _ = conn.Write(nMsg)
 			}
 		}
-		return fmt.Errorf("unexpected message of type '%s', expected open", msg.Header.BgpType), false
+		return fmt.Errorf("unexpected message of type '%s', expected open", msg.Header.BgpType)
 	}
 
 	msg.Body, err = open.ParseMsgOpen(r)
 	if err != nil {
-		return fmt.Errorf("error parsing peer OPEN message %w", err), false
+		return fmt.Errorf("error parsing peer OPEN message %w", err)
 	}
 
 	hasMultiProtocolIPv4 := false
@@ -114,10 +125,7 @@ func newBGPConnection(ctx context.Context, ctxCancel context.CancelCauseFunc, lo
 	hasAddPathIPv4 := false
 	hasAddPathIPv6 := false
 	hasFourByteAsn := false
-	hasExtendedNextHopV4 := false
-	hasExtendedMessages := false
 	var remoteASN uint32 = 0
-	var remoteHostname = ""
 	for _, p := range msg.Body.(open.Msg).OptionalParameters {
 		for _, t := range p.ParameterValue.(open.CapabilityList).List {
 			switch v := t.CapabilityValue.(type) {
@@ -148,124 +156,165 @@ func newBGPConnection(ctx context.Context, ctxCancel context.CancelCauseFunc, lo
 					hasMultiProtocolIPv6 = true
 				}
 			case open.HostnameCapability:
-				remoteHostname = v.String()
-				logger = logger.With("hostname", remoteHostname)
+				session.RemoteHostname = v.String()
 			case open.ExtendedNextHopCapabilityList:
 				for _, ec := range v {
 					if ec.AFI == common.AFI4 && ec.NextHopAFI == common.AFI6 && ec.SAFI == common.UNICAST {
-						hasExtendedNextHopV4 = true
+						session.HasExtendedNextHopV4 = true
 					}
 				}
 			case open.ExtendedMessageCapability:
-				hasExtendedMessages = true
+				session.HasExtendedMessages = true
 			}
 		}
 	}
-	session.HasExtendedNextHopV4 = hasExtendedNextHopV4
 	peerHoldTime := msg.Body.(open.Msg).HoldTime.GetApplicableSeconds()
+	if peerHoldTime > 900 || peerHoldTime == 1 || peerHoldTime == 2 {
+		// Values 1 and 2 are disallowed by RFC, zero is allowed
+		if nMsg, err := notification.GetNotification(notification.OpenMessageError, notification.OpenUnacceptableHoldTime, []byte{}); err == nil {
+			_, _ = conn.Write(nMsg)
+		}
+		return fmt.Errorf("unacceptable peer hold time of %d seconds", peerHoldTime)
+	}
+	slog.Debug("Peer hold time: %d seconds", peerHoldTime)
+
 	applicableHoldTime := ownHoldTime
 	if peerHoldTime < ownHoldTime {
 		applicableHoldTime = peerHoldTime
 	}
-	applicableHoldTime = min(applicableHoldTime, 300)
+	session.ApplicableHoldTime = applicableHoldTime
 
-	remoteRouterID := msg.Body.(open.Msg).RouterID
+	session.RemoteRouterID = msg.Body.(open.Msg).RouterID.ToNetAddr()
 
 	if !hasFourByteAsn {
 		if nMsg, err := notification.GetNotification(notification.OpenMessageError, notification.OpenUnsupportedOptionalParameter, []byte{}); err == nil {
 			_, _ = conn.Write(nMsg)
 		}
-		return fmt.Errorf("four byte ASNs not supported by peer"), false
+		return fmt.Errorf("four byte ASNs not supported by peer")
 	}
 	if remoteASN != session.Asn {
 		if nMsg, err := notification.GetNotification(notification.OpenMessageError, notification.OpenBadPeerAS, []byte{}); err == nil {
 			_, _ = conn.Write(nMsg)
 		}
-		return fmt.Errorf("remote ASN (%d) does not match the set asn (%d)", remoteASN, session.Asn), false
+		return fmt.Errorf("remote ASN (%d) does not match the set asn (%d)", remoteASN, session.Asn)
 	}
 
 	if !hasMultiProtocolIPv4 && !hasMultiProtocolIPv6 {
 		if nMsg, err := notification.GetNotification(notification.OpenMessageError, notification.OpenUnsupportedOptionalParameter, []byte{}); err == nil {
 			_, _ = conn.Write(nMsg)
 		}
-		return fmt.Errorf("multiprotocol capability is not supported by peer"), false
+		return fmt.Errorf("multiprotocol capability is not supported by peer")
 	}
 
 	if session.AddPathEnabled && (!hasAddPathIPv6 || !hasAddPathIPv4) {
 		if nMsg, err := notification.GetNotification(notification.OpenMessageError, notification.OpenUnsupportedOptionalParameter, []byte{}); err == nil {
 			_, _ = conn.Write(nMsg)
 		}
-		return fmt.Errorf("addPath is not supported by peer"), false
+		return fmt.Errorf("addPath is not supported by peer")
 	}
 
 	keepAliveBytes, _ := GetKeepAlive()
 	_, err = conn.Write(keepAliveBytes)
 	if err != nil {
-		return fmt.Errorf("error writing keep alive message: %w", err), false
+		return fmt.Errorf("error writing keep alive message: %w", err)
 	}
 
 	msg, r, err = common.ReadMessage(conn)
 	if err != nil {
-		return fmt.Errorf("error reading KEEPALIVE message from peer: %w", err), false
+		return fmt.Errorf("error reading KEEPALIVE message from peer: %w", err)
 	}
 	if msg.Header.BgpType != common.MsgKeepAlive {
 		if msg.Header.BgpType == common.MsgNotification {
 			notificationMsg, err := notification.ParseMsgNotification(r)
 			if err != nil {
-				return fmt.Errorf("error parsing notification message: %w", err), false
+				return fmt.Errorf("error parsing notification message: %w", err)
 			}
-			return fmt.Errorf("peer reported an error: %w", notificationMsg), false
+			return fmt.Errorf("peer reported an error: %w", notificationMsg)
 		}
-		return fmt.Errorf("unexpected message of type '%s', expected keepalive", msg.Header.BgpType), false
+		return fmt.Errorf("unexpected message of type '%s', expected keepalive", msg.Header.BgpType)
 	}
+	return nil
+}
 
-	logger.Info("BGP session established", "routerID", remoteRouterID)
-	common.AddSession(conn, remoteRouterID.String(), remoteHostname, session)
+func handleEstablished(ctx context.Context, ctxCancel context.CancelCauseFunc, conn net.Conn, logger *slog.Logger, session *common.LocalSession, updateChannel chan table.SessionUpdateMessage) error {
+	logger.Info("BGP session established")
 
 	// From this point on the hold timer will manage the connection deadline
-	err = conn.SetDeadline(time.Time{})
+	err := conn.SetDeadline(time.Time{})
 	if err != nil {
 		logger.Warn("failed to reset connection deadline", "error", err)
 	}
 
-	keepAliveChan := make(chan bool, 1)
+	keepAliveChan := make(chan struct{}, 1)
 	defer close(keepAliveChan)
-	keepAliveHandler(ctxCancel, logger, keepAliveChan, conn, applicableHoldTime)
+	var wg sync.WaitGroup
+	defer wg.Wait()
+	keepAliveHandler(ctx, ctxCancel, &wg, logger, keepAliveChan, conn, session.ApplicableHoldTime)
 
-	err = handleIncoming(ctx, logger, conn, session, updateChannel, keepAliveChan, hasExtendedMessages)
+	err = handleMessages(ctx, logger, conn, session, updateChannel, keepAliveChan, session.HasExtendedMessages)
 	if err != nil {
-		if errors.Is(err, notification.ErrImportLimit) {
-			if nMsg, err := notification.GetNotification(notification.Cease, notification.CeaseMaxNumberOfPrefixes, []byte{}); err == nil {
-				_, _ = conn.Write(nMsg)
-			}
-		} else if errors.Is(err, notification.ErrAdministrativeShutdown) {
-			if nMsg, err := notification.GetNotification(notification.Cease, notification.CeaseAdministrativeShutdown, []byte{}); err == nil {
-				_, _ = conn.Write(nMsg)
-			}
-		} else if errors.Is(err, notification.ErrHoldTimeExpired) {
-			if nMsg, err := notification.GetNotification(notification.HoldTimerExpiredError, 0, []byte{}); err == nil {
-				_, _ = conn.Write(nMsg)
-			}
-		} else {
-			if nMsg, err := notification.GetNotification(notification.UpdateMessageError, notification.UpdateMessageErrorUnspecific, []byte{}); err == nil {
-				_, _ = conn.Write(nMsg)
-			}
-		}
 		// Give the receiver time to receive the notification before closing the connection
-		time.Sleep(1 * time.Second)
-		return err, true
+		defer time.Sleep(1 * time.Second)
+
+		ctxCause := context.Cause(ctx)
+		if ctxCause != nil {
+			// Context has been canceled
+			if errors.Is(ctxCause, notification.ErrImportLimit) {
+				if nMsg, err := notification.GetNotification(notification.Cease, notification.CeaseMaxNumberOfPrefixes, []byte{}); err == nil {
+					_, _ = conn.Write(nMsg)
+				}
+			} else if errors.Is(ctxCause, notification.ErrAdministrativeShutdown) {
+				if nMsg, err := notification.GetNotification(notification.Cease, notification.CeaseAdministrativeShutdown, []byte{}); err == nil {
+					_, _ = conn.Write(nMsg)
+				}
+			} else if errors.Is(ctxCause, notification.ErrHoldTimeExpired) {
+				if nMsg, err := notification.GetNotification(notification.HoldTimerExpiredError, 0, []byte{}); err == nil {
+					_, _ = conn.Write(nMsg)
+				}
+			}
+			return ctxCause
+		}
+		// Context was not canceled, error in the function
+		if nMsg, err := notification.GetNotification(notification.UpdateMessageError, notification.UpdateMessageErrorUnspecific, []byte{}); err == nil {
+			_, _ = conn.Write(nMsg)
+		}
+		return err
 	}
-	logger.Info("BGP Connection closed", "routerID", remoteRouterID)
-	return nil, true
+	logger.Info("BGP Connection closed")
+	return nil
 }
 
-func keepAliveHandler(ctxCancel context.CancelCauseFunc, logger *slog.Logger, in chan bool, conn net.Conn, holdTime int) {
+func keepAliveHandler(ctx context.Context, ctxCancel context.CancelCauseFunc, wg *sync.WaitGroup, logger *slog.Logger, in <-chan struct{}, conn net.Conn, holdTime int) {
 	if holdTime == 0 {
 		return
 	}
-	go func() {
+	holdDuration := time.Duration(holdTime) * time.Second
+	keepAliveInterval := holdDuration / 4
+	updateThreshold := holdDuration / 10
+	if updateThreshold < 2*time.Second {
+		updateThreshold = 2 * time.Second
+	}
+	sleepTimer := time.NewTimer(updateThreshold)
+
+	wg.Go(func() {
+		ticker := time.NewTicker(keepAliveInterval)
+		defer ticker.Stop()
 		for {
-			time.Sleep(time.Duration(holdTime/4) * time.Second)
+			select {
+			case <-ctx.Done():
+				// Ensure anything remaining (like bgp notification writes) terminates quickly
+				err := conn.SetWriteDeadline(time.Now().Add(3 * time.Second))
+				if err != nil {
+					_ = conn.Close()
+				}
+				// Stop any reads immediately
+				err = conn.SetReadDeadline(time.Now())
+				if err != nil {
+					_ = conn.Close()
+				}
+				return
+			case <-ticker.C:
+			}
 			keepAliveBytes, _ := GetKeepAlive()
 			_, err := conn.Write(keepAliveBytes)
 			if err != nil {
@@ -274,31 +323,37 @@ func keepAliveHandler(ctxCancel context.CancelCauseFunc, logger *slog.Logger, in
 				return
 			}
 		}
-	}()
-	go func() {
-		holdTimeRemaining := holdTime
+	})
+	wg.Go(func() {
+		timer := time.NewTimer(holdDuration)
+		defer timer.Stop()
 		// time.after in a select statement cannot be used to avoid large amounts of channel allocations
 		for {
-			time.Sleep(2 * time.Second)
-			holdTimeRemaining -= 2
+			// No need to run this loop thousands of times per second
+			sleepTimer.Reset(updateThreshold)
 			select {
+			case <-ctx.Done():
+				return
+			case <-sleepTimer.C:
+			}
+			select {
+			case <-ctx.Done():
+				return
 			case _, ok := <-in:
 				if !ok {
 					return
 				}
-				_ = conn.SetDeadline(time.Now().Add(time.Duration(holdTime)*time.Second + 2*time.Second)) // Allow time for error handling
-				holdTimeRemaining = holdTime
-			default:
-			}
-			if holdTimeRemaining <= 0 {
+				// Safe to call without draining as of GO 1.23
+				timer.Reset(holdDuration)
+			case <-timer.C:
 				ctxCancel(notification.ErrHoldTimeExpired)
 				return
 			}
 		}
-	}()
+	})
 }
 
-func handleIncoming(ctx context.Context, logger *slog.Logger, conn io.Reader, session *common.LocalSession, updateChannel chan table.SessionUpdateMessage, keepAliveChan chan bool, hasExtendedMessages bool) error {
+func handleMessages(ctx context.Context, logger *slog.Logger, conn io.Reader, session *common.LocalSession, updateChannel chan table.SessionUpdateMessage, keepAliveChan chan<- struct{}, hasExtendedMessages bool) error {
 	bufferSize := 4096
 	if hasExtendedMessages {
 		bufferSize = 4096 * 10
@@ -307,8 +362,7 @@ func handleIncoming(ctx context.Context, logger *slog.Logger, conn io.Reader, se
 	for {
 		select {
 		case <-ctx.Done():
-			err := context.Cause(ctx)
-			return err
+			return ctx.Err()
 		default:
 		}
 
@@ -330,7 +384,7 @@ func handleIncoming(ctx context.Context, logger *slog.Logger, conn io.Reader, se
 		case common.MsgKeepAlive:
 			logger.Debug("Received keepalive message")
 			select {
-			case keepAliveChan <- true:
+			case keepAliveChan <- struct{}{}:
 			default:
 			}
 		case common.MsgOpen:
@@ -338,7 +392,7 @@ func handleIncoming(ctx context.Context, logger *slog.Logger, conn io.Reader, se
 		case common.MsgUpdate:
 			// Reset holdTimer as per RFC
 			select {
-			case keepAliveChan <- true:
+			case keepAliveChan <- struct{}{}:
 			default:
 			}
 			msg.Body, err = update.ParseMsgUpdate(r, session.DefaultAFI, session.AddPathEnabled)

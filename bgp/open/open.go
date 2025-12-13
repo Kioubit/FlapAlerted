@@ -173,16 +173,13 @@ func parseCapabilityParameter(r io.Reader) (result CapabilityList, err error) {
 }
 
 func GetOpen(holdTime int, routerID netip.Addr, capabilities ...CapabilityOptionalParameter) ([]byte, error) {
-	routerIDBytes := routerID.As4()
-	routerIDUint32 := binary.BigEndian.Uint32(routerIDBytes[:])
-
 	msg := common.BgpMessage{
 		Header: common.GetHeader(common.MsgOpen),
 		Body: Msg{
 			Version:                 4,
 			ASN:                     ASTrans,
 			HoldTime:                HoldTime(holdTime),
-			RouterID:                RouterID(routerIDUint32),
+			RouterID:                routerIDFromNetAddr(routerID),
 			OptionalParameterLength: 0,
 			OptionalParameters: []OptionalParameter{
 				{

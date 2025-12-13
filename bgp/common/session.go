@@ -12,8 +12,12 @@ type LocalSession struct {
 	DefaultAFI           AFI
 	AddPathEnabled       bool
 	Asn                  uint32
-	RouterID             netip.Addr
+	OwnRouterID          netip.Addr
+	RemoteRouterID       netip.Addr
+	RemoteHostname       string
 	HasExtendedNextHopV4 bool
+	HasExtendedMessages  bool
+	ApplicableHoldTime   int
 }
 
 // Established session tracker
@@ -23,20 +27,16 @@ var (
 )
 
 type establishedSession struct {
-	Remote   string
-	RouterID string
-	Hostname string
-	Time     int64
-	session  *LocalSession
+	Remote        string
+	EstablishTime int64
+	session       *LocalSession
 }
 
-func AddSession(conn net.Conn, routerId string, hostname string, session *LocalSession) {
+func AddSession(conn net.Conn, session *LocalSession) {
 	newSession := establishedSession{
-		Remote:   conn.RemoteAddr().String(),
-		RouterID: routerId,
-		Hostname: hostname,
-		Time:     time.Now().Unix(),
-		session:  session,
+		Remote:        conn.RemoteAddr().String(),
+		EstablishTime: time.Now().Unix(),
+		session:       session,
 	}
 	SessionTrackerLock.Lock()
 	defer SessionTrackerLock.Unlock()
@@ -58,9 +58,21 @@ func GetSessionCount() int {
 func GetSessionInfoJson() (string, error) {
 	SessionTrackerLock.RLock()
 	defer SessionTrackerLock.RUnlock()
-	var sessions = make([]establishedSession, 0)
+	type JSONInfo struct {
+		Remote        string
+		RouterID      string
+		Hostname      string
+		EstablishTime int64
+	}
+
+	var sessions = make([]JSONInfo, 0)
 	for _, session := range SessionTracker {
-		sessions = append(sessions, session)
+		sessions = append(sessions, JSONInfo{
+			Remote:        session.Remote,
+			RouterID:      session.session.RemoteRouterID.String(),
+			Hostname:      session.session.RemoteHostname,
+			EstablishTime: session.EstablishTime,
+		})
 	}
 	result, err := json.Marshal(sessions)
 	if err != nil {

@@ -52,6 +52,7 @@ func (e ErrorCode) String() string {
 const (
 	OpenBadPeerAS                    ErrorSubCode = 2
 	OpenUnsupportedOptionalParameter ErrorSubCode = 4
+	OpenUnacceptableHoldTime         ErrorSubCode = 6
 )
 
 const (

@@ -104,9 +104,12 @@ func GetUserDefinedMonitorEvent(prefix netip.Prefix) *FlapEvent {
 	return nil
 }
 
-func recordUserDefinedMonitors(userPathChangeChan chan table.PathChange) {
+func recordUserDefinedMonitors(userPathChangeChan <-chan table.PathChange) {
 	for {
-		pathChange := <-userPathChangeChan
+		pathChange, ok := <-userPathChangeChan
+		if !ok {
+			return
+		}
 		userDefinedMapLock.Lock()
 		if val, exists := userDefinedMap[pathChange.Prefix]; exists {
 			incrementUint64(&val.TotalPathChanges)

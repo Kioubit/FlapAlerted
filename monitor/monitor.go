@@ -2,10 +2,11 @@ package monitor
 
 import (
 	"FlapAlerted/bgp"
-	"FlapAlerted/bgp/table"
 	"FlapAlerted/config"
 	"context"
+	"fmt"
 	"net/netip"
+	"sync"
 )
 
 var (
@@ -20,15 +21,29 @@ func GetProgramVersion() string {
 	return programVersion
 }
 
-func StartMonitoring(conf config.UserConfig) {
+func StartMonitoring(ctx context.Context, conf config.UserConfig) error {
 	config.GlobalConf = conf
-	userPathChangeChan := make(chan table.PathChange, 1000)
 
-	pathChangeChan := bgp.StartBGP(context.Background(), config.GlobalConf.BgpListenAddress)
-	go recordPathChanges(pathChangeChan, userPathChangeChan)
-	go recordUserDefinedMonitors(userPathChangeChan)
-	go statTracker()
-	notificationHandler(notificationStartChannel, notificationEndChannel)
+	var wg sync.WaitGroup
+	defer wg.Wait()
+
+	pathChangeChan, err := bgp.StartBGP(ctx, &wg, config.GlobalConf.BgpListenAddress)
+	if err != nil {
+		return fmt.Errorf("failed to start BGP: %w", err)
+	}
+	userPathChangeChan, notificationStartChannel, notificationEndChannel := recordPathChanges(pathChangeChan)
+
+	wg.Go(func() {
+		recordUserDefinedMonitors(userPathChangeChan)
+	})
+	wg.Go(func() {
+		statTracker(ctx)
+	})
+	wg.Go(func() {
+		notificationHandler(notificationStartChannel, notificationEndChannel)
+	})
+	<-ctx.Done()
+	return ctx.Err()
 }
 
 func getEvent(k netip.Prefix) (event FlapEvent, found bool) {

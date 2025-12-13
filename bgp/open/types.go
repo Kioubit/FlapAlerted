@@ -13,10 +13,9 @@ type Msg struct {
 	OptionalParameters      []OptionalParameter
 }
 
-type RouterID uint32
-
 const ASTrans uint16 = 23456
 
+type RouterID uint32
 type HoldTime uint16
 
 type OptionalParameter struct {

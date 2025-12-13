@@ -223,7 +223,7 @@ func parseMultiProtocolReachableNLRI(a pathAttribute, session *common.LocalSessi
 	var err error
 	result.NLRI, err = parsePrefixList(r, result.AFI, session.AddPathEnabled)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing prefixList %w", err)
+		return nil, fmt.Errorf("error parsing prefixList: %w", err)
 	}
 	return result, nil
 }

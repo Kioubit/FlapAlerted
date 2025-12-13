@@ -2,6 +2,7 @@ package monitor
 
 import (
 	"FlapAlerted/bgp/common"
+	"context"
 	"math"
 	"slices"
 	"sort"
@@ -116,9 +117,15 @@ func addStatSubscriber() chan statisticWrapper {
 
 var lastFlapSummaryList atomic.Pointer[[]FlapSummary]
 
-func statTracker() {
+func statTracker(ctx context.Context) {
+	ticker := time.NewTicker(time.Duration(statisticsCollectionIntervalSec) * time.Second)
+	defer ticker.Stop()
 	for {
-		time.Sleep(statisticsCollectionIntervalSec * time.Second)
+		select {
+		case <-ticker.C:
+		case <-ctx.Done():
+			return
+		}
 
 		aFlap, trackedCount := GetActiveFlapList()
 

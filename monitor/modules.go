@@ -21,10 +21,7 @@ var (
 	modulesStarted = false
 )
 
-var notificationStartChannel = make(chan FlapEvent, 10)
-var notificationEndChannel = make(chan FlapEvent, 10)
-
-func notificationHandler(c, cEnd chan FlapEvent) {
+func notificationHandler(c, cEnd <-chan FlapEvent) {
 	modulesStarted = true
 	moduleCallbackStartComplete()
 
@@ -39,11 +36,15 @@ func notificationHandler(c, cEnd chan FlapEvent) {
 
 	for {
 		var f FlapEvent
+		var ok bool
 		endNotification := false
 		select {
-		case f = <-c:
-		case f = <-cEnd:
+		case f, ok = <-c:
+		case f, ok = <-cEnd:
 			endNotification = true
+		}
+		if !ok {
+			return
 		}
 		for _, m := range modulesWithCallbacks {
 			callback := getCallback(m, endNotification)
@@ -57,7 +58,7 @@ func notificationHandler(c, cEnd chan FlapEvent) {
 					callback(f)
 				}()
 			default:
-				slog.Warn("modules cannot keep up with event notifications")
+				slog.Warn("module cannot keep up with event notifications", "module", m.Name)
 			}
 		}
 	}

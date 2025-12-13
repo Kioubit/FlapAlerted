@@ -7,9 +7,9 @@ import (
 	"FlapAlerted/config"
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net"
-	"os"
 	"sync"
 )
 
@@ -24,15 +24,14 @@ import (
 - "Hostname Capability for BGP" https://datatracker.ietf.org/doc/html/draft-walton-bgp-hostname-capability-02
 */
 
-func StartBGP(ctx context.Context, bgpListenAddress string) <-chan table.PathChange {
+func StartBGP(ctx context.Context, parentWg *sync.WaitGroup, bgpListenAddress string) (<-chan table.PathChange, error) {
 	pathChangeChan := make(chan table.PathChange, 1000)
-	go func() {
+	listener, err := net.Listen("tcp", bgpListenAddress)
+	if err != nil {
+		return nil, fmt.Errorf("failed to start listener: %w", err)
+	}
+	parentWg.Go(func() {
 		defer close(pathChangeChan)
-		listener, err := net.Listen("tcp", bgpListenAddress)
-		if err != nil {
-			slog.Error("Failed to start BGP listener", "error", err)
-			os.Exit(1)
-		}
 		defer func() {
 			_ = listener.Close()
 		}()
@@ -52,47 +51,70 @@ func StartBGP(ctx context.Context, bgpListenAddress string) <-chan table.PathCha
 					slog.Info("BGP listener stopped", "reason", ctx.Err())
 					return
 				default:
-					slog.Error("Failed to accept TCP connection", "error", err.Error())
+					slog.Warn("Failed to accept TCP connection", "error", err)
 					continue
 				}
 			}
-			go handleConnection(ctx, &wg, conn, pathChangeChan)
+			wg.Go(func() {
+				handleConnection(ctx, conn, pathChangeChan)
+			})
 		}
-	}()
-	return pathChangeChan
+	})
+	return pathChangeChan, nil
 }
 
-func handleConnection(parent context.Context, wg *sync.WaitGroup, conn net.Conn, pathChangeChan chan table.PathChange) {
+func handleConnection(parent context.Context, conn net.Conn, pathChangeChan chan table.PathChange) {
+	defer func() {
+		_ = conn.Close()
+	}()
 	logger := slog.With("remote", conn.RemoteAddr())
 	logger.Info("New connection")
 
-	updateChannel := make(chan table.SessionUpdateMessage, 10000)
 	ctx, cancel := context.WithCancelCause(context.WithoutCancel(parent))
+	defer cancel(nil)
 	stop := context.AfterFunc(parent, func() {
 		cancel(notification.ErrAdministrativeShutdown)
 	})
 	defer stop()
+
+	var wg sync.WaitGroup
+	defer wg.Wait()
+
+	updateChannel := make(chan table.SessionUpdateMessage, 10000)
+	defer close(updateChannel) // Must be after wg.Wait() so it runs first
+
+	session := &common.LocalSession{
+		DefaultAFI:     common.AFI4,
+		AddPathEnabled: config.GlobalConf.UseAddPath,
+		Asn:            config.GlobalConf.Asn,
+		OwnRouterID:    config.GlobalConf.RouterID,
+	}
+
+	err := newBGPConnection(ctx, logger, conn, session)
+	if err != nil {
+		if ctx.Err() != nil {
+			logger.Warn("connection initiation canceled")
+			return
+		}
+		logger.Error("connection encountered an error during session initiation", "error", err.Error())
+		return
+	}
 
 	wg.Go(func() {
 		t := table.NewPrefixTable(pathChangeChan, cancel)
 		table.ProcessUpdates(cancel, updateChannel, t)
 	})
 
-	newSession := &common.LocalSession{
-		DefaultAFI:     common.AFI4,
-		AddPathEnabled: config.GlobalConf.UseAddPath,
-		Asn:            config.GlobalConf.Asn,
-		RouterID:       config.GlobalConf.RouterID,
-	}
-	err, wasEstablished := newBGPConnection(ctx, cancel, logger, conn, newSession, updateChannel)
+	common.AddSession(conn, session)
+	defer common.RemoveSession(conn)
+
+	logger = logger.With("routerID", session.RemoteRouterID.String(), "hostname", session.RemoteHostname)
+
+	err = handleEstablished(ctx, cancel, conn, logger, session, updateChannel)
 	if err != nil {
 		if !errors.Is(err, notification.ErrAdministrativeShutdown) {
 			logger.Error("connection encountered an error", "error", err.Error())
 		}
 	}
-	_ = conn.Close()
-	close(updateChannel)
-	if wasEstablished {
-		common.RemoveSession(conn)
-	}
+
 }

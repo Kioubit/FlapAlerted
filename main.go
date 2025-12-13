@@ -4,12 +4,16 @@ import (
 	"FlapAlerted/config"
 	_ "FlapAlerted/modules"
 	"FlapAlerted/monitor"
+	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"log/slog"
 	"net/netip"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -112,5 +116,14 @@ func main() {
 	}
 
 	slog.Info("Started", "parameters", parameterString)
-	monitor.StartMonitoring(conf)
+
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer cancel()
+
+	err = monitor.StartMonitoring(ctx, conf)
+	if err != nil && !errors.Is(err, context.Canceled) {
+		slog.Info("Program stopped", "reason", err)
+		os.Exit(1)
+	}
+	slog.Info("Program stopped")
 }

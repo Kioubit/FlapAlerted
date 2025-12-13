@@ -7,12 +7,6 @@ import (
 	"net/netip"
 )
 
-func (id RouterID) String() string {
-	var addr [4]byte
-	binary.BigEndian.PutUint32(addr[:], uint32(id))
-	return netip.AddrFrom4(addr).String()
-}
-
 func (m Msg) MarshalBinary() ([]byte, error) {
 	var b bytes.Buffer
 	if err := binary.Write(&b, binary.BigEndian, m.Version); err != nil {
@@ -197,4 +191,20 @@ func marshalStructValueCapability[T structValueCapability](c T) ([]byte, error) 
 		return nil, err
 	}
 	return b.Bytes(), nil
+}
+
+func routerIDFromNetAddr(routerID netip.Addr) RouterID {
+	routerIDBytes := routerID.As4()
+	routerIDUint32 := binary.BigEndian.Uint32(routerIDBytes[:])
+	return RouterID(routerIDUint32)
+}
+
+func (id RouterID) String() string {
+	return id.ToNetAddr().String()
+}
+
+func (id RouterID) ToNetAddr() netip.Addr {
+	var addr [4]byte
+	binary.BigEndian.PutUint32(addr[:], uint32(id))
+	return netip.AddrFrom4(addr)
 }
