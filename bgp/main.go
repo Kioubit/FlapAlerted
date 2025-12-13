@@ -114,6 +114,8 @@ func handleConnection(parent context.Context, conn net.Conn, pathChangeChan chan
 	if err != nil {
 		if !errors.Is(err, notification.ErrAdministrativeShutdown) {
 			logger.Error("connection encountered an error", "error", err.Error())
+		} else {
+			logger.Info("connection closed due to local administrative shutdown")
 		}
 	}
 

@@ -11,44 +11,51 @@ import (
 	"sync"
 )
 
-var moduleName = "mod_roaFilter"
+var (
+	roaJsonFile = flag.String("roaJson", "", "File path of source ROA JSON")
+)
 
-var roaJsonFile *string
-var lock sync.Mutex
+type Module struct {
+	name   string
+	logger *slog.Logger
+	lock   sync.Mutex
+}
+
+func (m *Module) Name() string {
+	return m.name
+}
+
+func (m *Module) OnStart() bool {
+	if *roaJsonFile == "" {
+		return false
+	}
+	m.logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{})).With("module", m.Name())
+	return true
+}
+
+func (m *Module) OnEvent(f monitor.FlapEvent, isStart bool) {
+	if isStart {
+		m.filter(*roaJsonFile, f.Prefix.String())
+	}
+}
 
 func init() {
-	roaJsonFile = flag.String("roaJson", "", "File path of source ROA JSON")
-	monitor.RegisterModule(&monitor.Module{
-		Name:                     moduleName,
-		OnRegisterEventCallbacks: registerEventCallbacks,
+	monitor.RegisterModule(&Module{
+		name: "mod_roaFilter",
 	})
 }
 
-var logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{})).With("module", moduleName)
-
-func registerEventCallbacks() (callbackStart, callbackEnd func(event monitor.FlapEvent)) {
-	if *roaJsonFile == "" {
-		return
-	}
-	return change, change
-}
-
-func change(f monitor.FlapEvent) {
-	// Continue filtering already filtered file
-	filter(*roaJsonFile, f.Prefix.String())
-}
-
-func filter(filePath string, cidr string) {
-	logger = logger.With("file", filePath, "prefix", cidr)
+func (m *Module) filter(filePath string, cidr string) {
+	logger := m.logger.With("file", filePath, "prefix", cidr)
 	if filePath == "" {
-		logger.Error("roaFilter no roaJson file specified")
+		logger.Error("no roaJson file specified")
 		return
 	}
-	if !lock.TryLock() {
+	if !m.lock.TryLock() {
 		logger.Warn("roaFilter can't keep up")
 		return
 	}
-	defer lock.Unlock()
+	defer m.lock.Unlock()
 
 	data, err := readROAFile(filePath)
 	if err != nil {

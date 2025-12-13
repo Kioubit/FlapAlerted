@@ -11,47 +11,42 @@ import (
 	"os/exec"
 )
 
-var moduleName = "mod_script"
-var scriptFileStart *string
-var scriptFileEnd *string
-
-func init() {
+var (
 	scriptFileStart = flag.String("detectionScriptStart", "", "Optional path to script to run when a flap event is detected (start)")
-	scriptFileEnd = flag.String("detectionScriptEnd", "", "Optional path to script to run when a flap event is detected (end)")
+	scriptFileEnd   = flag.String("detectionScriptEnd", "", "Optional path to script to run when a flap event is detected (end)")
+)
 
-	monitor.RegisterModule(&monitor.Module{
-		Name:                     moduleName,
-		OnRegisterEventCallbacks: registerEventCallbacks,
-	})
+type Module struct {
+	name   string
+	logger *slog.Logger
 }
 
-var logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{})).With("module", moduleName)
+func (m *Module) Name() string {
+	return m.name
+}
 
-func registerEventCallbacks() (callbackStart, callbackEnd func(event monitor.FlapEvent)) {
-	start := logFlapStart
-	end := logFlapEnd
-	if *scriptFileStart == "" {
-		start = nil
+func (m *Module) OnStart() bool {
+	if *scriptFileStart == "" && *scriptFileEnd == "" {
+		return false
 	}
-	if *scriptFileEnd == "" {
-		end = nil
+
+	m.logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{})).With("module", m.Name())
+	return true
+}
+
+func (m *Module) OnEvent(f monitor.FlapEvent, isStart bool) {
+	if isStart {
+		m.runScript(*scriptFileStart, f)
+	} else {
+		m.runScript(*scriptFileEnd, f)
 	}
-	return start, end
 }
 
-func logFlapStart(f monitor.FlapEvent) {
-	runScript(*scriptFileStart, f)
-}
-
-func logFlapEnd(f monitor.FlapEvent) {
-	runScript(*scriptFileEnd, f)
-}
-
-func runScript(path string, f monitor.FlapEvent) {
+func (m *Module) runScript(path string, f monitor.FlapEvent) {
 	if path == "" {
 		return
 	}
-	l := logger.With("path", path, "prefix", f.Prefix)
+	l := m.logger.With("path", path, "prefix", f.Prefix)
 	eventJSON, err := json.Marshal(f)
 	if err != nil {
 		l.Error("Marshalling flap information failed", "error", err.Error())
@@ -61,4 +56,10 @@ func runScript(path string, f monitor.FlapEvent) {
 	if err != nil {
 		l.Error("Error executing script", "error", err.Error())
 	}
+}
+
+func init() {
+	monitor.RegisterModule(&Module{
+		name: "mod_script",
+	})
 }

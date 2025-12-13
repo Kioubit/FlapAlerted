@@ -46,46 +46,46 @@ func StartMonitoring(ctx context.Context, conf config.UserConfig) error {
 	return ctx.Err()
 }
 
-func getEvent(k netip.Prefix) (event FlapEvent, found bool) {
-	e, ok := activeMap[k]
-	if !ok {
-		return FlapEvent{}, false
+func copyEvent(src *FlapEvent) (event FlapEvent, triggered bool) {
+	if !src.hasTriggered {
+		return
 	}
-
-	if !activeMap[k].hasTriggered {
-		return FlapEvent{}, false
-	}
+	triggered = true
 
 	// Shallow copy of the struct
-	event = *e
+	event = *src
 	// Copy the slice in the struct
-	if len(activeMap[k].RateSecHistory) > 0 {
-		event.RateSecHistory = make([]int, len(activeMap[k].RateSecHistory))
-		copy(event.RateSecHistory, activeMap[k].RateSecHistory)
+	if len(src.RateSecHistory) > 0 {
+		event.RateSecHistory = make([]int, len(src.RateSecHistory))
+		copy(event.RateSecHistory, src.RateSecHistory)
 	}
-	return event, true
+	return
 }
 
-func GetActiveFlapList() ([]FlapEvent, int) {
+func GetActiveFlapList() (active []FlapEvent, trackedCount int) {
 	aFlap := make([]FlapEvent, 0)
 	activeMapLock.RLock()
-	for k := range activeMap {
-		event, ok := getEvent(k)
-		if !ok {
+	defer activeMapLock.RUnlock()
+	trackedCount = len(activeMap)
+	for _, src := range activeMap {
+		event, triggered := copyEvent(src)
+		if !triggered {
 			continue
 		}
 		aFlap = append(aFlap, event)
 	}
-	trackedCount := len(activeMap)
-	activeMapLock.RUnlock()
 	return aFlap, trackedCount
 }
 
 func GetActiveFlapPrefix(prefix netip.Prefix) (FlapEvent, bool) {
 	activeMapLock.RLock()
 	defer activeMapLock.RUnlock()
-	f, ok := getEvent(prefix)
-	if !ok {
+	src, found := activeMap[prefix]
+	if !found {
+		return FlapEvent{}, false
+	}
+	f, triggered := copyEvent(src)
+	if !triggered {
 		return FlapEvent{}, false
 	}
 	return f, true

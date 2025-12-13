@@ -8,84 +8,65 @@ import (
 	"context"
 	"encoding/json"
 	"flag"
-	"io"
 	"log/slog"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 )
 
-var moduleName = "mod_webhook"
-
-// stringSlice implements flag.Value to allow multiple string values for a flag
-type stringSlice []string
-
-func (s *stringSlice) String() string {
-	return strings.Join(*s, ",")
-}
-
-func (s *stringSlice) Set(value string) error {
-	*s = append(*s, value)
-	return nil
-}
-
-var webhookUrlsStart stringSlice
-var webhookUrlsEnd stringSlice
-var webhookTimeout *time.Duration
-var webhookInstanceName *string
-
-var httpClient = &http.Client{
-	Transport: &http.Transport{
-		MaxIdleConns:       2,
-		IdleConnTimeout:    10 * time.Second,
-		DisableCompression: false,
-	},
-}
-
-func init() {
-	flag.Var(&webhookUrlsStart, "webhookUrlStart", "Optional webhook URL for when a flap event is detected (start); can be specified multiple times")
-	flag.Var(&webhookUrlsEnd, "webhookUrlEnd", "Optional webhook URL for when a flap event is detected (end); can be specified multiple times")
-	webhookTimeout = flag.Duration("webhookTimeout", 10*time.Second, "Timeout for webhook HTTP requests")
+var (
+	webhookUrlsStart    = stringSliceFlag("webhookUrlStart", "Optional webhook URL for when a flap event is detected (start); can be specified multiple times")
+	webhookUrlsEnd      = stringSliceFlag("webhookUrlEnd", "Optional webhook URL for when a flap event is detected (end); can be specified multiple times")
+	webhookTimeout      = flag.Duration("webhookTimeout", 10*time.Second, "Timeout for webhook HTTP requests")
 	webhookInstanceName = flag.String("webhookInstanceName", "", "Optional webhook instance name to set as X-Instance-Name")
+)
 
-	monitor.RegisterModule(&monitor.Module{
-		Name:                     moduleName,
-		OnRegisterEventCallbacks: registerEventCallbacks,
+func stringSliceFlag(name, usage string) *[]string {
+	s := &[]string{}
+	flag.Func(name, usage, func(val string) error {
+		*s = append(*s, val)
+		return nil
 	})
+	return s
 }
 
-var logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{})).With("module", moduleName)
-
-func registerEventCallbacks() (callbackStart, callbackEnd func(event monitor.FlapEvent)) {
-	start := logFlapStart
-	end := logFlapEnd
-	if len(webhookUrlsStart) == 0 {
-		start = nil
-	}
-	if len(webhookUrlsEnd) == 0 {
-		end = nil
-	}
-	return start, end
+type Module struct {
+	name       string
+	logger     *slog.Logger
+	httpClient *http.Client
 }
 
-func logFlapStart(f monitor.FlapEvent) {
-	for _, url := range webhookUrlsStart {
-		callWebHook(url, f)
+func (m *Module) Name() string {
+	return m.name
+}
+
+func (m *Module) OnStart() bool {
+	if len(*webhookUrlsStart) == 0 && len(*webhookUrlsEnd) == 0 {
+		return false
+	}
+
+	m.logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{})).With("module", m.Name())
+	m.httpClient = &http.Client{}
+	return true
+}
+
+func (m *Module) OnEvent(f monitor.FlapEvent, isStart bool) {
+	if isStart {
+		for _, url := range *webhookUrlsStart {
+			m.callWebHook(url, f)
+		}
+	} else {
+		for _, url := range *webhookUrlsEnd {
+			m.callWebHook(url, f)
+		}
 	}
 }
 
-func logFlapEnd(f monitor.FlapEvent) {
-	for _, url := range webhookUrlsEnd {
-		callWebHook(url, f)
-	}
-}
-
-func callWebHook(URL string, f monitor.FlapEvent) {
+func (m *Module) callWebHook(URL string, f monitor.FlapEvent) {
 	if URL == "" {
 		return
 	}
-	l := logger.With("url", URL, "prefix", f.Prefix)
+	l := m.logger.With("url", URL, "prefix", f.Prefix)
 	eventJSON, err := json.Marshal(f)
 	if err != nil {
 		l.Error("Marshalling flap information failed", "error", err.Error())
@@ -106,15 +87,21 @@ func callWebHook(URL string, f monitor.FlapEvent) {
 		req.Header.Set("X-Instance-Name", *webhookInstanceName)
 	}
 
-	resp, err := httpClient.Do(req)
+	resp, err := m.httpClient.Do(req)
 	if err != nil {
 		l.Error("Failed to send webhook", "error", err, "url", URL)
 		return
 	}
-	defer func(Body io.ReadCloser) {
-		_ = Body.Close()
-	}(resp.Body)
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 	if resp.StatusCode != 200 {
 		l.Error("Webhook returned error status", "url", URL, "status", resp.StatusCode)
 	}
+}
+
+func init() {
+	monitor.RegisterModule(&Module{
+		name: "mod_webhook",
+	})
 }

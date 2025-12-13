@@ -22,8 +22,8 @@ type LocalSession struct {
 
 // Established session tracker
 var (
-	SessionTracker     = make(map[net.Conn]establishedSession)
-	SessionTrackerLock sync.RWMutex
+	sessionTracker     = make(map[net.Conn]establishedSession)
+	sessionTrackerLock sync.RWMutex
 )
 
 type establishedSession struct {
@@ -38,26 +38,26 @@ func AddSession(conn net.Conn, session *LocalSession) {
 		EstablishTime: time.Now().Unix(),
 		session:       session,
 	}
-	SessionTrackerLock.Lock()
-	defer SessionTrackerLock.Unlock()
-	SessionTracker[conn] = newSession
+	sessionTrackerLock.Lock()
+	defer sessionTrackerLock.Unlock()
+	sessionTracker[conn] = newSession
 }
 
 func RemoveSession(conn net.Conn) {
-	SessionTrackerLock.Lock()
-	defer SessionTrackerLock.Unlock()
-	delete(SessionTracker, conn)
+	sessionTrackerLock.Lock()
+	defer sessionTrackerLock.Unlock()
+	delete(sessionTracker, conn)
 }
 
 func GetSessionCount() int {
-	SessionTrackerLock.RLock()
-	defer SessionTrackerLock.RUnlock()
-	return len(SessionTracker)
+	sessionTrackerLock.RLock()
+	defer sessionTrackerLock.RUnlock()
+	return len(sessionTracker)
 }
 
 func GetSessionInfoJson() (string, error) {
-	SessionTrackerLock.RLock()
-	defer SessionTrackerLock.RUnlock()
+	sessionTrackerLock.RLock()
+	defer sessionTrackerLock.RUnlock()
 	type JSONInfo struct {
 		Remote        string
 		RouterID      string
@@ -66,7 +66,7 @@ func GetSessionInfoJson() (string, error) {
 	}
 
 	var sessions = make([]JSONInfo, 0)
-	for _, session := range SessionTracker {
+	for _, session := range sessionTracker {
 		sessions = append(sessions, JSONInfo{
 			Remote:        session.Remote,
 			RouterID:      session.session.RemoteRouterID.String(),

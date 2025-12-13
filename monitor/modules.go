@@ -3,62 +3,70 @@ package monitor
 import (
 	"FlapAlerted/config"
 	"log/slog"
+	"sync/atomic"
 )
 
-type Module struct {
-	// Module name
-	Name string
-	// Function called after the program has started. (Runs in a goroutine)
-	OnStartComplete func()
-	// Function to register event callbacks that are called in a goroutine
-	OnRegisterEventCallbacks func() (callbackStart, callbackEnd func(event FlapEvent))
-	eventChan                chan wrappedFlapEvent
+var (
+	moduleList     = make([]Module, 0)
+	modulesStarted atomic.Bool
+)
+
+type Module interface {
+	// Name Module name
+	Name() string
+
+	// OnStart is called before the monitoring starts
+	// Implementation should check if it needs to receive events.
+	// True must be returned to subscribe to events.
+	// Background goroutines may be spawned here if needed as well.
+	OnStart() bool
+
+	// OnEvent is called when a flap event occurs.
+	// Runs inside a worker goroutine.
+	// This is only called if OnStart() returned true.
+	OnEvent(event FlapEvent, isStart bool)
+}
+
+type moduleWorker struct {
+	impl      Module
+	eventChan chan wrappedFlapEvent
+}
+
+func (w *moduleWorker) run() {
+	for {
+		e, ok := <-w.eventChan
+		if !ok {
+			return
+		}
+		w.impl.OnEvent(e.event, e.isStart)
+	}
 }
 
 type wrappedFlapEvent struct {
-	event   *FlapEvent
+	event   FlapEvent
 	isStart bool
 }
 
-var (
-	moduleList     = make([]*Module, 0)
-	modulesStarted = false
-)
-
 func notificationHandler(c, cEnd <-chan FlapEvent) {
-	modulesStarted = true
-	moduleCallbackStartComplete()
+	modulesStarted.Store(true)
 
+	workerList := make([]*moduleWorker, 0)
 	for _, m := range moduleList {
-		if m.OnRegisterEventCallbacks != nil {
-			start, end := m.OnRegisterEventCallbacks()
-			m.OnRegisterEventCallbacks = nil
-			if start == nil && end == nil {
-				continue
+		subscribeToEvents := m.OnStart()
+		if subscribeToEvents {
+			worker := &moduleWorker{
+				impl:      m,
+				eventChan: make(chan wrappedFlapEvent, 200),
 			}
-			m.eventChan = make(chan wrappedFlapEvent, 200)
-			go func(startCb, endCb func(FlapEvent), in <-chan wrappedFlapEvent) {
-				for {
-					e, ok := <-in
-					if !ok {
-						return
-					}
-					if e.isStart && startCb != nil {
-						startCb(*e.event)
-					} else if !e.isStart && endCb != nil {
-						endCb(*e.event)
-					}
-				}
-			}(start, end, m.eventChan)
+			go worker.run()
+			workerList = append(workerList, worker)
 		}
 	}
 
 	defer func() {
 		// Cleanup
-		for _, m := range moduleList {
-			if m.eventChan != nil {
-				close(m.eventChan)
-			}
+		for _, w := range workerList {
+			close(w.eventChan)
 		}
 	}()
 
@@ -66,66 +74,48 @@ func notificationHandler(c, cEnd <-chan FlapEvent) {
 	for {
 		var f FlapEvent
 		var ok bool
-		endNotification := false
+		isStart := false
 		select {
 		case f, ok = <-c:
+			isStart = true
 		case f, ok = <-cEnd:
-			endNotification = true
 		}
 		if !ok {
 			return
 		}
-		for _, m := range moduleList {
-			if m.eventChan == nil {
-				continue
-			}
+		for _, w := range workerList {
 			select {
-			case m.eventChan <- wrappedFlapEvent{
-				event:   &f,
-				isStart: !endNotification,
+			case w.eventChan <- wrappedFlapEvent{
+				event:   f,
+				isStart: isStart,
 			}:
 			default:
 				if !warningPrinted {
 					warningPrinted = true
-					slog.Warn("one or more modules cannot keep up with event notifications", "first_affected_module", m.Name)
+					slog.Warn("one or more modules cannot keep up with event notifications", "first_affected_module", w.impl.Name())
 				}
 			}
 		}
 	}
-
 }
 
-func RegisterModule(module *Module) {
-	if modulesStarted {
-		slog.Error("cannot register module", "name", module.Name)
+func RegisterModule(module Module) {
+	if modulesStarted.Load() {
+		slog.Error("cannot register module", "name", module.Name())
 		return
 	}
 	moduleList = append(moduleList, module)
 }
 
-func moduleCallbackStartComplete() {
-	for _, m := range moduleList {
-		if m.OnStartComplete != nil {
-			go m.OnStartComplete()
-		}
-	}
-}
-
-func getModuleNameList() []string {
+func GetRegisteredModuleNames() []string {
 	moduleNameList := make([]string, len(moduleList))
 	for i := range moduleList {
-		moduleNameList[i] = moduleList[i].Name
+		moduleNameList[i] = moduleList[i].Name()
 	}
 	return moduleNameList
 }
 
-func GetRegisteredModuleNames() []string {
-	list := make([]string, 0)
-	for _, m := range moduleList {
-		list = append(list, m.Name)
-	}
-	return list
-}
+// ---------------------------------------------------------------------------------------------------------------------
 
 type Capabilities struct {
 	Version        string
@@ -145,7 +135,7 @@ type UserParameters struct {
 func GetCapabilities() Capabilities {
 	return Capabilities{
 		Version: programVersion,
-		Modules: getModuleNameList(),
+		Modules: GetRegisteredModuleNames(),
 		UserParameters: UserParameters{
 			RouteChangeCounter:       config.GlobalConf.RouteChangeCounter,
 			OverThresholdTarget:      config.GlobalConf.OverThresholdTarget,

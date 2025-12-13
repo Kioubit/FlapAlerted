@@ -2,6 +2,7 @@ package monitor
 
 import (
 	"FlapAlerted/bgp/common"
+	"cmp"
 	"context"
 	"math"
 	"slices"
@@ -38,32 +39,22 @@ func GetSessionInfoJson() (string, error) {
 	return common.GetSessionInfoJson()
 }
 
-func GetActiveFlaps() []FlapEvent {
-	active, _ := GetActiveFlapList()
-	return active
-}
-
-func GetActiveFlapsSummary() []FlapSummary {
-	l := lastFlapSummaryList.Load()
-	if l == nil {
-		return make([]FlapSummary, 0)
-	}
-	return *l
-}
-
 type Metric struct {
 	ActiveFlapCount                int
 	ActiveFlapTotalPathChangeCount uint64
+	TotalPathChangeCount           uint64
 	AverageRouteChanges90          string
 	Sessions                       int
 }
 
 func GetMetric() Metric {
-	var activeFlapCount = 0
-	var pathChangeCount uint64 = 0
+	var activeFlapCount int
+	var activeFlapTotalPathChangeCount uint64
+	var pathChangeCount uint64
 	stats := GetStats()
 	if len(stats) != 0 {
 		activeFlapCount = stats[len(stats)-1].Stats.Active
+		activeFlapTotalPathChangeCount = stats[len(stats)-1].Stats.ListedChanges
 		pathChangeCount = stats[len(stats)-1].Stats.Changes
 	}
 	avg := GetAverageRouteChanges90()
@@ -71,7 +62,8 @@ func GetMetric() Metric {
 
 	return Metric{
 		ActiveFlapCount:                activeFlapCount,
-		ActiveFlapTotalPathChangeCount: pathChangeCount,
+		ActiveFlapTotalPathChangeCount: activeFlapTotalPathChangeCount,
+		TotalPathChangeCount:           pathChangeCount,
 		AverageRouteChanges90:          avgStr,
 		Sessions:                       common.GetSessionCount(),
 	}
@@ -107,7 +99,7 @@ var (
 	statSubscribersLock sync.Mutex
 )
 
-func addStatSubscriber() chan statisticWrapper {
+func SubscribeToStats() chan statisticWrapper {
 	statSubscribersLock.Lock()
 	defer statSubscribersLock.Unlock()
 	c := make(chan statisticWrapper, 2)
@@ -131,12 +123,7 @@ func statTracker(ctx context.Context) {
 
 		if len(aFlap) > 100 {
 			slices.SortFunc(aFlap, func(a, b FlapEvent) int {
-				if b.TotalPathChanges > a.TotalPathChanges {
-					return 1
-				} else if b.TotalPathChanges < a.TotalPathChanges {
-					return -1
-				}
-				return 0
+				return cmp.Compare(b.TotalPathChanges, a.TotalPathChanges)
 			})
 			aFlap = aFlap[:100]
 		}
@@ -199,11 +186,16 @@ func GetStats() []statisticWrapper {
 		l := lastFlapSummaryList.Load()
 		if l != nil {
 			result[len(statList)-1].List = *l
+			result[len(statList)-1].Sessions = common.GetSessionCount()
 		}
 	}
 	return result
 }
 
-func SubscribeToStats() chan statisticWrapper {
-	return addStatSubscriber()
+func GetActiveFlapsSummary() []FlapSummary {
+	l := lastFlapSummaryList.Load()
+	if l == nil {
+		return make([]FlapSummary, 0)
+	}
+	return *l
 }

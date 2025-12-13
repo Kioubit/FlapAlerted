@@ -332,7 +332,7 @@ function getStats() {
             percentile = percentile.slice(0, Math.ceil(percentile.length * 0.90));
             const sum = percentile.reduce((s, a) => s + a, 0);
             const avg = sum / percentile.length;
-            lastGageValue = avg;
+            lastGageValue = avg / dataIntervalSec;
             gauge.refresh(avg / dataIntervalSec, gageMaxValue);
 
         } catch (err) {
@@ -431,7 +431,7 @@ getStats();
                     entry.Remote,
                     entry.RouterID,
                     entry.Hostname || "N/A",
-                    toTimeElapsed(now - entry.Time)
+                    toTimeElapsed(now - entry.EstablishTime)
                 ];
 
                 cells.forEach((text) => {

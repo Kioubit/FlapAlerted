@@ -17,42 +17,52 @@ import (
 	"time"
 )
 
-var moduleName = "mod_collector"
-
-var collectorInstanceName *string
-var collectorEndpoint *string
-var useTLS *bool
-
-func init() {
+var (
 	collectorInstanceName = flag.String("collectorInstanceName", "", "Instance name for this instance to send to the flap collector")
-	collectorEndpoint = flag.String("collectorEndpoint", "", "Flap collector TCP endpoint")
-	useTLS = flag.Bool("collectorUseTLS", false, "Whether to use TLS to the collector endpoint")
+	collectorEndpoint     = flag.String("collectorEndpoint", "", "Flap collector TCP endpoint")
+	useTLS                = flag.Bool("collectorUseTLS", false, "Whether to use TLS to the collector endpoint")
+)
 
-	monitor.RegisterModule(&monitor.Module{
-		Name:            moduleName,
-		OnStartComplete: startComplete,
-	})
+type Module struct {
+	name   string
+	logger *slog.Logger
 }
 
-var logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{})).With("module", moduleName)
+func (m *Module) Name() string {
+	return m.name
+}
+
+func (m *Module) OnStart() bool {
+	if *collectorEndpoint == "" && *collectorInstanceName == "" {
+		return false
+	}
+	m.logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{})).With("module", m.Name())
+	if *collectorInstanceName == "" {
+		m.logger.Error("Collector endpoint specified but no instance name given!")
+	}
+
+	go func() {
+		ctx, cancel := context.WithCancel(context.Background())
+		m.connectAndListen(ctx, cancel)
+	}()
+
+	return false
+}
+
+func (m *Module) OnEvent(_ monitor.FlapEvent, _ bool) {}
+
+func init() {
+	monitor.RegisterModule(&Module{
+		name: "mod_collector",
+	})
+}
 
 const (
 	maxCommandLength     = 1024
 	maxCommandsPerMinute = 15
 )
 
-func startComplete() {
-	if *collectorEndpoint == "" || *collectorInstanceName == "" {
-		if *collectorEndpoint != "" {
-			logger.Error("Collector endpoint specified but no instance name given!")
-		}
-		return
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-	connectAndListen(ctx, cancel)
-}
-
-func connectAndListen(ctx context.Context, cancel context.CancelFunc) {
+func (m *Module) connectAndListen(ctx context.Context, cancel context.CancelFunc) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -61,7 +71,7 @@ func connectAndListen(ctx context.Context, cancel context.CancelFunc) {
 		}
 		conn, err := net.DialTimeout("tcp", *collectorEndpoint, 15*time.Second)
 		if err != nil {
-			logger.Error("Failed to connect to collector. Retry in 5 minutes", "endpoint", *collectorEndpoint, "error", err)
+			m.logger.Error("Failed to connect to collector. Retry in 5 minutes", "endpoint", *collectorEndpoint, "error", err)
 			select {
 			case <-ctx.Done():
 				return
@@ -74,7 +84,7 @@ func connectAndListen(ctx context.Context, cancel context.CancelFunc) {
 			tlsConn := tls.Server(conn, &tls.Config{})
 			err = tlsConn.Handshake()
 			if err != nil {
-				logger.Error("TLS handshake failed", "error", err)
+				m.logger.Error("TLS handshake failed", "error", err)
 				_ = conn.Close()
 				select {
 				case <-ctx.Done():
@@ -86,20 +96,20 @@ func connectAndListen(ctx context.Context, cancel context.CancelFunc) {
 			conn = tlsConn
 		}
 
-		logger.Info("Connected to collector", "endpoint", *collectorEndpoint)
+		m.logger.Info("Connected to collector", "endpoint", *collectorEndpoint)
 
-		if err := handleConnection(ctx, cancel, conn); err != nil {
+		if err := handleConnection(ctx, cancel, m.logger, conn); err != nil {
 			if ctx.Err() == nil {
-				logger.Error("connection error", "error", err)
+				m.logger.Error("connection error", "error", err)
 			}
 		}
 
 		_ = conn.Close()
 		if ctx.Err() != nil {
-			logger.Error("Disconnected from collector. Won't reconnect.")
+			m.logger.Error("Disconnected from collector. Won't reconnect.")
 			return
 		}
-		logger.Warn("Disconnected from collector, reconnecting in 30 seconds")
+		m.logger.Warn("Disconnected from collector, reconnecting in 30 seconds")
 
 		select {
 		case <-ctx.Done():
@@ -109,7 +119,7 @@ func connectAndListen(ctx context.Context, cancel context.CancelFunc) {
 	}
 }
 
-func handleConnection(ctx context.Context, cancel context.CancelFunc, conn net.Conn) (err error) {
+func handleConnection(ctx context.Context, cancel context.CancelFunc, logger *slog.Logger, conn net.Conn) (err error) {
 	stop := context.AfterFunc(ctx, func() {
 		_ = conn.Close()
 	})
@@ -169,7 +179,7 @@ func handleConnection(ctx context.Context, cancel context.CancelFunc, conn net.C
 		command := scanner.Text()
 		logger.Debug("received command", "command", command)
 
-		response, err := processCommand(command, cancel)
+		response, err := processCommand(command, cancel, logger)
 		if err != nil {
 			response = fmt.Sprintf("ERROR:%s", err.Error())
 		}

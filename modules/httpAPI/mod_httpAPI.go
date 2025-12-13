@@ -3,7 +3,6 @@
 package httpAPI
 
 import (
-	"FlapAlerted/config"
 	"FlapAlerted/monitor"
 	"crypto/subtle"
 	"embed"
@@ -26,23 +25,32 @@ var moduleName = "mod_httpAPI"
 //go:embed dashboard/*
 var dashboardContent embed.FS
 
-var limitedHttpAPI *bool
-var httpAPIListenAddress *string
-var gageMaxValue *uint
-var maxUserDefinedMonitors *uint
-var apiKey *string
+var (
+	limitedHttpAPI         = flag.Bool("httpAPILimit", false, "Disable http API endpoints not needed for the user interface and activate basic scraping protection")
+	apiKey                 = flag.String("httpAPIKey", "", "API key to access limited endpoints, when 'limitedHttpApi' is set. Empty to disable")
+	httpAPIListenAddress   = flag.String("httpAPIListenAddress", ":8699", "Listen address for the HTTP API (TCP address like :8699 or Unix socket path)")
+	gageMaxValue           = flag.Uint("httpGageMaxValue", 400, "HTTP dashboard Gage max value")
+	maxUserDefinedMonitors = flag.Uint("httpMaxUserDefined", 5, "Maximum number of user-defined tracked prefixes. Use zero to disable")
+)
+
+type Module struct {
+	name string
+}
+
+func (m *Module) Name() string {
+	return m.name
+}
+
+func (m *Module) OnStart() bool {
+	go startComplete()
+	return false
+}
+
+func (m *Module) OnEvent(_ monitor.FlapEvent, _ bool) {}
 
 func init() {
-	limitedHttpAPI = flag.Bool("httpAPILimit", false, "Disable http API endpoints not needed for"+
-		" the user interface and activate basic scraping protection")
-	apiKey = flag.String("httpAPIKey", "", "API key to access limited endpoints, when 'limitedHttpApi' is set. Empty to disable")
-	httpAPIListenAddress = flag.String("httpAPIListenAddress", ":8699", "Listen address for the HTTP API (TCP address like :8699 or Unix socket path)")
-	gageMaxValue = flag.Uint("httpGageMaxValue", 400, "HTTP dashboard Gage max value")
-	maxUserDefinedMonitors = flag.Uint("httpMaxUserDefined", 5, "Maximum number of user-defined tracked prefixes. Use zero to disable")
-
-	monitor.RegisterModule(&monitor.Module{
-		Name:            moduleName,
-		OnStartComplete: startComplete,
+	monitor.RegisterModule(&Module{
+		name: "mod_httpAPI",
 	})
 }
 
@@ -90,9 +98,10 @@ func startComplete() {
 			return
 		}
 	}
+	slog.Info("Start HTTP server", "listen_address", *httpAPIListenAddress)
 	err = s.Serve(listener)
 	if err != nil {
-		logger.Error("Error starting HTTP api server", "error", err)
+		logger.Error("Error starting HTTP API server", "error", err)
 	}
 }
 
@@ -226,46 +235,40 @@ func getActiveFlaps(w http.ResponseWriter, _ *http.Request) {
 func getPrefix(w http.ResponseWriter, r *http.Request) {
 	prefix, err := netip.ParsePrefix(r.URL.Query().Get("prefix"))
 	if err != nil {
-		w.WriteHeader(500)
 		_, _ = w.Write([]byte("null"))
 		return
 	}
 
-	flaps := monitor.GetActiveFlaps()
-	for _, f := range flaps {
-		if f.Prefix == prefix {
-			var pathList []monitor.PathInfo
-			if config.GlobalConf.KeepPathInfo {
-				pathList = make([]monitor.PathInfo, 0)
-				for v := range f.PathHistory.All() {
-					pathList = append(pathList, *v)
-				}
-			}
-
-			js, err := json.Marshal(struct {
-				Prefix     string
-				FirstSeen  int64
-				RateSec    int
-				TotalCount uint64
-				Paths      []monitor.PathInfo
-			}{
-				f.Prefix.String(),
-				f.FirstSeen,
-				f.RateSec,
-				f.TotalPathChanges,
-				pathList,
-			})
-			if err != nil {
-				w.WriteHeader(500)
-				logger.Warn("Failed to marshal prefix to JSON", "error", err)
-				_, _ = w.Write([]byte("Internal error"))
-			} else {
-				_, _ = w.Write(js)
-			}
-			return
-		}
+	f, found := monitor.GetActiveFlapPrefix(prefix)
+	if !found {
+		_, _ = w.Write([]byte("null"))
+		return
 	}
-	_, _ = w.Write([]byte("null"))
+	pathList := make([]monitor.PathInfo, 0)
+	for v := range f.PathHistory.All() {
+		pathList = append(pathList, *v)
+	}
+
+	js, err := json.Marshal(struct {
+		Prefix     string
+		FirstSeen  int64
+		RateSec    int
+		TotalCount uint64
+		Paths      []monitor.PathInfo
+	}{
+		f.Prefix.String(),
+		f.FirstSeen,
+		f.RateSec,
+		f.TotalPathChanges,
+		pathList,
+	})
+	if err != nil {
+		w.WriteHeader(500)
+		logger.Warn("Failed to marshal prefix to JSON", "error", err)
+		_, _ = w.Write([]byte("Internal error"))
+	} else {
+		_, _ = w.Write(js)
+	}
 }
 
 func metrics(w http.ResponseWriter, _ *http.Request) {
@@ -286,6 +289,10 @@ func prometheus(w http.ResponseWriter, _ *http.Request) {
 	output += fmt.Sprintln("# HELP active_flap_route_change_count Number of path changes caused by actively flapping prefixes")
 	output += fmt.Sprintln("# TYPE active_flap_route_change_count gauge")
 	output += fmt.Sprintln("active_flap_route_change_count", metric.ActiveFlapTotalPathChangeCount)
+
+	output += fmt.Sprintln("# HELP route_change_count Number of path changes by all prefixes")
+	output += fmt.Sprintln("# TYPE route_change_count gauge")
+	output += fmt.Sprintln("route_change_count", metric.TotalPathChangeCount)
 
 	output += fmt.Sprintln("# HELP average_route_changes_90 90th percentile average of route changes over the last 250 seconds, as overall route changes per second")
 	output += fmt.Sprintln("# TYPE average_route_changes_90 gauge")

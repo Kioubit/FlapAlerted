@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"strconv"
 	"strings"
 )
@@ -22,7 +23,7 @@ func parseCommand(input string) (cmd string, args []string, err error) {
 	return
 }
 
-func processCommand(command string, cancel context.CancelFunc) (response string, err error) {
+func processCommand(command string, cancel context.CancelFunc, logger *slog.Logger) (response string, err error) {
 	var cmd string
 	var args []string
 	cmd, args, err = parseCommand(command)
@@ -41,8 +42,14 @@ func processCommand(command string, cancel context.CancelFunc) (response string,
 		response, err = getCapabilities()
 	case "NOTIFY_ERROR":
 		response = "OK"
-		logger.Warn("Collector error notification", "collector_message", strings.Join(args, " "))
-		cancel()
+		message := ""
+		if len(args) > 1 {
+			message = strings.Join(args[1:], " ")
+		}
+		logger.Warn("Collector error notification", "collector_message", message)
+		if len(args) == 0 || args[0] != "false" {
+			cancel()
+		}
 	case "INSTANCE":
 		response = *collectorInstanceName
 	case "VERSION":
@@ -58,7 +65,6 @@ func getActiveFlapJSON() (string, error) {
 
 	b, err := json.Marshal(activeFlaps)
 	if err != nil {
-		logger.Warn("Failed to marshal list to JSON", "error", err)
 		return "", errors.New("failed to marshal list to JSON")
 	}
 	return string(b), nil
@@ -68,7 +74,6 @@ func getCapabilities() (string, error) {
 	capabilities := monitor.GetCapabilities()
 	b, err := json.Marshal(capabilities)
 	if err != nil {
-		logger.Warn("Failed to marshal capabilities to JSON", "error", err)
 		return "", errors.New("failed to marshal capabilities to JSON")
 	}
 	return string(b), nil

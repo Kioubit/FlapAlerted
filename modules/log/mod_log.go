@@ -4,30 +4,37 @@ package log
 
 import (
 	"FlapAlerted/monitor"
+	"flag"
 	"log/slog"
 	"os"
-	"time"
 )
 
-var moduleName = "mod_log"
+var (
+	disableLog = flag.Bool("logDisable", false, "Disable flap event logging")
+)
+
+type Module struct {
+	name   string
+	logger *slog.Logger
+}
+
+func (m *Module) Name() string {
+	return m.name
+}
+
+func (m *Module) OnStart() bool {
+	return !*disableLog
+}
+
+func (m *Module) OnEvent(f monitor.FlapEvent, isStart bool) {
+	if isStart {
+		m.logger.Info("event", "type", "start", "prefix", f.Prefix.String(), "first_seen", f.FirstSeen, "total_path_changes", f.TotalPathChanges)
+	}
+}
 
 func init() {
-	monitor.RegisterModule(&monitor.Module{
-		Name:                     moduleName,
-		OnRegisterEventCallbacks: registerEventCallbacks,
+	monitor.RegisterModule(&Module{
+		name:   "mod_log",
+		logger: slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{})).With("module", "mod_log"),
 	})
-}
-
-var logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{})).With("module", moduleName)
-
-func registerEventCallbacks() (callbackStart, callbackEnd func(event monitor.FlapEvent)) {
-	return logFlapStart, logFlapEnd
-}
-
-func logFlapStart(f monitor.FlapEvent) {
-	logger.Info("event", "type", "start", "prefix", f.Prefix.String(), "first_seen", f.FirstSeen, "total_path_changes", f.TotalPathChanges)
-}
-
-func logFlapEnd(f monitor.FlapEvent) {
-	logger.Info("event", "type", "end", "prefix", f.Prefix.String(), "duration", int(time.Since(time.Unix(f.FirstSeen, 0)).Seconds()), "total_path_changes", f.TotalPathChanges)
 }

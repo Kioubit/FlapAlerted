@@ -24,7 +24,7 @@ func newBGPConnection(ctx context.Context, logger *slog.Logger, conn net.Conn, s
 	defer stop()
 
 	const ownHoldTime = 240
-	err = conn.SetDeadline(time.Now().Add(ownHoldTime * time.Second))
+	err = conn.SetDeadline(time.Now().Add(15 * time.Second))
 	if err != nil {
 		logger.Warn("Failed to set connection deadline", "error", err)
 	}
@@ -176,12 +176,12 @@ func newBGPConnection(ctx context.Context, logger *slog.Logger, conn net.Conn, s
 		}
 		return fmt.Errorf("unacceptable peer hold time of %d seconds", peerHoldTime)
 	}
-	slog.Debug("Peer hold time: %d seconds", peerHoldTime)
 
 	applicableHoldTime := ownHoldTime
 	if peerHoldTime < ownHoldTime {
 		applicableHoldTime = peerHoldTime
 	}
+	slog.Debug("Hold time negotiated", "peer_time_seconds", peerHoldTime, "applicable_time_seconds", applicableHoldTime)
 	session.ApplicableHoldTime = applicableHoldTime
 
 	session.RemoteRouterID = msg.Body.(open.Msg).RouterID.ToNetAddr()
