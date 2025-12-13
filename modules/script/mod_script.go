@@ -20,13 +20,24 @@ func init() {
 	scriptFileEnd = flag.String("detectionScriptEnd", "", "Optional path to script to run when a flap event is detected (end)")
 
 	monitor.RegisterModule(&monitor.Module{
-		Name:          moduleName,
-		CallbackStart: logFlapStart,
-		CallbackEnd:   logFlapEnd,
+		Name:                     moduleName,
+		OnRegisterEventCallbacks: registerEventCallbacks,
 	})
 }
 
 var logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{})).With("module", moduleName)
+
+func registerEventCallbacks() (callbackStart, callbackEnd func(event monitor.FlapEvent)) {
+	start := logFlapStart
+	end := logFlapEnd
+	if *scriptFileStart == "" {
+		start = nil
+	}
+	if *scriptFileEnd == "" {
+		end = nil
+	}
+	return start, end
+}
 
 func logFlapStart(f monitor.FlapEvent) {
 	runScript(*scriptFileStart, f)

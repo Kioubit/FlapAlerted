@@ -19,12 +19,19 @@ var lock sync.Mutex
 func init() {
 	roaJsonFile = flag.String("roaJson", "", "File path of source ROA JSON")
 	monitor.RegisterModule(&monitor.Module{
-		Name:          moduleName,
-		CallbackStart: change,
+		Name:                     moduleName,
+		OnRegisterEventCallbacks: registerEventCallbacks,
 	})
 }
 
 var logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{})).With("module", moduleName)
+
+func registerEventCallbacks() (callbackStart, callbackEnd func(event monitor.FlapEvent)) {
+	if *roaJsonFile == "" {
+		return
+	}
+	return change, change
+}
 
 func change(f monitor.FlapEvent) {
 	// Continue filtering already filtered file

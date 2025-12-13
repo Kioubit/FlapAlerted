@@ -8,12 +8,16 @@ import (
 type Module struct {
 	// Module name
 	Name string
-	// Function called after an event starts. (Runs in a goroutine)
-	CallbackStart func(event FlapEvent)
-	// Function called after an event ends. (Runs in a goroutine)
-	CallbackEnd func(event FlapEvent)
 	// Function called after the program has started. (Runs in a goroutine)
 	OnStartComplete func()
+	// Function to register event callbacks that are called in a goroutine
+	OnRegisterEventCallbacks func() (callbackStart, callbackEnd func(event FlapEvent))
+	eventChan                chan wrappedFlapEvent
+}
+
+type wrappedFlapEvent struct {
+	event   *FlapEvent
+	isStart bool
 }
 
 var (
@@ -25,15 +29,40 @@ func notificationHandler(c, cEnd <-chan FlapEvent) {
 	modulesStarted = true
 	moduleCallbackStartComplete()
 
-	sem := make(chan struct{}, 20)
-
-	modulesWithCallbacks := make([]*Module, 0)
-	for _, module := range moduleList {
-		if module.CallbackStart != nil || module.CallbackEnd != nil {
-			modulesWithCallbacks = append(modulesWithCallbacks, module)
+	for _, m := range moduleList {
+		if m.OnRegisterEventCallbacks != nil {
+			start, end := m.OnRegisterEventCallbacks()
+			m.OnRegisterEventCallbacks = nil
+			if start == nil && end == nil {
+				continue
+			}
+			m.eventChan = make(chan wrappedFlapEvent, 200)
+			go func(startCb, endCb func(FlapEvent), in <-chan wrappedFlapEvent) {
+				for {
+					e, ok := <-in
+					if !ok {
+						return
+					}
+					if e.isStart && startCb != nil {
+						startCb(*e.event)
+					} else if !e.isStart && endCb != nil {
+						endCb(*e.event)
+					}
+				}
+			}(start, end, m.eventChan)
 		}
 	}
 
+	defer func() {
+		// Cleanup
+		for _, m := range moduleList {
+			if m.eventChan != nil {
+				close(m.eventChan)
+			}
+		}
+	}()
+
+	warningPrinted := false
 	for {
 		var f FlapEvent
 		var ok bool
@@ -46,29 +75,24 @@ func notificationHandler(c, cEnd <-chan FlapEvent) {
 		if !ok {
 			return
 		}
-		for _, m := range modulesWithCallbacks {
-			callback := getCallback(m, endNotification)
-			if callback == nil {
+		for _, m := range moduleList {
+			if m.eventChan == nil {
 				continue
 			}
 			select {
-			case sem <- struct{}{}:
-				go func() {
-					defer func() { <-sem }()
-					callback(f)
-				}()
+			case m.eventChan <- wrappedFlapEvent{
+				event:   &f,
+				isStart: !endNotification,
+			}:
 			default:
-				slog.Warn("module cannot keep up with event notifications", "module", m.Name)
+				if !warningPrinted {
+					warningPrinted = true
+					slog.Warn("one or more modules cannot keep up with event notifications", "first_affected_module", m.Name)
+				}
 			}
 		}
 	}
-}
 
-func getCallback(m *Module, endNotification bool) func(FlapEvent) {
-	if endNotification {
-		return m.CallbackEnd
-	}
-	return m.CallbackStart
 }
 
 func RegisterModule(module *Module) {

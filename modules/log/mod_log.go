@@ -13,13 +13,16 @@ var moduleName = "mod_log"
 
 func init() {
 	monitor.RegisterModule(&monitor.Module{
-		Name:          moduleName,
-		CallbackStart: logFlapStart,
-		CallbackEnd:   logFlapEnd,
+		Name:                     moduleName,
+		OnRegisterEventCallbacks: registerEventCallbacks,
 	})
 }
 
 var logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{})).With("module", moduleName)
+
+func registerEventCallbacks() (callbackStart, callbackEnd func(event monitor.FlapEvent)) {
+	return logFlapStart, logFlapEnd
+}
 
 func logFlapStart(f monitor.FlapEvent) {
 	logger.Info("event", "type", "start", "prefix", f.Prefix.String(), "first_seen", f.FirstSeen, "total_path_changes", f.TotalPathChanges)

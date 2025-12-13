@@ -50,13 +50,24 @@ func init() {
 	webhookInstanceName = flag.String("webhookInstanceName", "", "Optional webhook instance name to set as X-Instance-Name")
 
 	monitor.RegisterModule(&monitor.Module{
-		Name:          moduleName,
-		CallbackStart: logFlapStart,
-		CallbackEnd:   logFlapEnd,
+		Name:                     moduleName,
+		OnRegisterEventCallbacks: registerEventCallbacks,
 	})
 }
 
 var logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{})).With("module", moduleName)
+
+func registerEventCallbacks() (callbackStart, callbackEnd func(event monitor.FlapEvent)) {
+	start := logFlapStart
+	end := logFlapEnd
+	if len(webhookUrlsStart) == 0 {
+		start = nil
+	}
+	if len(webhookUrlsEnd) == 0 {
+		end = nil
+	}
+	return start, end
+}
 
 func logFlapStart(f monitor.FlapEvent) {
 	for _, url := range webhookUrlsStart {
