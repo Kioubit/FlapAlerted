@@ -4,7 +4,7 @@
 
 | Overview Page                                                                         | Event details page                                                                    |
 |---------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------|
-| ![a](https://github.com/user-attachments/assets/303d9aca-b4e3-4613-91ad-891ae16bf49d) | ![b](https://github.com/user-attachments/assets/860615e2-4116-429d-ab27-f8e5e70b69a0) |
+| ![a](https://github.com/user-attachments/assets/562a2d64-96cc-4aec-8393-1617e3621d27) | ![b](https://github.com/user-attachments/assets/860615e2-4116-429d-ab27-f8e5e70b69a0) |
 
 ### Setup notes
 
