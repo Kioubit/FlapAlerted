@@ -70,7 +70,7 @@ func main() {
 	conf.ImportLimit = uint32(*importLimitThousands * 1000)
 
 	if conf.Asn == 0 {
-		fmt.Println("ASN value not specified")
+		fmt.Println("ASN value not specified. Use '-h' to view available options.")
 		os.Exit(1)
 	}
 
