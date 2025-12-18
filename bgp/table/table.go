@@ -6,12 +6,13 @@ import (
 	"FlapAlerted/config"
 	"context"
 	"net/netip"
+	"sync/atomic"
 )
 
 type PrefixTable struct {
 	table               map[netip.Prefix]*Entry
 	pathChangeChan      chan PathChange
-	importCount         int
+	importCount         atomic.Uint32
 	sessionCancellation context.CancelCauseFunc
 }
 
@@ -38,7 +39,7 @@ func (t *PrefixTable) update(prefix netip.Prefix, pathID uint32, isWithdrawal bo
 					IsWithdrawal: true,
 					OldPath:      oldPath,
 				}
-				t.importCount--
+				t.importCount.Add(^uint32(0))
 				delete(entry.Paths, pathID)
 				if len(entry.Paths) == 0 {
 					delete(t.table, prefix)
@@ -48,7 +49,7 @@ func (t *PrefixTable) update(prefix netip.Prefix, pathID uint32, isWithdrawal bo
 	} else {
 		entry, found := t.table[prefix]
 		if !found {
-			t.importCount++
+			t.importCount.Add(1)
 			entry = &Entry{Paths: make(map[uint32]common.AsPath)}
 			t.table[prefix] = entry
 		} else {
@@ -59,12 +60,16 @@ func (t *PrefixTable) update(prefix netip.Prefix, pathID uint32, isWithdrawal bo
 					OldPath:      oldPath,
 				}
 			} else {
-				t.importCount++
+				t.importCount.Add(1)
 			}
 		}
 		entry.Paths[pathID] = asPath
-		if t.importCount > config.GlobalConf.ImportLimit {
+		if t.importCount.Load() > config.GlobalConf.ImportLimit {
 			t.sessionCancellation(notification.ErrImportLimit)
 		}
 	}
+}
+
+func (t *PrefixTable) ImportCount() uint32 {
+	return t.importCount.Load()
 }

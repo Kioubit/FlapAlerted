@@ -1,7 +1,7 @@
 package monitor
 
 import (
-	"FlapAlerted/bgp/common"
+	"FlapAlerted/bgp/session"
 	"FlapAlerted/bgp/table"
 	"net/netip"
 	"sync"
@@ -135,7 +135,7 @@ func userDefinedClientWorker() {
 					userDefinedClientWorkerRunning.Store(false)
 					return true
 				}
-				bgpSessionCnt := common.GetSessionCount()
+				bgpSessionCnt := session.GetSessionCount()
 				for prefix, clients := range userDefinedClientsMap {
 					uds := UserDefinedMonitorStatistic{
 						Count:    getUserDefinedMonitorCount(prefix),

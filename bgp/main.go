@@ -3,6 +3,7 @@ package bgp
 import (
 	"FlapAlerted/bgp/common"
 	"FlapAlerted/bgp/notification"
+	"FlapAlerted/bgp/session"
 	"FlapAlerted/bgp/table"
 	"FlapAlerted/config"
 	"context"
@@ -83,14 +84,14 @@ func handleConnection(parent context.Context, conn net.Conn, pathChangeChan chan
 	updateChannel := make(chan table.SessionUpdateMessage, 10000)
 	defer close(updateChannel) // Must be after wg.Wait() so it runs first
 
-	session := &common.LocalSession{
+	localSession := &common.LocalSession{
 		DefaultAFI:     common.AFI4,
 		AddPathEnabled: config.GlobalConf.UseAddPath,
 		Asn:            config.GlobalConf.Asn,
 		OwnRouterID:    config.GlobalConf.RouterID,
 	}
 
-	err := newBGPConnection(ctx, logger, conn, session)
+	err := newBGPConnection(ctx, logger, conn, localSession)
 	if err != nil {
 		if ctx.Err() != nil {
 			logger.Warn("connection initiation canceled")
@@ -100,17 +101,17 @@ func handleConnection(parent context.Context, conn net.Conn, pathChangeChan chan
 		return
 	}
 
+	t := table.NewPrefixTable(pathChangeChan, cancel)
 	wg.Go(func() {
-		t := table.NewPrefixTable(pathChangeChan, cancel)
 		table.ProcessUpdates(cancel, updateChannel, t)
 	})
 
-	common.AddSession(conn, session)
-	defer common.RemoveSession(conn)
+	session.AddSession(conn, localSession, t)
+	defer session.RemoveSession(conn)
 
-	logger = logger.With("routerID", session.RemoteRouterID.String(), "hostname", session.RemoteHostname)
+	logger = logger.With("routerID", localSession.RemoteRouterID.String(), "hostname", localSession.RemoteHostname)
 
-	err = handleEstablished(ctx, cancel, conn, logger, session, updateChannel)
+	err = handleEstablished(ctx, cancel, conn, logger, localSession, updateChannel)
 	if err != nil {
 		if !errors.Is(err, notification.ErrAdministrativeShutdown) {
 			logger.Error("connection encountered an error", "error", err.Error())

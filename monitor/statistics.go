@@ -1,7 +1,7 @@
 package monitor
 
 import (
-	"FlapAlerted/bgp/common"
+	"FlapAlerted/bgp/session"
 	"cmp"
 	"context"
 	"math"
@@ -36,7 +36,7 @@ func GetAverageRouteChanges90() float64 {
 }
 
 func GetSessionInfoJson() (string, error) {
-	return common.GetSessionInfoJson()
+	return session.GetSessionInfoJson()
 }
 
 type Metric struct {
@@ -65,7 +65,7 @@ func GetMetric() Metric {
 		ActiveFlapTotalPathChangeCount: activeFlapTotalPathChangeCount,
 		TotalPathChangeCount:           pathChangeCount,
 		AverageRouteChanges90:          avgStr,
-		Sessions:                       common.GetSessionCount(),
+		Sessions:                       session.GetSessionCount(),
 	}
 }
 
@@ -150,7 +150,7 @@ func statTracker(ctx context.Context) {
 		newWrapper := statisticWrapper{
 			List:     jsFlapList,
 			Stats:    newStatistic,
-			Sessions: common.GetSessionCount(),
+			Sessions: session.GetSessionCount(),
 		}
 
 		statSubscribersLock.Lock()
@@ -186,7 +186,7 @@ func GetStats() []statisticWrapper {
 		l := lastFlapSummaryList.Load()
 		if l != nil {
 			result[len(statList)-1].List = *l
-			result[len(statList)-1].Sessions = common.GetSessionCount()
+			result[len(statList)-1].Sessions = session.GetSessionCount()
 		}
 	}
 	return result

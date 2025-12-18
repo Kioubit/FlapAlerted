@@ -431,7 +431,8 @@ getStats();
                     entry.Remote,
                     entry.RouterID,
                     entry.Hostname || "N/A",
-                    toTimeElapsed(now - entry.EstablishTime)
+                    toTimeElapsed(now - entry.EstablishTime),
+                    entry.ImportCount
                 ];
 
                 cells.forEach((text) => {

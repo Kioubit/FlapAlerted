@@ -10,7 +10,7 @@ type UserConfig struct {
 	UnderThresholdTarget     int
 	ExpiryRouteChangeCounter int
 	Asn                      uint32
-	ImportLimit              int
+	ImportLimit              uint32
 	KeepPathInfo             bool
 	UseAddPath               bool
 	Debug                    bool
