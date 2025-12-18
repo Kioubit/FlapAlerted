@@ -2,7 +2,6 @@ package monitor
 
 import (
 	"FlapAlerted/bgp/common"
-	"FlapAlerted/config"
 	"container/list"
 	"encoding/binary"
 	"encoding/json"
@@ -45,7 +44,7 @@ func (pt *PathTracker) MarshalJSON() ([]byte, error) {
 }
 
 func (pt *PathTracker) record(path common.AsPath, isWithdrawal bool) {
-	if !config.GlobalConf.KeepPathInfo {
+	if pt.limit == 0 {
 		return
 	}
 	key := pathToKey(path)

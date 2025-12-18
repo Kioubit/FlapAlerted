@@ -10,8 +10,6 @@ import (
 	"time"
 )
 
-const pathHistoryLimit = 1000
-
 var (
 	activeMap     = make(map[netip.Prefix]*FlapEvent)
 	activeMapLock sync.RWMutex
@@ -136,7 +134,7 @@ func recordPathChanges(pathChan <-chan table.PathChange) (<-chan table.PathChang
 				if counterMap[pathChange.Prefix] == uint32(config.GlobalConf.RouteChangeCounter) {
 					activeMap[pathChange.Prefix] = &FlapEvent{
 						Prefix:             pathChange.Prefix,
-						PathHistory:        newPathTracker(pathHistoryLimit),
+						PathHistory:        newPathTracker(config.GlobalConf.MaxPathHistory),
 						TotalPathChanges:   uint64(counterMap[pathChange.Prefix]) + 1,
 						RateSec:            -1,
 						RateSecHistory:     make([]int, 0, 1),

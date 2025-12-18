@@ -87,10 +87,7 @@ function display() {
         // pathMap contains path objects with the key being their first ASN
         const pathMap = new Map();
 
-        if (pJson === null) {
-            document.getElementById("informationText2").innerText = "This instance has been configured to not keep path information." +
-                " The path analysis tool is unavailable.";
-        } else if (pJson.length === 0) {
+        if (pJson === null || pJson.length === 0) {
             document.getElementById("informationText2").innerText = "No path data is available yet. Try refreshing later.";
         } else {
             for (let i = 0; i < pJson.length; i++) {

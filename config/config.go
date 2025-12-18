@@ -11,7 +11,7 @@ type UserConfig struct {
 	ExpiryRouteChangeCounter int
 	Asn                      uint32
 	ImportLimit              uint32
-	KeepPathInfo             bool
+	MaxPathHistory           int
 	UseAddPath               bool
 	Debug                    bool
 	RouterID                 netip.Addr

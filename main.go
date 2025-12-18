@@ -32,7 +32,7 @@ func main() {
 		routeChangeCounter       = flag.Uint("routeChangeCounter", 600, "Minimum change per minute threshold to detect a flap. Use '0' to show all route changes.")
 		expiryRouteChangeCounter = flag.Uint("expiryRouteChangeCounter", 0, "Minimum change per minute threshold to keep detected flaps. Defaults to the same value as 'routeChangeCounter'.")
 		routerID                 = flag.String("routerID", "0.0.0.51", "BGP router ID for this program")
-		noPathInfo               = flag.Bool("noPathInfo", false, "Disable keeping path information")
+		maxPathHistory           = flag.Uint("maxPathHistory", 1000, "Maximum path history entries per prefix. Advanced setting, changing not recommended")
 		disableAddPath           = flag.Bool("disableAddPath", false, "Disable BGP AddPath support. (Setting must be replicated in BGP daemon)")
 		bgpListenAddress         = flag.String("bgpListenAddress", ":1790", "Address to listen on for incoming BGP connections")
 		enableDebug              = flag.Bool("debug", false, "Enable debug mode (produces a lot of output)")
@@ -63,7 +63,7 @@ func main() {
 	conf.UnderThresholdTarget = int(*underThresholdTarget)
 	conf.ExpiryRouteChangeCounter = int(*expiryRouteChangeCounter)
 	conf.Asn = uint32(*asn)
-	conf.KeepPathInfo = !*noPathInfo
+	conf.MaxPathHistory = int(*maxPathHistory)
 	conf.UseAddPath = !*disableAddPath
 	conf.Debug = *enableDebug
 	conf.BgpListenAddress = *bgpListenAddress

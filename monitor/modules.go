@@ -128,7 +128,7 @@ type UserParameters struct {
 	OverThresholdTarget      int
 	UnderThresholdTarget     int
 	ExpiryRouteChangeCounter int
-	KeepPathInfo             bool
+	MaxPathHistory           int
 	AddPath                  bool
 }
 
@@ -141,7 +141,7 @@ func GetCapabilities() Capabilities {
 			OverThresholdTarget:      config.GlobalConf.OverThresholdTarget,
 			UnderThresholdTarget:     config.GlobalConf.UnderThresholdTarget,
 			ExpiryRouteChangeCounter: config.GlobalConf.ExpiryRouteChangeCounter,
-			KeepPathInfo:             config.GlobalConf.KeepPathInfo,
+			MaxPathHistory:           config.GlobalConf.MaxPathHistory,
 			AddPath:                  config.GlobalConf.UseAddPath,
 		},
 	}

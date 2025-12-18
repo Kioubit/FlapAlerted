@@ -3,6 +3,7 @@ package monitor
 import (
 	"FlapAlerted/bgp/session"
 	"FlapAlerted/bgp/table"
+	"FlapAlerted/config"
 	"net/netip"
 	"sync"
 	"sync/atomic"
@@ -34,7 +35,7 @@ func NewUserDefinedMonitor(prefix netip.Prefix) (chan UserDefinedMonitorStatisti
 	if _, exists := userDefinedMap[prefix]; !exists {
 		userDefinedMap[prefix] = &FlapEvent{
 			Prefix:           prefix,
-			PathHistory:      newPathTracker(1000),
+			PathHistory:      newPathTracker(config.GlobalConf.MaxPathHistory),
 			TotalPathChanges: 0,
 			RateSecHistory:   []int{},
 			hasTriggered:     true,
