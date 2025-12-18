@@ -30,6 +30,7 @@ var (
 	apiKey                 = flag.String("httpAPIKey", "", "API key to access limited endpoints, when 'limitedHttpApi' is set. Empty to disable")
 	httpAPIListenAddress   = flag.String("httpAPIListenAddress", ":8699", "Listen address for the HTTP API (TCP address like :8699 or Unix socket path)")
 	gageMaxValue           = flag.Uint("httpGageMaxValue", 400, "HTTP dashboard Gage max value")
+	gageDisableDynamic     = flag.Bool("httpGageDisableDynamic", false, "Disable dynamic Gage max value based on session count")
 	maxUserDefinedMonitors = flag.Uint("httpMaxUserDefined", 5, "Maximum number of user-defined tracked prefixes. Use zero to disable")
 )
 
@@ -203,8 +204,9 @@ func showCapabilities(w http.ResponseWriter, _ *http.Request) {
 func getCapsWithModHttpJSON() ([]byte, error) {
 	caps := monitor.GetCapabilities()
 	type ModHttpCaps struct {
-		GageMaxValue   uint `json:"gageMaxValue"`
-		MaxUserDefined uint `json:"maxUserDefined"`
+		GageMaxValue       uint `json:"gageMaxValue"`
+		GageDisableDynamic bool `json:"gageDisableDynamic"`
+		MaxUserDefined     uint `json:"maxUserDefined"`
 	}
 
 	fullCaps := struct {
@@ -213,8 +215,9 @@ func getCapsWithModHttpJSON() ([]byte, error) {
 	}{
 		Capabilities: caps,
 		ModHttpCaps: ModHttpCaps{
-			GageMaxValue:   *gageMaxValue,
-			MaxUserDefined: *maxUserDefinedMonitors,
+			GageMaxValue:       *gageMaxValue,
+			GageDisableDynamic: *gageDisableDynamic,
+			MaxUserDefined:     *maxUserDefinedMonitors,
 		},
 	}
 	return json.Marshal(fullCaps)

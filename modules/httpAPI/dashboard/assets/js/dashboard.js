@@ -11,6 +11,8 @@ function getFetchOptions() {
 }
 
 let gageMaxValue = 400;
+let gageMaxValueModifier = 1;
+let gageDisableDynamic = false;
 const gauge = new JustGage({
     id: "justgage",
     value: 0,
@@ -190,8 +192,10 @@ function updateCapabilities(response) {
     } else {
         infoBox.innerText = `Table listing criteria: > ${data.UserParameters.RouteChangeCounter} route changes/min for ${data.UserParameters.OverThresholdTarget}min to list; ${data.UserParameters.UnderThresholdTarget}min below ${data.UserParameters.ExpiryRouteChangeCounter}/min to expire.`;
     }
+
+    gageDisableDynamic = data.modHttp.gageDisableDynamic;
     gageMaxValue = data.modHttp.gageMaxValue;
-    gauge.refresh(lastGageValue, gageMaxValue);
+    gauge.refresh(lastGageValue, gageMaxValue * gageMaxValueModifier);
 
     if (data.modHttp.maxUserDefined === 0) {
         const userDefinedTrackingForm = document.querySelector("#userDefinedTracking form");
@@ -309,6 +313,11 @@ function getStats() {
             const sessionCount = js["Sessions"];
             if (sessionCount !== -1) {
                 sessionCountElem.innerText = sessionCount;
+                if (gageDisableDynamic) {
+                    gageMaxValueModifier = 1;
+                } else if (sessionCount > 0) {
+                    gageMaxValueModifier = sessionCount;
+                }
             }
 
             if (sessionCount === 0) {
@@ -333,7 +342,7 @@ function getStats() {
             const sum = percentile.reduce((s, a) => s + a, 0);
             const avg = sum / percentile.length;
             lastGageValue = avg / dataIntervalSec;
-            gauge.refresh(avg / dataIntervalSec, gageMaxValue);
+            gauge.refresh(avg / dataIntervalSec, gageMaxValue * gageMaxValueModifier);
 
         } catch (err) {
             console.log(err);
