@@ -29,25 +29,22 @@ type Module interface {
 
 type moduleWorker struct {
 	impl      Module
-	eventChan chan wrappedFlapEvent
+	eventChan chan []FlapEventNotification
 }
 
 func (w *moduleWorker) run() {
 	for {
-		e, ok := <-w.eventChan
+		events, ok := <-w.eventChan
 		if !ok {
 			return
 		}
-		w.impl.OnEvent(e.event, e.isStart)
+		for _, e := range events {
+			w.impl.OnEvent(e.event, e.isStart)
+		}
 	}
 }
 
-type wrappedFlapEvent struct {
-	event   FlapEvent
-	isStart bool
-}
-
-func notificationHandler(c, cEnd <-chan FlapEvent) {
+func notificationHandler(c <-chan []FlapEventNotification) {
 	modulesStarted.Store(true)
 
 	workerList := make([]*moduleWorker, 0)
@@ -56,7 +53,7 @@ func notificationHandler(c, cEnd <-chan FlapEvent) {
 		if subscribeToEvents {
 			worker := &moduleWorker{
 				impl:      m,
-				eventChan: make(chan wrappedFlapEvent, 200),
+				eventChan: make(chan []FlapEventNotification, 3),
 			}
 			go worker.run()
 			workerList = append(workerList, worker)
@@ -72,23 +69,13 @@ func notificationHandler(c, cEnd <-chan FlapEvent) {
 
 	warningPrinted := false
 	for {
-		var f FlapEvent
-		var ok bool
-		isStart := false
-		select {
-		case f, ok = <-c:
-			isStart = true
-		case f, ok = <-cEnd:
-		}
+		events, ok := <-c
 		if !ok {
 			return
 		}
 		for _, w := range workerList {
 			select {
-			case w.eventChan <- wrappedFlapEvent{
-				event:   f,
-				isStart: isStart,
-			}:
+			case w.eventChan <- events:
 			default:
 				if !warningPrinted {
 					warningPrinted = true

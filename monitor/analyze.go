@@ -40,17 +40,22 @@ type FlapEvent struct {
 	hasTriggered        bool
 }
 
+type FlapEventNotification struct {
+	event   FlapEvent
+	isStart bool
+}
+
 const intervalSec = 60
 
-func recordPathChanges(pathChan <-chan table.PathChange) (<-chan table.PathChange, <-chan FlapEvent, <-chan FlapEvent) {
+func recordPathChanges(pathChan <-chan table.PathChange) (<-chan table.PathChange, <-chan []FlapEventNotification) {
 	userPathChangeChan := make(chan table.PathChange, 1000)
-	notificationStartChannel := make(chan FlapEvent, 10)
-	notificationEndChannel := make(chan FlapEvent, 10)
+	notificationChannel := make(chan []FlapEventNotification, 5)
+
+	notificationsBatch := make([]FlapEventNotification, 0, 5)
 
 	go func() {
 		defer close(userPathChangeChan)
-		defer close(notificationStartChannel)
-		defer close(notificationEndChannel)
+		defer close(notificationChannel)
 
 		cleanupTicker := time.NewTicker(intervalSec * time.Second)
 		counterMap := make(map[netip.Prefix]uint32)
@@ -87,7 +92,10 @@ func recordPathChanges(pathChan <-chan table.PathChange) (<-chan table.PathChang
 							if intervalCount <= uint64(config.GlobalConf.ExpiryRouteChangeCounter) {
 								if event.underThresholdCount == config.GlobalConf.UnderThresholdTarget {
 									delete(activeMap, prefix)
-									notificationEndChannel <- *event
+									notificationsBatch = append(notificationsBatch, FlapEventNotification{
+										isStart: false,
+										event:   copyEvent(event),
+									})
 								} else {
 									event.underThresholdCount++
 								}
@@ -100,13 +108,23 @@ func recordPathChanges(pathChan <-chan table.PathChange) (<-chan table.PathChang
 						if event.overThresholdCount == config.GlobalConf.OverThresholdTarget {
 							event.hasTriggered = true
 							event.overThresholdCount++
-							notificationStartChannel <- *event
+							notificationsBatch = append(notificationsBatch, FlapEventNotification{
+								isStart: true,
+								event:   copyEvent(event),
+							})
 						} else {
 							event.overThresholdCount++
 						}
 					}
 				}
 				activeMapLock.Unlock()
+				if len(notificationsBatch) > 0 {
+					select {
+					case notificationChannel <- notificationsBatch:
+					default:
+					}
+					notificationsBatch = make([]FlapEventNotification, 0, 5)
+				}
 				continue
 			case pathChange, ok = <-pathChan:
 				if !ok {
@@ -151,7 +169,7 @@ func recordPathChanges(pathChan <-chan table.PathChange) (<-chan table.PathChang
 
 		}
 	}()
-	return userPathChangeChan, notificationStartChannel, notificationEndChannel
+	return userPathChangeChan, notificationChannel
 }
 
 func incrementUint64(n *uint64) {

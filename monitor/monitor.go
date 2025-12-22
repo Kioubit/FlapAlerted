@@ -31,7 +31,7 @@ func StartMonitoring(ctx context.Context, conf config.UserConfig) error {
 	if err != nil {
 		return fmt.Errorf("failed to start BGP: %w", err)
 	}
-	userPathChangeChan, notificationStartChannel, notificationEndChannel := recordPathChanges(pathChangeChan)
+	userPathChangeChan, notificationChannel := recordPathChanges(pathChangeChan)
 
 	wg.Go(func() {
 		recordUserDefinedMonitors(userPathChangeChan)
@@ -40,25 +40,27 @@ func StartMonitoring(ctx context.Context, conf config.UserConfig) error {
 		statTracker(ctx)
 	})
 	wg.Go(func() {
-		notificationHandler(notificationStartChannel, notificationEndChannel)
+		notificationHandler(notificationChannel)
 	})
 	<-ctx.Done()
 	return ctx.Err()
 }
 
-func copyEvent(src *FlapEvent) (event FlapEvent, triggered bool) {
+func copyEvent(src *FlapEvent) (event FlapEvent) {
+	// Shallow copy of the struct
+	event = *src
+	// Copy the slice in the struct
+	event.RateSecHistory = make([]int, len(src.RateSecHistory))
+	copy(event.RateSecHistory, src.RateSecHistory)
+	return
+}
+
+func copyEventIfTriggered(src *FlapEvent) (event FlapEvent, triggered bool) {
 	if !src.hasTriggered {
 		return
 	}
 	triggered = true
-
-	// Shallow copy of the struct
-	event = *src
-	// Copy the slice in the struct
-	if len(src.RateSecHistory) > 0 {
-		event.RateSecHistory = make([]int, len(src.RateSecHistory))
-		copy(event.RateSecHistory, src.RateSecHistory)
-	}
+	event = copyEvent(src)
 	return
 }
 
@@ -68,7 +70,7 @@ func GetActiveFlapList() (active []FlapEvent, trackedCount int) {
 	defer activeMapLock.RUnlock()
 	trackedCount = len(activeMap)
 	for _, src := range activeMap {
-		event, triggered := copyEvent(src)
+		event, triggered := copyEventIfTriggered(src)
 		if !triggered {
 			continue
 		}
@@ -84,7 +86,7 @@ func GetActiveFlapPrefix(prefix netip.Prefix) (FlapEvent, bool) {
 	if !found {
 		return FlapEvent{}, false
 	}
-	f, triggered := copyEvent(src)
+	f, triggered := copyEventIfTriggered(src)
 	if !triggered {
 		return FlapEvent{}, false
 	}
