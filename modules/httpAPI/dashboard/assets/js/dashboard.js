@@ -431,28 +431,38 @@ getStats();
             const now = Math.floor(Date.now() / 1000);
             const fragment = document.createDocumentFragment();
 
-            data.sort((a,b) => a.RouterID.localeCompare(b.RouterID))
-
-            data.forEach((entry) => {
+            if (data.length === 0) {
                 const row = document.createElement("tr");
-
-                const cells = [
-                    entry.Remote,
-                    entry.RouterID,
-                    entry.Hostname || "N/A",
-                    toTimeElapsed(now - entry.EstablishTime),
-                    entry.ImportCount
-                ];
-
-                cells.forEach((text) => {
-                    const cell = document.createElement("td");
-                    cell.textContent = text;
-                    cell.style.cssText = "border: 1px solid #ddd; padding: 8px; text-align: left;";
-                    row.appendChild(cell);
-                });
-
+                const cell = document.createElement("td");
+                cell.textContent = "No established sessions";
+                cell.colSpan = 5;
+                cell.style.cssText = "border: 1px solid #ddd; padding: 8px; text-align: center;";
+                row.appendChild(cell);
                 fragment.appendChild(row);
-            });
+            } else {
+                data.sort((a,b) => a.RouterID.localeCompare(b.RouterID))
+
+                data.forEach((entry) => {
+                    const row = document.createElement("tr");
+
+                    const cells = [
+                        entry.Remote,
+                        entry.RouterID,
+                        entry.Hostname || "N/A",
+                        toTimeElapsed(now - entry.EstablishTime),
+                        entry.ImportCount
+                    ];
+
+                    cells.forEach((text) => {
+                        const cell = document.createElement("td");
+                        cell.textContent = text;
+                        cell.style.cssText = "border: 1px solid #ddd; padding: 8px; text-align: left;";
+                        row.appendChild(cell);
+                    });
+
+                    fragment.appendChild(row);
+                });
+            }
 
             tbody.appendChild(fragment);
             loading.style.display = "none";
