@@ -68,7 +68,6 @@ func notificationHandler(c <-chan []analyze.FlapEventNotification) {
 		}
 	}()
 
-	warningPrinted := false
 	for {
 		events, ok := <-c
 		if !ok {
@@ -78,10 +77,7 @@ func notificationHandler(c <-chan []analyze.FlapEventNotification) {
 			select {
 			case w.eventChan <- events:
 			default:
-				if !warningPrinted {
-					warningPrinted = true
-					slog.Warn("one or more modules cannot keep up with event notifications", "first_affected_module", w.impl.Name())
-				}
+				slog.Warn("Modules cannot keep up with event notifications", "module", w.impl.Name())
 			}
 		}
 	}

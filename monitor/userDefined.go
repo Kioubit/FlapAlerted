@@ -21,7 +21,7 @@ type UserDefinedMonitorStatistic struct {
 	Sessions int
 }
 
-func NewUserDefinedMonitor(prefix netip.Prefix) (chan UserDefinedMonitorStatistic, error) {
+func NewUserDefinedMonitor(prefix netip.Prefix) (<-chan UserDefinedMonitorStatistic, error) {
 	userDefinedClientsLock.Lock()
 	defer userDefinedClientsLock.Unlock()
 
@@ -38,7 +38,7 @@ func NewUserDefinedMonitor(prefix netip.Prefix) (chan UserDefinedMonitorStatisti
 	return newChannel, nil
 }
 
-func RemoveUserDefinedMonitor(prefix netip.Prefix, channel chan UserDefinedMonitorStatistic) {
+func RemoveUserDefinedMonitor(prefix netip.Prefix, channel <-chan UserDefinedMonitorStatistic) {
 	userDefinedClientsLock.Lock()
 	defer userDefinedClientsLock.Unlock()
 

@@ -28,9 +28,11 @@ func (m *Module) OnStart() bool {
 }
 
 func (m *Module) OnEvent(f analyze.FlapEvent, isStart bool) {
+	eventType := "end"
 	if isStart {
-		m.logger.Info("event", "type", "start", "prefix", f.Prefix.String(), "first_seen", f.FirstSeen, "total_path_changes", f.TotalPathChanges)
+		eventType = "start"
 	}
+	m.logger.Info("event", "type", eventType, "prefix", f.Prefix.String(), "first_seen", f.FirstSeen, "total_path_changes", f.TotalPathChanges)
 }
 
 func init() {
