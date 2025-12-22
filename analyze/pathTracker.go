@@ -1,4 +1,4 @@
-package monitor
+package analyze
 
 import (
 	"FlapAlerted/bgp/common"

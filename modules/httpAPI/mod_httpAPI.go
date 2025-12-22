@@ -3,6 +3,7 @@
 package httpAPI
 
 import (
+	"FlapAlerted/analyze"
 	"FlapAlerted/monitor"
 	"crypto/subtle"
 	"embed"
@@ -47,7 +48,7 @@ func (m *Module) OnStart() bool {
 	return false
 }
 
-func (m *Module) OnEvent(_ monitor.FlapEvent, _ bool) {}
+func (m *Module) OnEvent(_ analyze.FlapEvent, _ bool) {}
 
 func init() {
 	monitor.RegisterModule(&Module{
@@ -170,7 +171,7 @@ func getFlapHistory(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte("null"))
 		return
 	}
-	result, found := monitor.GetActiveFlapPrefix(prefix)
+	result, found := analyze.GetActiveFlapPrefix(prefix)
 	if !found {
 		w.WriteHeader(500)
 		_, _ = w.Write([]byte("null"))
@@ -242,12 +243,12 @@ func getPrefix(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	f, found := monitor.GetActiveFlapPrefix(prefix)
+	f, found := analyze.GetActiveFlapPrefix(prefix)
 	if !found {
 		_, _ = w.Write([]byte("null"))
 		return
 	}
-	pathList := make([]monitor.PathInfo, 0)
+	pathList := make([]analyze.PathInfo, 0)
 	for v := range f.PathHistory.All() {
 		pathList = append(pathList, *v)
 	}
@@ -257,7 +258,7 @@ func getPrefix(w http.ResponseWriter, r *http.Request) {
 		FirstSeen  int64
 		RateSec    int
 		TotalCount uint64
-		Paths      []monitor.PathInfo
+		Paths      []analyze.PathInfo
 	}{
 		f.Prefix.String(),
 		f.FirstSeen,

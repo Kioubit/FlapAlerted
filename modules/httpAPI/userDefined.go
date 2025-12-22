@@ -3,6 +3,7 @@
 package httpAPI
 
 import (
+	"FlapAlerted/analyze"
 	"FlapAlerted/monitor"
 	"encoding/json"
 	"net/http"
@@ -77,13 +78,13 @@ func getUserDefinedStatistic(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	f := monitor.GetUserDefinedMonitorEvent(prefix)
-	if f == nil {
+	f, found := analyze.GetUserDefinedMonitorEvent(prefix)
+	if !found {
 		_, _ = w.Write([]byte("null"))
 		return
 	}
 
-	pathList := make([]monitor.PathInfo, 0)
+	pathList := make([]analyze.PathInfo, 0)
 	for v := range f.PathHistory.All() {
 		pathList = append(pathList, *v)
 	}
@@ -93,7 +94,7 @@ func getUserDefinedStatistic(w http.ResponseWriter, r *http.Request) {
 		FirstSeen  int64
 		RateSec    int
 		TotalCount uint64
-		Paths      []monitor.PathInfo
+		Paths      []analyze.PathInfo
 	}{
 		f.Prefix.String(),
 		f.FirstSeen,

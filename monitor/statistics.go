@@ -1,6 +1,7 @@
 package monitor
 
 import (
+	"FlapAlerted/analyze"
 	"FlapAlerted/bgp/session"
 	"cmp"
 	"context"
@@ -29,7 +30,7 @@ func GetAverageRouteChanges90() float64 {
 
 	var sum uint64 = 0
 	for _, u := range changesList {
-		sum = safeAddUint64(sum, u)
+		sum += u
 	}
 	avg := float64(sum) / float64(len(changesList))
 	return avg / statisticsCollectionIntervalSec
@@ -119,10 +120,10 @@ func statTracker(ctx context.Context) {
 			return
 		}
 
-		aFlap, trackedCount := GetActiveFlapList()
+		aFlap, trackedCount := analyze.GetActiveFlapList()
 
 		if len(aFlap) > 100 {
-			slices.SortFunc(aFlap, func(a, b FlapEvent) int {
+			slices.SortFunc(aFlap, func(a, b analyze.FlapEvent) int {
 				return cmp.Compare(b.TotalPathChanges, a.TotalPathChanges)
 			})
 			aFlap = aFlap[:100]
@@ -142,8 +143,8 @@ func statTracker(ctx context.Context) {
 
 		newStatistic := statistic{
 			Time:          time.Now().Unix(),
-			Changes:       globalTotalRouteChangeCounter.Swap(0),
-			ListedChanges: globalListedRouteChangeCounter.Swap(0),
+			Changes:       analyze.GlobalTotalRouteChangeCounter.Swap(0),
+			ListedChanges: analyze.GlobalListedRouteChangeCounter.Swap(0),
 			Active:        trackedCount,
 		}
 

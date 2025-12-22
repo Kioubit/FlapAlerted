@@ -3,6 +3,7 @@
 package script
 
 import (
+	"FlapAlerted/analyze"
 	"FlapAlerted/monitor"
 	"encoding/json"
 	"flag"
@@ -34,7 +35,7 @@ func (m *Module) OnStart() bool {
 	return true
 }
 
-func (m *Module) OnEvent(f monitor.FlapEvent, isStart bool) {
+func (m *Module) OnEvent(f analyze.FlapEvent, isStart bool) {
 	if isStart {
 		m.runScript(*scriptFileStart, f)
 	} else {
@@ -42,7 +43,7 @@ func (m *Module) OnEvent(f monitor.FlapEvent, isStart bool) {
 	}
 }
 
-func (m *Module) runScript(path string, f monitor.FlapEvent) {
+func (m *Module) runScript(path string, f analyze.FlapEvent) {
 	if path == "" {
 		return
 	}

@@ -3,6 +3,7 @@
 package collector
 
 import (
+	"FlapAlerted/analyze"
 	"FlapAlerted/monitor"
 	"bufio"
 	"context"
@@ -49,7 +50,7 @@ func (m *Module) OnStart() bool {
 	return false
 }
 
-func (m *Module) OnEvent(_ monitor.FlapEvent, _ bool) {}
+func (m *Module) OnEvent(_ analyze.FlapEvent, _ bool) {}
 
 func init() {
 	monitor.RegisterModule(&Module{

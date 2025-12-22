@@ -1,9 +1,8 @@
-package monitor
+package analyze
 
 import (
 	"FlapAlerted/bgp/table"
 	"FlapAlerted/config"
-	"math"
 	"net/netip"
 	"sync"
 	"sync/atomic"
@@ -16,8 +15,8 @@ var (
 )
 
 var (
-	globalTotalRouteChangeCounter  atomic.Uint64
-	globalListedRouteChangeCounter atomic.Uint64
+	GlobalTotalRouteChangeCounter  atomic.Uint64
+	GlobalListedRouteChangeCounter atomic.Uint64
 )
 
 var sendUserDefined atomic.Bool
@@ -41,13 +40,13 @@ type FlapEvent struct {
 }
 
 type FlapEventNotification struct {
-	event   FlapEvent
-	isStart bool
+	Event   FlapEvent
+	IsStart bool
 }
 
 const intervalSec = 60
 
-func recordPathChanges(pathChan <-chan table.PathChange) (<-chan table.PathChange, <-chan []FlapEventNotification) {
+func RecordPathChanges(pathChan <-chan table.PathChange) (<-chan table.PathChange, <-chan []FlapEventNotification) {
 	userPathChangeChan := make(chan table.PathChange, 1000)
 	notificationChannel := make(chan []FlapEventNotification, 5)
 
@@ -93,8 +92,8 @@ func recordPathChanges(pathChan <-chan table.PathChange) (<-chan table.PathChang
 								if event.underThresholdCount == config.GlobalConf.UnderThresholdTarget {
 									delete(activeMap, prefix)
 									notificationsBatch = append(notificationsBatch, FlapEventNotification{
-										isStart: false,
-										event:   copyEvent(event),
+										IsStart: false,
+										Event:   copyEvent(event),
 									})
 								} else {
 									event.underThresholdCount++
@@ -109,8 +108,8 @@ func recordPathChanges(pathChan <-chan table.PathChange) (<-chan table.PathChang
 							event.hasTriggered = true
 							event.overThresholdCount++
 							notificationsBatch = append(notificationsBatch, FlapEventNotification{
-								isStart: true,
-								event:   copyEvent(event),
+								IsStart: true,
+								Event:   copyEvent(event),
 							})
 						} else {
 							event.overThresholdCount++
@@ -139,14 +138,14 @@ func recordPathChanges(pathChan <-chan table.PathChange) (<-chan table.PathChang
 				}
 			}
 
-			globalTotalRouteChangeCounter.Add(1)
+			GlobalTotalRouteChangeCounter.Add(1)
 
 			activeMapLock.Lock()
 			if val, exists := activeMap[pathChange.Prefix]; exists {
 				incrementUint64(&val.TotalPathChanges)
 				val.PathHistory.record(pathChange.OldPath, pathChange.IsWithdrawal)
 				if val.hasTriggered {
-					globalListedRouteChangeCounter.Add(1)
+					GlobalListedRouteChangeCounter.Add(1)
 				}
 			} else {
 				if counterMap[pathChange.Prefix] == uint32(config.GlobalConf.RouteChangeCounter) {
@@ -170,18 +169,4 @@ func recordPathChanges(pathChan <-chan table.PathChange) (<-chan table.PathChang
 		}
 	}()
 	return userPathChangeChan, notificationChannel
-}
-
-func incrementUint64(n *uint64) {
-	if *n != math.MaxUint64 {
-		*n++
-	}
-}
-
-func safeAddUint64(a, b uint64) uint64 {
-	sum := a + b
-	if sum >= a {
-		return sum
-	}
-	return math.MaxUint64
 }

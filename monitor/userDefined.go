@@ -1,19 +1,14 @@
 package monitor
 
 import (
+	"FlapAlerted/analyze"
 	"FlapAlerted/bgp/session"
-	"FlapAlerted/bgp/table"
-	"FlapAlerted/config"
 	"net/netip"
 	"sync"
 	"sync/atomic"
 	"time"
 )
 
-var (
-	userDefinedMap     = make(map[netip.Prefix]*FlapEvent)
-	userDefinedMapLock sync.RWMutex
-)
 var (
 	userDefinedClientsMap  = make(map[netip.Prefix][]chan UserDefinedMonitorStatistic)
 	userDefinedClientsLock sync.RWMutex
@@ -29,38 +24,23 @@ type UserDefinedMonitorStatistic struct {
 func NewUserDefinedMonitor(prefix netip.Prefix) (chan UserDefinedMonitorStatistic, error) {
 	userDefinedClientsLock.Lock()
 	defer userDefinedClientsLock.Unlock()
-	userDefinedMapLock.Lock()
-	defer userDefinedMapLock.Unlock()
-
-	if _, exists := userDefinedMap[prefix]; !exists {
-		userDefinedMap[prefix] = &FlapEvent{
-			Prefix:           prefix,
-			PathHistory:      newPathTracker(config.GlobalConf.MaxPathHistory),
-			TotalPathChanges: 0,
-			RateSecHistory:   []int{},
-			hasTriggered:     true,
-			FirstSeen:        time.Now().Unix(),
-		}
-	}
 
 	newChannel := make(chan UserDefinedMonitorStatistic, 10)
 
 	if val, exists := userDefinedClientsMap[prefix]; exists {
 		userDefinedClientsMap[prefix] = append(val, newChannel)
 	} else {
+		analyze.AddUserDefinedPrefix(prefix)
 		userDefinedClientsMap[prefix] = []chan UserDefinedMonitorStatistic{newChannel}
 	}
 	userDefinedClientWorker()
 
-	sendUserDefined.Store(true)
 	return newChannel, nil
 }
 
 func RemoveUserDefinedMonitor(prefix netip.Prefix, channel chan UserDefinedMonitorStatistic) {
 	userDefinedClientsLock.Lock()
 	defer userDefinedClientsLock.Unlock()
-	userDefinedMapLock.Lock()
-	defer userDefinedMapLock.Unlock()
 
 	if val, exists := userDefinedClientsMap[prefix]; exists {
 		for i, c := range val {
@@ -74,12 +54,8 @@ func RemoveUserDefinedMonitor(prefix netip.Prefix, channel chan UserDefinedMonit
 		}
 		if len(userDefinedClientsMap[prefix]) == 0 {
 			delete(userDefinedClientsMap, prefix)
-			delete(userDefinedMap, prefix)
+			analyze.RemoveUserDefinedPrefix(prefix)
 		}
-	}
-
-	if len(userDefinedMap) == 0 {
-		sendUserDefined.Store(false)
 	}
 }
 
@@ -87,37 +63,6 @@ func GetNumberOfUserDefinedMonitorClients() int {
 	userDefinedClientsLock.RLock()
 	defer userDefinedClientsLock.RUnlock()
 	return len(userDefinedClientsMap)
-}
-
-func getUserDefinedMonitorCount(prefix netip.Prefix) uint64 {
-	if val, exists := userDefinedMap[prefix]; exists {
-		return val.TotalPathChanges
-	}
-	return 0
-}
-
-func GetUserDefinedMonitorEvent(prefix netip.Prefix) *FlapEvent {
-	userDefinedMapLock.RLock()
-	defer userDefinedMapLock.RUnlock()
-	if val, exists := userDefinedMap[prefix]; exists {
-		return val
-	}
-	return nil
-}
-
-func recordUserDefinedMonitors(userPathChangeChan <-chan table.PathChange) {
-	for {
-		pathChange, ok := <-userPathChangeChan
-		if !ok {
-			return
-		}
-		userDefinedMapLock.Lock()
-		if val, exists := userDefinedMap[pathChange.Prefix]; exists {
-			incrementUint64(&val.TotalPathChanges)
-			val.PathHistory.record(pathChange.OldPath, pathChange.IsWithdrawal)
-		}
-		userDefinedMapLock.Unlock()
-	}
 }
 
 func userDefinedClientWorker() {
@@ -128,8 +73,6 @@ func userDefinedClientWorker() {
 		for {
 			shouldExit := func() bool {
 				userDefinedClientsLock.RLock()
-				userDefinedMapLock.RLock()
-				defer userDefinedMapLock.RUnlock()
 				defer userDefinedClientsLock.RUnlock()
 
 				if len(userDefinedClientsMap) == 0 {
@@ -139,7 +82,7 @@ func userDefinedClientWorker() {
 				bgpSessionCnt := session.GetSessionCount()
 				for prefix, clients := range userDefinedClientsMap {
 					uds := UserDefinedMonitorStatistic{
-						Count:    getUserDefinedMonitorCount(prefix),
+						Count:    analyze.GetUserDefinedPathChangeCount(prefix),
 						Sessions: bgpSessionCnt,
 					}
 					for _, client := range clients {

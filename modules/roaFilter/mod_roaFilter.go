@@ -3,6 +3,7 @@
 package roaFilter
 
 import (
+	"FlapAlerted/analyze"
 	"FlapAlerted/monitor"
 	"encoding/json"
 	"flag"
@@ -33,7 +34,7 @@ func (m *Module) OnStart() bool {
 	return true
 }
 
-func (m *Module) OnEvent(f monitor.FlapEvent, isStart bool) {
+func (m *Module) OnEvent(f analyze.FlapEvent, isStart bool) {
 	if isStart {
 		m.filter(*roaJsonFile, f.Prefix.String())
 	}

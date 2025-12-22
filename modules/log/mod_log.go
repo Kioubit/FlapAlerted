@@ -3,6 +3,7 @@
 package log
 
 import (
+	"FlapAlerted/analyze"
 	"FlapAlerted/monitor"
 	"flag"
 	"log/slog"
@@ -26,7 +27,7 @@ func (m *Module) OnStart() bool {
 	return !*disableLog
 }
 
-func (m *Module) OnEvent(f monitor.FlapEvent, isStart bool) {
+func (m *Module) OnEvent(f analyze.FlapEvent, isStart bool) {
 	if isStart {
 		m.logger.Info("event", "type", "start", "prefix", f.Prefix.String(), "first_seen", f.FirstSeen, "total_path_changes", f.TotalPathChanges)
 	}

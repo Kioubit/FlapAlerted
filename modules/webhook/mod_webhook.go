@@ -3,6 +3,7 @@
 package webhook
 
 import (
+	"FlapAlerted/analyze"
 	"FlapAlerted/monitor"
 	"bytes"
 	"context"
@@ -50,7 +51,7 @@ func (m *Module) OnStart() bool {
 	return true
 }
 
-func (m *Module) OnEvent(f monitor.FlapEvent, isStart bool) {
+func (m *Module) OnEvent(f analyze.FlapEvent, isStart bool) {
 	if isStart {
 		for _, url := range *webhookUrlsStart {
 			m.callWebHook(url, f)
@@ -62,7 +63,7 @@ func (m *Module) OnEvent(f monitor.FlapEvent, isStart bool) {
 	}
 }
 
-func (m *Module) callWebHook(URL string, f monitor.FlapEvent) {
+func (m *Module) callWebHook(URL string, f analyze.FlapEvent) {
 	if URL == "" {
 		return
 	}

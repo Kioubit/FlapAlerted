@@ -1,6 +1,7 @@
 package monitor
 
 import (
+	"FlapAlerted/analyze"
 	"FlapAlerted/config"
 	"log/slog"
 	"sync/atomic"
@@ -24,12 +25,12 @@ type Module interface {
 	// OnEvent is called when a flap event occurs.
 	// Runs inside a worker goroutine.
 	// This is only called if OnStart() returned true.
-	OnEvent(event FlapEvent, isStart bool)
+	OnEvent(event analyze.FlapEvent, isStart bool)
 }
 
 type moduleWorker struct {
 	impl      Module
-	eventChan chan []FlapEventNotification
+	eventChan chan []analyze.FlapEventNotification
 }
 
 func (w *moduleWorker) run() {
@@ -39,12 +40,12 @@ func (w *moduleWorker) run() {
 			return
 		}
 		for _, e := range events {
-			w.impl.OnEvent(e.event, e.isStart)
+			w.impl.OnEvent(e.Event, e.IsStart)
 		}
 	}
 }
 
-func notificationHandler(c <-chan []FlapEventNotification) {
+func notificationHandler(c <-chan []analyze.FlapEventNotification) {
 	modulesStarted.Store(true)
 
 	workerList := make([]*moduleWorker, 0)
@@ -53,7 +54,7 @@ func notificationHandler(c <-chan []FlapEventNotification) {
 		if subscribeToEvents {
 			worker := &moduleWorker{
 				impl:      m,
-				eventChan: make(chan []FlapEventNotification, 3),
+				eventChan: make(chan []analyze.FlapEventNotification, 3),
 			}
 			go worker.run()
 			workerList = append(workerList, worker)
