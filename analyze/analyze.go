@@ -91,10 +91,12 @@ func RecordPathChanges(pathChan <-chan table.PathChange) (<-chan table.PathChang
 							if intervalCount <= uint64(config.GlobalConf.ExpiryRouteChangeCounter) {
 								if event.underThresholdCount == config.GlobalConf.UnderThresholdTarget {
 									delete(activeMap, prefix)
-									notificationsBatch = append(notificationsBatch, FlapEventNotification{
-										IsStart: false,
-										Event:   copyEvent(event),
-									})
+									if len(notificationsBatch) <= 50 {
+										notificationsBatch = append(notificationsBatch, FlapEventNotification{
+											IsStart: false,
+											Event:   copyEvent(event),
+										})
+									}
 								} else {
 									event.underThresholdCount++
 								}
@@ -107,10 +109,12 @@ func RecordPathChanges(pathChan <-chan table.PathChange) (<-chan table.PathChang
 						if event.overThresholdCount == config.GlobalConf.OverThresholdTarget {
 							event.hasTriggered = true
 							event.overThresholdCount++
-							notificationsBatch = append(notificationsBatch, FlapEventNotification{
-								IsStart: true,
-								Event:   copyEvent(event),
-							})
+							if len(notificationsBatch) <= 50 {
+								notificationsBatch = append(notificationsBatch, FlapEventNotification{
+									IsStart: true,
+									Event:   copyEvent(event),
+								})
+							}
 						} else {
 							event.overThresholdCount++
 						}
