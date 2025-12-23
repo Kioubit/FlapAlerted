@@ -448,7 +448,7 @@ getStats();
                     const cells = [
                         entry.Remote,
                         entry.RouterID,
-                        entry.Hostname || "N/A",
+                        entry.Hostname || "--",
                         toTimeElapsed(now - entry.EstablishTime),
                         entry.ImportCount
                     ];
