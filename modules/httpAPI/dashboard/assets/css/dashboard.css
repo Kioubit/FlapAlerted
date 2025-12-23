@@ -182,6 +182,10 @@ body {
     text-align: center;
 }
 
+.rightText {
+    text-align: right !important;
+}
+
 a {
     transition: color 0.2s ease;
 }

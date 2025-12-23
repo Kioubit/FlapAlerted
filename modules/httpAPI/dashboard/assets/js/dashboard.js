@@ -290,13 +290,13 @@ function getStats() {
     });
     evtSource.addEventListener("ready", (event) => {
         try {
-        updateCapabilities(event.data);
+            updateCapabilities(event.data);
         } catch (error) {
             console.error("updateCapabilities failed:", error);
         }
+        loadingScreen.style.display = "none";
         liveRouteChart.update('none');
         liveFlapChart.update('none');
-        loadingScreen.style.display = "none";
     });
     evtSource.addEventListener("c", (event) => {
         dataUpdate(event, false)
@@ -450,18 +450,20 @@ getStats();
                         entry.RouterID,
                         entry.Hostname || "--",
                         toTimeElapsed(now - entry.EstablishTime),
-                        entry.ImportCount
+                        Number(entry.ImportCount).toLocaleString()
                     ];
 
                     cells.forEach((text) => {
                         const cell = document.createElement("td");
                         cell.textContent = text;
-                        cell.style.cssText = "border: 1px solid #ddd; padding: 8px; text-align: left;";
+                        cell.classList.add("SessionsDialog-bodyCell");
                         row.appendChild(cell);
                     });
 
                     fragment.appendChild(row);
                 });
+                const total = data.reduce((sum, entry) => sum + Number(entry.ImportCount || 0), 0);
+                document.getElementById("totalImportCount").textContent = total.toLocaleString();
             }
 
             tbody.appendChild(fragment);

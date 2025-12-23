@@ -103,5 +103,5 @@ func streamServe() {
 }
 
 func formatEventStreamMessage(eventName string, data string) string {
-	return fmt.Sprintf("event: %s\ndata:%s\n\n", eventName, data)
+	return fmt.Sprintf("event: %s\ndata: %s\n\n", eventName, data)
 }
