@@ -28,21 +28,6 @@ type pathEntry struct {
 	ticks int
 }
 
-func (pt *PathTracker) MarshalJSON() ([]byte, error) {
-	pt.lock.RLock()
-	defer pt.lock.RUnlock()
-	var mostRecentPath common.AsPath
-	firstElem := pt.order.Back()
-	if firstElem != nil {
-		mostRecentPath = firstElem.Value.(*pathEntry).info.Path
-	}
-	return json.Marshal(struct {
-		MostRecentPath common.AsPath
-	}{
-		MostRecentPath: mostRecentPath,
-	})
-}
-
 func (pt *PathTracker) record(path common.AsPath, isWithdrawal bool) {
 	if pt.limit == 0 {
 		return
@@ -149,4 +134,65 @@ func newPathTracker(limit int) *PathTracker {
 		order: list.New(),
 		limit: limit,
 	}
+}
+
+// --- Serialization ---
+
+func (pt *PathTracker) MarshalJSON() ([]byte, error) {
+	pt.lock.RLock()
+	defer pt.lock.RUnlock()
+
+	var entries = make([]*PathInfo, 0, pt.order.Len())
+	for elem := pt.order.Front(); elem != nil; elem = elem.Next() {
+		entry := elem.Value.(*pathEntry)
+		entries = append(entries, entry.info)
+	}
+
+	return json.Marshal(entries)
+}
+
+func (pt *PathTracker) UnmarshalJSON(data []byte) error {
+	var entries []*PathInfo
+	if err := json.Unmarshal(data, &entries); err != nil {
+		return err
+	}
+
+	pt.lock.Lock()
+	defer pt.lock.Unlock()
+
+	pt.paths = make(map[string]*list.Element)
+	pt.order = list.New()
+
+	if pt.limit > 0 && len(entries) > pt.limit {
+		entries = entries[len(entries)-pt.limit:]
+	}
+
+	for _, info := range entries {
+		key := string(pathToKey(info.Path))
+		elem := pt.order.PushBack(&pathEntry{
+			key:  key,
+			info: info,
+		})
+		pt.paths[key] = elem
+	}
+	return nil
+}
+
+type PathTrackerSummary struct {
+	*PathTracker
+}
+
+func (pt *PathTrackerSummary) MarshalJSON() ([]byte, error) {
+	pt.lock.RLock()
+	defer pt.lock.RUnlock()
+	var mostRecentPath common.AsPath
+	firstElem := pt.order.Back()
+	if firstElem != nil {
+		mostRecentPath = firstElem.Value.(*pathEntry).info.Path
+	}
+	return json.Marshal(struct {
+		MostRecentPath common.AsPath
+	}{
+		MostRecentPath: mostRecentPath,
+	})
 }

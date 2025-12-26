@@ -3,6 +3,7 @@
 package httpAPI
 
 import (
+	"FlapAlerted/analyze"
 	"FlapAlerted/monitor"
 	"encoding/json"
 	"net/http"
@@ -76,10 +77,10 @@ func getUserDefinedStatistic(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	js, err := flapToJSON(prefix, true)
-	if err != nil {
+	f, found := analyze.GetUserDefinedMonitorEvent(prefix)
+	if !found {
 		_, _ = w.Write([]byte("null"))
 		return
 	}
-	_, _ = w.Write(js)
+	_ = json.NewEncoder(w).Encode(analyze.FullFlapEvent(f))
 }

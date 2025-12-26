@@ -8,7 +8,6 @@ import (
 	"crypto/subtle"
 	"embed"
 	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
 	"io/fs"
@@ -221,48 +220,12 @@ func getPrefix(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	js, err := flapToJSON(prefix, false)
-	if err != nil {
+	f, found := analyze.GetActiveFlapPrefix(prefix)
+	if !found {
 		_, _ = w.Write([]byte("null"))
 		return
 	}
-	_, _ = w.Write(js)
-}
-
-func flapToJSON(prefix netip.Prefix, isUserDefined bool) ([]byte, error) {
-	var f analyze.FlapEvent
-	var found bool
-	if isUserDefined {
-		f, found = analyze.GetUserDefinedMonitorEvent(prefix)
-		if !found {
-			return nil, errors.New("prefix not found")
-		}
-	} else {
-		f, found = analyze.GetActiveFlapPrefix(prefix)
-		if !found {
-			return nil, errors.New("prefix not found")
-		}
-	}
-	pathList := make([]analyze.PathInfo, 0)
-	for v := range f.PathHistory.All() {
-		pathList = append(pathList, *v)
-	}
-
-	return json.Marshal(struct {
-		Prefix         string
-		FirstSeen      int64
-		RateSec        int
-		RateSecHistory []int
-		TotalCount     uint64
-		Paths          []analyze.PathInfo
-	}{
-		f.Prefix.String(),
-		f.FirstSeen,
-		f.RateSec,
-		f.RateSecHistory,
-		f.TotalPathChanges,
-		pathList,
-	})
+	_ = json.NewEncoder(w).Encode(analyze.FullFlapEvent(f))
 }
 
 func metrics(w http.ResponseWriter, _ *http.Request) {

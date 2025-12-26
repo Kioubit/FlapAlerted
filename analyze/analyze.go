@@ -21,29 +21,6 @@ var (
 
 var sendUserDefined atomic.Bool
 
-type FlapEvent struct {
-	// ===== Core data =====
-	Prefix           netip.Prefix
-	PathHistory      *PathTracker
-	TotalPathChanges uint64
-
-	// ===== Rate calculation =====
-	RateSecHistory    []int
-	lastIntervalCount uint64
-	RateSec           int
-
-	// ===== State tracking =====
-	FirstSeen           int64
-	overThresholdCount  int
-	underThresholdCount int
-	hasTriggered        bool
-}
-
-type FlapEventNotification struct {
-	Event   FlapEvent
-	IsStart bool
-}
-
 const intervalSec = 60
 
 func RecordPathChanges(pathChan <-chan table.PathChange) (<-chan table.PathChange, <-chan []FlapEventNotification) {

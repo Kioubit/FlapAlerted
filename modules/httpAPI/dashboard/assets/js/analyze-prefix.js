@@ -138,7 +138,7 @@ const dataRouteChangeCount = {
         document.getElementById("loaderText").style.display = "none";
 
 
-        document.getElementById("pathChangeDisplay").innerText = json.TotalCount;
+        document.getElementById("pathChangeDisplay").innerText = json.TotalPathChanges;
         document.getElementById("fistSeenDisplay").innerText = timeConverter(json.FirstSeen);
         document.getElementById("durationDisplay").innerText = toTimeElapsed(Math.floor(Date.now() / 1000) - json.FirstSeen);
 
