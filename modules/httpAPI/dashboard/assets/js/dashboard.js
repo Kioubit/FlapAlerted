@@ -478,6 +478,79 @@ getStats();
 }
 
 
+{
+    const historicalDialog = document.getElementById('historicalDialog');
+    const openBtn = document.getElementById('viewHistoricalEvents');
+    const closeBtn = document.getElementById('closeHistoricalDialog');
+    const tableBody = document.getElementById('historicalTableBody');
+    const loadingElem = document.getElementById('historicalLoading');
+    const errorElem = document.getElementById('historicalError');
+    const tableContainer = document.getElementById('historicalTableContainer');
+
+    openBtn.addEventListener('click', () => {
+        historicalDialog.showModal();
+        loadHistoricalEvents().then();
+    });
+
+    closeBtn.addEventListener('click', () => {
+        historicalDialog.close();
+    });
+
+    async function loadHistoricalEvents() {
+        // Reset view
+        tableBody.innerHTML = '';
+        errorElem.textContent = '';
+        loadingElem.style.display = 'block';
+        tableContainer.style.display = 'none';
+
+        try {
+            const response = await fetch('/flaps/historical/list');
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(errorText || `Error ${response.status}: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+
+            if (data.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="3" style="text-align:center">No historical events found.</td></tr>';
+            } else {
+                data.forEach(event => {
+                    const row = document.createElement('tr');
+                    row.className = 'historicalDialog-row';
+
+                    // Convert Unix timestamp to readable date
+                    const date = new Date(event.Timestamp * 1000).toLocaleString();
+
+                    // Create URL for tracking button
+                    const trackUrl = `analyze/?prefix=${encodeURIComponent(event.Prefix)}&timestamp=${event.Timestamp}`;
+
+                    row.innerHTML = `
+                        <td>${escapeHtml(event.Prefix)}</td>
+                        <td>${date}</td>
+                        <td><a href="${trackUrl}" class="historicalDialog-trackBtn">View</a></td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            }
+
+            loadingElem.style.display = 'none';
+            tableContainer.style.display = 'block';
+
+        } catch (error) {
+            loadingElem.style.display = 'none';
+            errorElem.textContent = `Failed to load events: ${error.message}`;
+        }
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+}
+
 // Gauge-only view toggle
 const gaugeOnlyToggle = document.getElementById("gaugeOnlyToggle");
 if (gaugeOnlyToggle) {

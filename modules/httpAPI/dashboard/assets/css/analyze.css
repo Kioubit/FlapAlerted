@@ -97,3 +97,7 @@
     min-width: 70em;
     margin-bottom: 1em;
 }
+
+#historicalDisplay {
+    color: darkred;
+}

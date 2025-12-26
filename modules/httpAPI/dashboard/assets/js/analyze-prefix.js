@@ -62,108 +62,148 @@ const dataRouteChangeCount = {
     const ownURL = new URL(location.href);
     const prefix = ownURL.searchParams.get("prefix");
     const userDefined = ownURL.searchParams.get("userDefined") === "true";
-    if (prefix === null) {
+    const timestamp = ownURL.searchParams.get("timestamp");
+    if (!prefix) {
         document.getElementById("loader").style.display = "none";
         document.getElementById("loaderText").innerText = "Invalid link";
         return;
     }
 
+    const historicalEndpoint = `../flaps/historical/prefix?prefix=${encodeURIComponent(prefix)}`;
+
     let prefixInfoEndpoint = `../flaps/prefix?prefix=${encodeURIComponent(prefix)}`;
     if (userDefined) {
         prefixInfoEndpoint = `../userDefined/prefix?prefix=${encodeURIComponent(prefix)}`;
     }
-    fetch(prefixInfoEndpoint, getFetchOptions()).then((response) => response.json()).then((json) => {
-        if (json === null) {
-            document.getElementById("loader").style.display = "none";
-            document.getElementById("loaderText").innerText = "Prefix not found. The link may have expired";
+    if (timestamp) {
+        prefixInfoEndpoint = historicalEndpoint+`&timestamp=${timestamp}`;
+    }
+    fetch(prefixInfoEndpoint, getFetchOptions()).then((response) => response.json()).then(async (json) => {
+        if (json === null && !timestamp) {
+            const histResponse = await fetch(historicalEndpoint, getFetchOptions());
+            const histJson = await histResponse.json();
+            displayPrefix(histJson, false);
             return;
         }
-
-        const pJson = json["PathHistory"];
-        // pathMap contains path objects with the key being their first ASN
-        const pathMap = new Map();
-
-        if (pJson === null || pJson.length === 0) {
-            document.getElementById("informationText2").innerText = "No path data is available yet. Try refreshing later.";
-        } else {
-            for (let i = 0; i < pJson.length; i++) {
-                const firstAsn = pJson[i].Path[0];
-                const targetArray = pathMap.get(firstAsn);
-                if (!targetArray) {
-                    pathMap.set(firstAsn, [pJson[i]]);
-                } else {
-                    targetArray.push(pJson[i]);
-                }
-            }
-        }
-
-        const htmlBundles = [];
-        pathMap.forEach((value) => {
-            // For each path group
-            let elementHTML = "";
-            let pathGroupTotalCount = 0;
-            value.forEach((item) => {
-                item.Count = item.ac + item.wc;
-            });
-            value.sort((a, b) => b.Count - a.Count);
-            for (let c = 0; c < value.length; c++) {
-                // For each path
-                const count = value[c].Count;
-                pathGroupTotalCount += count;
-                elementHTML += `${count} (${value[c].ac}/${value[c].wc}) &nbsp;&nbsp;`;
-                for (let d = 0; d < value[c].Path.length; d++) {
-                    // For each ASN in the path
-                    let singleAsn = value[c].Path[d].toString();
-                    elementHTML += `<span style='background-color: ${asnToColor(singleAsn)};'>&nbsp;${singleAsn.padStart(10, " ")}</span>`;
-                }
-                elementHTML += "<br>";
-            }
-            elementHTML += "<br>";
-            const htmlBundle = {html: elementHTML, count: pathGroupTotalCount};
-            htmlBundles.push(htmlBundle);
-        });
-        htmlBundles.sort((a, b) => b.count - a.count);
-
-        let tableHtml = "";
-        htmlBundles.forEach((bundle) => {
-            tableHtml += bundle.html;
-        });
-
-
-        document.getElementById("pathTable").innerHTML = tableHtml;
-
-
-        document.getElementById("prefixTitle").innerHTML = `Flap report for ${prefix}`;
-        document.getElementById("loader").style.display = "none";
-        document.getElementById("loaderText").style.display = "none";
-
-
-        document.getElementById("pathChangeDisplay").innerText = json.TotalPathChanges;
-        document.getElementById("fistSeenDisplay").innerText = timeConverter(json.FirstSeen);
-        document.getElementById("durationDisplay").innerText = toTimeElapsed(Math.floor(Date.now() / 1000) - json.FirstSeen);
-
-        document.getElementById("informationText1").style.display = "block";
-        document.getElementById("informationText2").style.display = "block";
-
-
-        const printButton = document.getElementById("printButton");
-        if (printButton !== null) {
-            printButton.onclick = () => {
-                window.print();
-            };
-        }
-        if (!userDefined) {
-            displayRateSecHistory(json.RateSecHistory)
-        } else {
-            document.getElementById("averageDisplay").innerText = "Not available for user-defined"``
-        }
+        displayPrefix(json, userDefined);
     }).catch((error) => {
+        document.getElementById("loader").style.display = "none";
+        document.getElementById("loaderText").innerText = "An error occurred";
         alert("Network error");
         console.log(error);
     });
 })();
 
-function displayRateSecHistory(history) {
+function displayPrefix(json, userDefined) {
+    if (json === null) {
+        document.getElementById("loader").style.display = "none";
+        document.getElementById("loaderText").innerText = "Prefix not found. The link may have expired";
+        return;
+    }
+    
+    // Determine if this is a historical event or a standard event
+    let eventData = json;
+    let reportTimestamp = Math.floor(Date.now() / 1000);
+    const histDisplayEl = document.getElementById("historicalDisplay");
+
+    if (json.Event && json.Meta) {
+        // Handle historical wrapper format
+        eventData = json.Event;
+        reportTimestamp = json.Meta.Timestamp;
+
+        if (histDisplayEl) {
+            histDisplayEl.style.display = "block";
+            histDisplayEl.innerText = `Historical Report (Event end date: ${timeConverter(reportTimestamp)})`;
+        }
+    } else {
+        if (histDisplayEl) {
+            histDisplayEl.style.display = "none";
+        }
+    }
+
+    const pJson = eventData["PathHistory"];
+    // pathMap contains path objects with the key being their first ASN
+    const pathMap = new Map();
+
+    if (pJson === null || pJson.length === 0) {
+        document.getElementById("informationText2").innerText = "No path data is available yet. Try refreshing later.";
+    } else {
+        for (let i = 0; i < pJson.length; i++) {
+            const firstAsn = pJson[i].Path[0];
+            const targetArray = pathMap.get(firstAsn);
+            if (!targetArray) {
+                pathMap.set(firstAsn, [pJson[i]]);
+            } else {
+                targetArray.push(pJson[i]);
+            }
+        }
+    }
+
+    const htmlBundles = [];
+    pathMap.forEach((value) => {
+        // For each path group
+        let elementHTML = "";
+        let pathGroupTotalCount = 0;
+        value.forEach((item) => {
+            item.Count = item.ac + item.wc;
+        });
+        value.sort((a, b) => b.Count - a.Count);
+        for (let c = 0; c < value.length; c++) {
+            // For each path
+            const count = value[c].Count;
+            pathGroupTotalCount += count;
+            elementHTML += `${count} (${value[c].ac}/${value[c].wc}) &nbsp;&nbsp;`;
+            for (let d = 0; d < value[c].Path.length; d++) {
+                // For each ASN in the path
+                let singleAsn = value[c].Path[d].toString();
+                elementHTML += `<span style='background-color: ${asnToColor(singleAsn)};'>&nbsp;${singleAsn.padStart(10, " ")}</span>`;
+            }
+            elementHTML += "<br>";
+        }
+        elementHTML += "<br>";
+        const htmlBundle = {html: elementHTML, count: pathGroupTotalCount};
+        htmlBundles.push(htmlBundle);
+    });
+    htmlBundles.sort((a, b) => b.count - a.count);
+
+    let tableHtml = "";
+    htmlBundles.forEach((bundle) => {
+        tableHtml += bundle.html;
+    });
+
+
+    document.getElementById("pathTable").innerHTML = tableHtml;
+
+
+    document.getElementById("prefixTitle").innerHTML = `Flap report for ${eventData.Prefix}`;
+    document.getElementById("loader").style.display = "none";
+    document.getElementById("loaderText").style.display = "none";
+
+
+    document.getElementById("pathChangeDisplay").innerText = eventData.TotalPathChanges;
+    document.getElementById("fistSeenDisplay").innerText = timeConverter(eventData.FirstSeen);
+    document.getElementById("durationDisplay").innerText = toTimeElapsed(reportTimestamp - eventData.FirstSeen);
+
+
+    document.getElementById("informationText1").style.display = "block";
+    document.getElementById("informationText2").style.display = "block";
+
+    if (!userDefined) {
+        displayRateSecHistory(eventData.RateSecHistory, reportTimestamp)
+    } else {
+        document.getElementById("averageDisplay").innerText = "Not available for user-defined"``
+    }
+
+    const printButton = document.getElementById("printButton");
+    if (printButton !== null) {
+        printButton.onclick = () => {
+            window.print();
+        };
+    }
+}
+
+
+function displayRateSecHistory(history, endTimestamp) {
     const dataIntervalSeconds = 60;
     document.getElementById("chartRouteCount-outerContainer").classList.remove("noDisplay");
     const RouteChangeChart = new Chart(ctxRouteCount, {
@@ -198,7 +238,7 @@ function displayRateSecHistory(history) {
     if (history.length === 0) {
         return;
     }
-    const t = Date.now();
+    const t = endTimestamp * 1000;
     const labels = [];
     const data = [];
     for (let i = 1; i < history.length; i++) {

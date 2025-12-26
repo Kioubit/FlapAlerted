@@ -63,7 +63,7 @@ func getActiveFlapsRoa(w http.ResponseWriter, _ *http.Request) {
 	b, err := json.Marshal(response)
 	if err != nil {
 		logger.Warn("Failed to marshal ROA data to JSON", "error", err)
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	_, _ = w.Write(b)

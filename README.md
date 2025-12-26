@@ -137,6 +137,18 @@ Configuration:
 
 To disable this module, add the following tag to the `MODULES` variable in the Makefile: `disable_mod_collector`
 
+#### mod_history (Enabled by default) - *History Provider*
+
+A history provider module that stores flap event data as JSON files on disk. This allows for persistent tracking and retrieval of flapping events after they have concluded.
+
+Configuration:
+- `-historyEnable`: Enable flap event history storage (default `false`)
+- `-historyDir`: Directory where event JSON files will be stored
+- `-historyRetention`: How long to keep history files on disk before deletion
+- `-historyMaxCount`: Maximum number of history files to retain in the directory
+
+To disable this module, add the following tag to the `MODULES` variable in the `Makefile`: `disable_mod_history`
+
 #### mod_roaFilter (Disabled by default)
 Filters a ROA file in JSON format to remove flapping prefixes.
 The filtered prefixes are to be re-added by the external program updating the ROA file at regular intervals.

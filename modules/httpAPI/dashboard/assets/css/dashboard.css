@@ -194,6 +194,25 @@ a:hover {
     color: var(--accent-color);
 }
 
+.width-fit-content {
+    max-width: fit-content;
+}
+
+.styled-btn {
+    padding: 0.5rem 1rem;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-weight: 500;
+    transition: filter 0.2s ease;
+}
+
+.styled-btn:hover {
+    filter: brightness(0.9);
+}
+
 .SessionsDialog-closeButton {
     float: right;
     margin-bottom: 10px;
@@ -204,17 +223,17 @@ a:hover {
     padding: 20px;
 }
 
-.SessionsDialog-spinner {
+.dialog-spinner {
     border: 4px solid #f3f3f3;
     border-top: 4px solid #3498db;
     border-radius: 50%;
     width: 30px;
     height: 30px;
-    animation: SessionsDialog-spin 1s linear infinite;
+    animation: dialog-spin 1s linear infinite;
     margin: 15px auto;
 }
 
-@keyframes SessionsDialog-spin {
+@keyframes dialog-spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
 }
@@ -312,21 +331,6 @@ a:hover {
     font-size: 0.875rem;
 }
 
-#userDefinedTracking input[type="submit"] {
-    padding: 0.5rem 1rem;
-    background: var(--primary-color);
-    color: white;
-    border: none;
-    border-radius: var(--radius);
-    cursor: pointer;
-    font-weight: 500;
-    transition: background-color 0.2s ease;
-}
-
-#userDefinedTracking input[type="submit"]:hover {
-    background: #1d4ed8;
-}
-
 @media screen and (max-width: 800px) {
     .controls-grid {
         grid-template-columns: 1fr;
@@ -341,23 +345,87 @@ a:hover {
     }
 }
 
+#historicalDialog {
+    border: none;
+    border-radius: 8px;
+    padding: 20px;
+    width: 90%;
+    max-width: 600px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+}
+
+#historicalDialog::backdrop {
+    background: rgba(0, 0, 0, 0.8);
+}
+
+.historicalDialog-closeButton {
+    float: right;
+    background: var(--primary-color);
+    border: none;
+    color: white;
+    padding: 5px 10px;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+.historicalDialog-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+.historicalDialog-headerCell {
+    border-bottom: 2px solid #444;
+    padding: 10px;
+    text-align: left;
+}
+
+.historicalDialog-row td {
+    padding: 10px;
+    border-bottom: 1px solid #333;
+}
+
+.historicalDialog-loading {
+    text-align: center;
+    padding: 20px;
+}
+
+.historicalDialog-spinner {
+    border: 4px solid rgba(255, 255, 255, 0.1);
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border-left-color: #09f;
+    animation: spin 1s linear infinite;
+    display: inline-block;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.historicalDialog-error {
+    color: #ff6b6b;
+    font-weight: bold;
+    margin-top: 10px;
+}
+
+.historicalDialog-trackBtn {
+    background: #444;
+    color: #fff;
+    border: 1px solid #666;
+    padding: 2px 8px;
+    cursor: pointer;
+    text-decoration: none;
+    font-size: 0.8em;
+}
+
 /* View Toggle Button - positioned below footer in normal view */
 .view-toggle {
     display: block;
     margin: 1rem auto;
-    padding: 0.5rem 1rem;
-    background: var(--primary-color);
-    color: white;
-    border: none;
-    border-radius: var(--radius);
-    cursor: pointer;
     font-size: 0.875rem;
-    transition: background-color 0.2s ease, transform 0.2s ease;
-}
-
-.view-toggle:hover {
-    background: #1d4ed8;
-    transform: translateY(-1px);
 }
 
 /* Gauge Only View - Hide non-essential elements */

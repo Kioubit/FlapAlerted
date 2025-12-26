@@ -7,14 +7,10 @@ import (
 	"FlapAlerted/monitor"
 	"crypto/subtle"
 	"embed"
-	"encoding/json"
 	"flag"
-	"fmt"
-	"io/fs"
 	"log/slog"
 	"net"
 	"net/http"
-	"net/netip"
 	"os"
 	"strconv"
 	"strings"
@@ -62,22 +58,27 @@ func startComplete() {
 	go streamServe()
 
 	mux := http.NewServeMux()
+	// --- Primary endpoints ---
 	mux.Handle("/", mainPageHandler())
 	mux.HandleFunc("/flaps/prefix", antiScrapeMiddleware(getPrefix))
 	mux.HandleFunc("/flaps/statStream", getStatisticStream)
 	mux.HandleFunc("/sessions", antiScrapeMiddleware(getBgpSessions))
 
-	mux.HandleFunc("/capabilities", requireAPIKeyWhenLimited(showCapabilities))
-	mux.HandleFunc("/flaps/avgRouteChanges90", requireAPIKeyWhenLimited(getAvgRouteChanges))
-	mux.HandleFunc("/flaps/active/compact", requireAPIKeyWhenLimited(getActiveFlaps))
-	mux.HandleFunc("/flaps/active/roa", requireAPIKeyWhenLimited(getActiveFlapsRoa))
-	mux.HandleFunc("/flaps/metrics/json", requireAPIKeyWhenLimited(metrics))
-	mux.HandleFunc("/flaps/metrics/prometheus", requireAPIKeyWhenLimited(prometheus))
+	mux.HandleFunc("/flaps/historical/prefix", antiScrapeMiddleware(getHistoricalPrefix))
+	mux.HandleFunc("/flaps/historical/list", antiScrapeMiddleware(getHistoricalList))
 
 	if *maxUserDefinedMonitors != 0 {
 		mux.HandleFunc("/userDefined/subscribe", getUserDefinedStatisticStream)
 		mux.HandleFunc("/userDefined/prefix", antiScrapeMiddleware(getUserDefinedStatistic))
 	}
+
+	// --- Secondary endpoints ---
+	mux.HandleFunc("/capabilities", requireAPIKeyWhenLimited(getCapabilities))
+	mux.HandleFunc("/flaps/avgRouteChanges90", requireAPIKeyWhenLimited(getAvgRouteChanges))
+	mux.HandleFunc("/flaps/active/compact", requireAPIKeyWhenLimited(getActiveFlaps))
+	mux.HandleFunc("/flaps/active/roa", requireAPIKeyWhenLimited(getActiveFlapsRoa))
+	mux.HandleFunc("/flaps/metrics/json", requireAPIKeyWhenLimited(metrics))
+	mux.HandleFunc("/flaps/metrics/prometheus", requireAPIKeyWhenLimited(prometheus))
 
 	s := &http.Server{
 		ReadHeaderTimeout: 10 * time.Second,
@@ -155,118 +156,4 @@ func antiScrapeMiddleware(next http.HandlerFunc) http.HandlerFunc {
 
 		next(w, r)
 	}
-}
-
-func getAvgRouteChanges(w http.ResponseWriter, _ *http.Request) {
-	avg := monitor.GetAverageRouteChanges90()
-	avgStr := strconv.FormatFloat(avg, 'f', 2, 64)
-	_, _ = w.Write([]byte(avgStr))
-}
-
-func mainPageHandler() http.Handler {
-	fSys := fs.FS(dashboardContent)
-	html, _ := fs.Sub(fSys, "dashboard")
-	return http.FileServer(http.FS(html))
-}
-
-func showCapabilities(w http.ResponseWriter, _ *http.Request) {
-	b, err := json.Marshal(monitor.GetCapabilities())
-	if err != nil {
-		logger.Warn("JSON marshal failed for showCapabilities", "error", err)
-		w.WriteHeader(500)
-		return
-	}
-	_, _ = w.Write(b)
-}
-
-func getCapsWithModHttpJSON() ([]byte, error) {
-	caps := monitor.GetCapabilities()
-	type ModHttpCaps struct {
-		GageMaxValue       uint `json:"gageMaxValue"`
-		GageDisableDynamic bool `json:"gageDisableDynamic"`
-		MaxUserDefined     uint `json:"maxUserDefined"`
-	}
-
-	fullCaps := struct {
-		monitor.Capabilities
-		ModHttpCaps ModHttpCaps `json:"modHttp"`
-	}{
-		Capabilities: caps,
-		ModHttpCaps: ModHttpCaps{
-			GageMaxValue:       *gageMaxValue,
-			GageDisableDynamic: *gageDisableDynamic,
-			MaxUserDefined:     *maxUserDefinedMonitors,
-		},
-	}
-	return json.Marshal(fullCaps)
-}
-
-func getActiveFlaps(w http.ResponseWriter, _ *http.Request) {
-	activeFlaps := monitor.GetActiveFlapsSummary()
-
-	b, err := json.Marshal(activeFlaps)
-	if err != nil {
-		logger.Warn("Failed to marshal list to JSON", "error", err)
-		w.WriteHeader(500)
-		return
-	}
-	_, _ = w.Write(b)
-}
-
-func getPrefix(w http.ResponseWriter, r *http.Request) {
-	prefix, err := netip.ParsePrefix(r.URL.Query().Get("prefix"))
-	if err != nil {
-		_, _ = w.Write([]byte("null"))
-		return
-	}
-
-	f, found := analyze.GetActiveFlapPrefix(prefix)
-	if !found {
-		_, _ = w.Write([]byte("null"))
-		return
-	}
-	_ = json.NewEncoder(w).Encode(analyze.FullFlapEvent(f))
-}
-
-func metrics(w http.ResponseWriter, _ *http.Request) {
-	b, err := json.Marshal(monitor.GetMetric())
-	if err != nil {
-		w.WriteHeader(500)
-		return
-	}
-	_, _ = w.Write(b)
-}
-
-func prometheus(w http.ResponseWriter, _ *http.Request) {
-	metric := monitor.GetMetric()
-	output := fmt.Sprintln("# HELP active_flap_count Number of actively flapping prefixes")
-	output += fmt.Sprintln("# TYPE active_flap_count gauge")
-	output += fmt.Sprintln("active_flap_count", metric.ActiveFlapCount)
-
-	output += fmt.Sprintln("# HELP active_flap_route_change_count Number of path changes caused by actively flapping prefixes")
-	output += fmt.Sprintln("# TYPE active_flap_route_change_count gauge")
-	output += fmt.Sprintln("active_flap_route_change_count", metric.ActiveFlapTotalPathChangeCount)
-
-	output += fmt.Sprintln("# HELP route_change_count Number of path changes by all prefixes")
-	output += fmt.Sprintln("# TYPE route_change_count gauge")
-	output += fmt.Sprintln("route_change_count", metric.TotalPathChangeCount)
-
-	output += fmt.Sprintln("# HELP average_route_changes_90 90th percentile average of route changes over the last 250 seconds, as overall route changes per second")
-	output += fmt.Sprintln("# TYPE average_route_changes_90 gauge")
-	output += fmt.Sprintln("average_route_changes_90", metric.AverageRouteChanges90)
-
-	output += fmt.Sprintln("# HELP sessions Number of connected BGP feeds")
-	output += fmt.Sprintln("# TYPE sessions gauge")
-	output += fmt.Sprintln("sessions", metric.Sessions)
-
-	_, _ = w.Write([]byte(output))
-}
-
-func getBgpSessions(w http.ResponseWriter, _ *http.Request) {
-	info, err := monitor.GetSessionInfoJson()
-	if err != nil {
-		w.WriteHeader(500)
-		return
-	}
-	_, _ = w.Write([]byte(info))
 }

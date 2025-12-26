@@ -4,6 +4,7 @@ import (
 	"FlapAlerted/analyze"
 	"FlapAlerted/config"
 	"log/slog"
+	"net/netip"
 	"sync/atomic"
 )
 
@@ -97,6 +98,38 @@ func GetRegisteredModuleNames() []string {
 		moduleNameList[i] = moduleList[i].Name()
 	}
 	return moduleNameList
+}
+
+// -- Providers --
+
+type HistoricalEventMeta struct {
+	Prefix    netip.Prefix
+	Timestamp int64
+}
+
+type HistoryProvider interface {
+	// GetHistoricalEvent returns the corresponding event to the HistoricalEventMeta.
+	// If the event was not found, it returns nil and not an error.
+	GetHistoricalEvent(m HistoricalEventMeta) (*analyze.FlapEvent, error)
+	// GetHistoricalEventLatest returns the most recent event for a prefix along with HistoricalEventMeta metadata.
+	// If no event was found, it returns nil and not an error.
+	GetHistoricalEventLatest(prefix netip.Prefix) (*analyze.FlapEvent, HistoricalEventMeta, error)
+	// GetHistoricalEventList returns the list of available past events. Must be sorted newest first.
+	GetHistoricalEventList() ([]HistoricalEventMeta, error)
+	// ActiveHistoryProvider must return true if a history provider is enabled.
+	ActiveHistoryProvider() bool
+}
+
+func GetHistoryProvider() HistoryProvider {
+	for _, m := range moduleList {
+		if hp, ok := m.(HistoryProvider); ok {
+			if !hp.ActiveHistoryProvider() {
+				continue
+			}
+			return hp
+		}
+	}
+	return nil
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

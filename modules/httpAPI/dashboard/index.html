@@ -75,7 +75,7 @@
                 <div class="title">User-defined tracking</div>
                 <form action="user/" method="GET">
                     <input type="text" name="prefix" placeholder="Enter prefix" required>
-                    <input type="submit" value="Track">
+                    <input type="submit" class="styled-btn" value="Track">
                 </form>
             </div>
             <div class="control-item">
@@ -84,10 +84,11 @@
                     Hide events with a rate of zero
                 </label>
             </div>
+            <button id="viewHistoricalEvents" class="styled-btn width-fit-content">View Historical Events</button>
         </div>
     </div>
 </div>
-<button id="gaugeOnlyToggle" class="view-toggle">Gauge-only view</button>
+<button id="gaugeOnlyToggle" class="styled-btn view-toggle">Gauge-only view</button>
 
 <dialog id="sessionsDialog">
     <button id="closeSessionsDialog" class="SessionsDialog-closeButton">Close</button>
@@ -95,7 +96,7 @@
 
     <div id="sessionsLoading" class="SessionsDialog-loading">
         <p>Loading sessions...</p>
-        <div class="SessionsDialog-spinner"></div>
+        <div class="dialog-spinner"></div>
     </div>
 
     <div id="sessionsTableContainer">
@@ -118,8 +119,30 @@
             </tfoot>
         </table>
     </div>
-
     <p id="sessionsError" class="SessionsDialog-error"></p>
+</dialog>
+<dialog id="historicalDialog">
+    <button id="closeHistoricalDialog" class="historicalDialog-closeButton">Close</button>
+    <h2>Historical Flap Events</h2>
+
+    <div id="historicalLoading" class="historicalDialog-loading">
+        <p>Fetching historical data...</p>
+        <div class="dialog-spinner"></div>
+    </div>
+
+    <div id="historicalTableContainer">
+        <table id="historicalTable" class="historicalDialog-table">
+            <thead>
+            <tr class="historicalDialog-headerRow">
+                <th class="historicalDialog-headerCell">Prefix</th>
+                <th class="historicalDialog-headerCell">Timestamp</th>
+                <th class="historicalDialog-headerCell">Action</th>
+            </tr>
+            </thead>
+            <tbody id="historicalTableBody"></tbody>
+        </table>
+    </div>
+    <p id="historicalError" class="historicalDialog-error"></p>
 </dialog>
 </body>
 </html>
