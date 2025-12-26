@@ -76,7 +76,7 @@ const dataRouteChangeCount = {
         prefixInfoEndpoint = `../userDefined/prefix?prefix=${encodeURIComponent(prefix)}`;
     }
     if (timestamp) {
-        prefixInfoEndpoint = historicalEndpoint+`&timestamp=${timestamp}`;
+        prefixInfoEndpoint = `${historicalEndpoint}&timestamp=${timestamp}`;
     }
     fetch(prefixInfoEndpoint, getFetchOptions()).then((response) => response.json()).then(async (json) => {
         if (json === null && !timestamp) {

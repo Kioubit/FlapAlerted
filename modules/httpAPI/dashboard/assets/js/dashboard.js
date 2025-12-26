@@ -504,7 +504,7 @@ getStats();
         tableContainer.style.display = 'none';
 
         try {
-            const response = await fetch('/flaps/historical/list');
+            const response = await fetch('flaps/historical/list', getFetchOptions());
 
             if (!response.ok) {
                 const errorText = await response.text();
