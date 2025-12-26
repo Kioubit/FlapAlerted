@@ -8,6 +8,7 @@ import (
 	"crypto/subtle"
 	"embed"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io/fs"
@@ -65,7 +66,6 @@ func startComplete() {
 	mux.Handle("/", mainPageHandler())
 	mux.HandleFunc("/flaps/prefix", antiScrapeMiddleware(getPrefix))
 	mux.HandleFunc("/flaps/statStream", getStatisticStream)
-	mux.HandleFunc("/flaps/active/history", antiScrapeMiddleware(getFlapHistory))
 	mux.HandleFunc("/sessions", antiScrapeMiddleware(getBgpSessions))
 
 	mux.HandleFunc("/capabilities", requireAPIKeyWhenLimited(showCapabilities))
@@ -164,28 +164,6 @@ func getAvgRouteChanges(w http.ResponseWriter, _ *http.Request) {
 	_, _ = w.Write([]byte(avgStr))
 }
 
-func getFlapHistory(w http.ResponseWriter, r *http.Request) {
-	prefix, err := netip.ParsePrefix(r.URL.Query().Get("cidr"))
-	if err != nil {
-		w.WriteHeader(500)
-		_, _ = w.Write([]byte("null"))
-		return
-	}
-	result, found := analyze.GetActiveFlapPrefix(prefix)
-	if !found {
-		w.WriteHeader(500)
-		_, _ = w.Write([]byte("null"))
-		return
-	}
-
-	marshaled, err := json.Marshal(result.RateSecHistory)
-	if err != nil {
-		w.WriteHeader(500)
-		return
-	}
-	_, _ = w.Write(marshaled)
-}
-
 func mainPageHandler() http.Handler {
 	fSys := fs.FS(dashboardContent)
 	html, _ := fs.Sub(fSys, "dashboard")
@@ -243,36 +221,48 @@ func getPrefix(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	f, found := analyze.GetActiveFlapPrefix(prefix)
-	if !found {
+	js, err := flapToJSON(prefix, false)
+	if err != nil {
 		_, _ = w.Write([]byte("null"))
 		return
+	}
+	_, _ = w.Write(js)
+}
+
+func flapToJSON(prefix netip.Prefix, isUserDefined bool) ([]byte, error) {
+	var f analyze.FlapEvent
+	var found bool
+	if isUserDefined {
+		f, found = analyze.GetUserDefinedMonitorEvent(prefix)
+		if !found {
+			return nil, errors.New("prefix not found")
+		}
+	} else {
+		f, found = analyze.GetActiveFlapPrefix(prefix)
+		if !found {
+			return nil, errors.New("prefix not found")
+		}
 	}
 	pathList := make([]analyze.PathInfo, 0)
 	for v := range f.PathHistory.All() {
 		pathList = append(pathList, *v)
 	}
 
-	js, err := json.Marshal(struct {
-		Prefix     string
-		FirstSeen  int64
-		RateSec    int
-		TotalCount uint64
-		Paths      []analyze.PathInfo
+	return json.Marshal(struct {
+		Prefix         string
+		FirstSeen      int64
+		RateSec        int
+		RateSecHistory []int
+		TotalCount     uint64
+		Paths          []analyze.PathInfo
 	}{
 		f.Prefix.String(),
 		f.FirstSeen,
 		f.RateSec,
+		f.RateSecHistory,
 		f.TotalPathChanges,
 		pathList,
 	})
-	if err != nil {
-		w.WriteHeader(500)
-		logger.Warn("Failed to marshal prefix to JSON", "error", err)
-		_, _ = w.Write([]byte("Internal error"))
-	} else {
-		_, _ = w.Write(js)
-	}
 }
 
 func metrics(w http.ResponseWriter, _ *http.Request) {

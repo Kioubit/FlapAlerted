@@ -12,7 +12,7 @@ import (
 
 var (
 	clientMutex sync.Mutex
-	clients     = make(map[chan string]struct{})
+	clients     = make(map[chan []byte]struct{})
 )
 
 func getStatisticStream(w http.ResponseWriter, r *http.Request) {
@@ -24,7 +24,7 @@ func getStatisticStream(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
-	messageChan := make(chan string, 40)
+	messageChan := make(chan []byte, 40)
 
 	clientMutex.Lock()
 	clients[messageChan] = struct{}{}
@@ -46,7 +46,7 @@ func getStatisticStream(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			continue
 		}
-		_, err = w.Write([]byte(formatEventStreamMessage("c", string(m))))
+		_, err = w.Write(formatEventStreamMessage("c", string(m)))
 		if err != nil {
 			return
 		}
@@ -56,7 +56,7 @@ func getStatisticStream(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		capabilities = []byte("{}")
 	}
-	_, err = w.Write([]byte(formatEventStreamMessage("ready", string(capabilities))))
+	_, err = w.Write(formatEventStreamMessage("ready", string(capabilities)))
 	if err != nil {
 		return
 	}
@@ -68,7 +68,7 @@ func getStatisticStream(w http.ResponseWriter, r *http.Request) {
 			if !ok {
 				return
 			}
-			_, err := w.Write([]byte(data))
+			_, err := w.Write(data)
 			if err != nil {
 				return
 			}
@@ -102,6 +102,6 @@ func streamServe() {
 	}
 }
 
-func formatEventStreamMessage(eventName string, data string) string {
-	return fmt.Sprintf("event: %s\ndata: %s\n\n", eventName, data)
+func formatEventStreamMessage(eventName string, data string) []byte {
+	return []byte(fmt.Sprintf("event: %s\ndata: %s\n\n", eventName, data))
 }

@@ -1,10 +1,6 @@
 import "./chartjs/4.5.0/chart.umd.min.js";
 import "./chartjs/chartjs-adapter-date-fns.bundle.min.js";
 
-window.onload = () => {
-    display();
-};
-
 function getFetchOptions() {
     return {
         headers: {
@@ -14,8 +10,8 @@ function getFetchOptions() {
 }
 
 const noDataPlugin = {
-    id: "noDataToDisplay",
-    afterDraw: (chart) => {
+    "id": "noDataToDisplay",
+    "afterDraw": (chart) => {
         const hasData = chart.data.datasets.some(dataset =>
             Array.isArray(dataset.data) &&
             dataset.data.length > 0
@@ -62,7 +58,7 @@ const dataRouteChangeCount = {
 };
 
 
-function display() {
+(function (){
     const ownURL = new URL(location.href);
     const prefix = ownURL.searchParams.get("prefix");
     const userDefined = ownURL.searchParams.get("userDefined") === "true";
@@ -83,7 +79,7 @@ function display() {
             return;
         }
 
-        const pJson = json["Paths"];
+        const pJson = json["PathHistory"];
         // pathMap contains path objects with the key being their first ASN
         const pathMap = new Map();
 
@@ -156,79 +152,73 @@ function display() {
                 window.print();
             };
         }
-
+        if (!userDefined) {
+            displayRateSecHistory(json.RateSecHistory)
+        } else {
+            document.getElementById("averageDisplay").innerText = "Not available for user-defined"``
+        }
     }).catch((error) => {
         alert("Network error");
         console.log(error);
     });
+})();
 
-    if (!userDefined) {
-        fetch(`../flaps/active/history?cidr=${encodeURIComponent(prefix)}`, getFetchOptions()).then((response) => response.json()).then((json) => {
-            const dataIntervalSeconds = 60;
-            if (json === null) {
-                return;
-            }
-            document.getElementById("chartRouteCount-outerContainer").classList.remove("noDisplay");
-            const RouteChangeChart = new Chart(ctxRouteCount, {
-                type: "line",
-                plugins: [noDataPlugin],
-                data: dataRouteChangeCount,
-                options: {
-                    animation: false,
-                    scales: {
-                        y: {
-                            suggestedMin: 0,
-                            suggestedMax: 15
-                        }
-                    },
-                    maintainAspectRatio: false,
-                    plugins: {
-                        tooltip: {
-                            callbacks: {
-                                label: (context) => `${context.dataset.label}: ${context.parsed.y}/sec`
-                            }
-                        }
+function displayRateSecHistory(history) {
+    const dataIntervalSeconds = 60;
+    document.getElementById("chartRouteCount-outerContainer").classList.remove("noDisplay");
+    const RouteChangeChart = new Chart(ctxRouteCount, {
+        type: "line",
+        plugins: [noDataPlugin],
+        data: dataRouteChangeCount,
+        options: {
+            animation: false,
+            scales: {
+                y: {
+                    suggestedMin: 0,
+                    suggestedMax: 15
+                }
+            },
+            maintainAspectRatio: false,
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: (context) => `${context.dataset.label}: ${context.parsed.y}/sec`
                     }
                 }
-            });
-            window.addEventListener("beforeprint", () => {
-                RouteChangeChart.resize(700, 150);
-            });
-            window.addEventListener("afterprint", () => {
-                RouteChangeChart.resize();
-            });
-
-            if (json.length === 0) {
-                return;
             }
-            const t = Date.now();
-            const labels = [];
-            const data = [];
-            for (let i = 1; i < json.length; i++) {
-                // Timestamps are within an accuracy of about 60 seconds
-                const ts = new Date(t - (1000 * dataIntervalSeconds * (json.length - i)));
-                const timeStamp = `${String(ts.getHours()).padStart(2, "0")}:${String(ts.getMinutes()).padStart(2, "0")}:${String(ts.getSeconds()).padStart(2, "0")}`;
-                labels.push(timeStamp);
-                data.push(json[i]);
-            }
-            if (data.length === 0) {
-                return;
-            }
+        }
+    });
+    window.addEventListener("beforeprint", () => {
+        RouteChangeChart.resize(700, 150);
+    });
+    window.addEventListener("afterprint", () => {
+        RouteChangeChart.resize();
+    });
 
-            const dataSum = data.reduce((s, a) => s + a, 0);
-            const avg = ((dataSum / data.length)).toFixed(2);
-            document.getElementById("averageDisplay").innerText = `${avg}/s during the last ${toTimeElapsed(data.length * dataIntervalSeconds)}`;
-
-            RouteChangeChart.data.labels = labels;
-            RouteChangeChart.data.datasets[0].data = data;
-            RouteChangeChart.update();
-        }).catch((error) => {
-            alert("Network error");
-            console.log(error);
-        });
-    } else {
-        document.getElementById("averageDisplay").innerText = "Not available for user-defined"
+    if (history.length === 0) {
+        return;
     }
+    const t = Date.now();
+    const labels = [];
+    const data = [];
+    for (let i = 1; i < history.length; i++) {
+        // Timestamps are within an accuracy of about 60 seconds
+        const ts = new Date(t - (1000 * dataIntervalSeconds * (history.length - i)));
+        const timeStamp = `${String(ts.getHours()).padStart(2, "0")}:${String(ts.getMinutes()).padStart(2, "0")}:${String(ts.getSeconds()).padStart(2, "0")}`;
+        labels.push(timeStamp);
+        data.push(history[i]);
+    }
+    if (data.length === 0) {
+        return;
+    }
+
+    const dataSum = data.reduce((s, a) => s + a, 0);
+    const avg = ((dataSum / data.length)).toFixed(2);
+    document.getElementById("averageDisplay").innerText = `${avg}/s during the last ${toTimeElapsed(data.length * dataIntervalSeconds)}`;
+
+    RouteChangeChart.data.labels = labels;
+    RouteChangeChart.data.datasets[0].data = data;
+    RouteChangeChart.update();
 }
 
 function asnToColor(input) {

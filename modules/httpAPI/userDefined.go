@@ -3,7 +3,6 @@
 package httpAPI
 
 import (
-	"FlapAlerted/analyze"
 	"FlapAlerted/monitor"
 	"encoding/json"
 	"net/http"
@@ -23,20 +22,18 @@ func getUserDefinedStatisticStream(w http.ResponseWriter, r *http.Request) {
 
 	prefix, err := netip.ParsePrefix(r.URL.Query().Get("prefix"))
 	if err != nil {
-		_, _ = w.Write([]byte(formatEventStreamMessage("e", "Invalid prefix")))
-		flusher.Flush()
+		_, _ = w.Write(formatEventStreamMessage("e", "Invalid prefix"))
 		return
 	}
 
 	if monitor.GetNumberOfUserDefinedMonitorClients() >= int(*maxUserDefinedMonitors) {
-		_, _ = w.Write([]byte(formatEventStreamMessage("e", "Maximum number of user-defined tracked prefixes reached")))
-		flusher.Flush()
+		_, _ = w.Write(formatEventStreamMessage("e", "Maximum number of user-defined tracked prefixes reached"))
 		return
 	}
 
 	statisticChannel, err := monitor.NewUserDefinedMonitor(prefix)
 	if err != nil {
-		_, _ = w.Write([]byte(formatEventStreamMessage("e", err.Error())))
+		_, _ = w.Write(formatEventStreamMessage("e", err.Error()))
 		return
 	}
 
@@ -46,7 +43,8 @@ func getUserDefinedStatisticStream(w http.ResponseWriter, r *http.Request) {
 		monitor.RemoveUserDefinedMonitor(prefix, statisticChannel)
 	}()
 
-	_, _ = w.Write([]byte(formatEventStreamMessage("valid", "")))
+	_, _ = w.Write(formatEventStreamMessage("valid", ""))
+	flusher.Flush()
 
 	for {
 		select {
@@ -59,7 +57,7 @@ func getUserDefinedStatisticStream(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			_, err = w.Write([]byte(formatEventStreamMessage("u", string(result))))
+			_, err = w.Write(formatEventStreamMessage("u", string(result)))
 			if err != nil {
 				return
 			}
@@ -74,37 +72,13 @@ func getUserDefinedStatisticStream(w http.ResponseWriter, r *http.Request) {
 func getUserDefinedStatistic(w http.ResponseWriter, r *http.Request) {
 	prefix, err := netip.ParsePrefix(r.URL.Query().Get("prefix"))
 	if err != nil {
-		w.WriteHeader(500)
-		return
-	}
-
-	f, found := analyze.GetUserDefinedMonitorEvent(prefix)
-	if !found {
 		_, _ = w.Write([]byte("null"))
 		return
 	}
 
-	pathList := make([]analyze.PathInfo, 0)
-	for v := range f.PathHistory.All() {
-		pathList = append(pathList, *v)
-	}
-
-	js, err := json.Marshal(struct {
-		Prefix     string
-		FirstSeen  int64
-		RateSec    int
-		TotalCount uint64
-		Paths      []analyze.PathInfo
-	}{
-		f.Prefix.String(),
-		f.FirstSeen,
-		f.RateSec,
-		f.TotalPathChanges,
-		pathList,
-	})
+	js, err := flapToJSON(prefix, true)
 	if err != nil {
-		w.WriteHeader(500)
-		_, _ = w.Write([]byte(err.Error()))
+		_, _ = w.Write([]byte("null"))
 		return
 	}
 	_, _ = w.Write(js)
