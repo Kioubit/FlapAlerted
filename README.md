@@ -73,6 +73,8 @@ Provides the following http API endpoints on port `8699`:
 - `/flaps/metrics/json`
 - `/flaps/metrics/prometheus`
 - `/flaps/avgRouteChanges90`
+- `/flaps/historical/prefix`
+- `/flaps/historical/list`
 
 It also provides a user interface (on the same port) at path:
 - `/`
@@ -94,12 +96,12 @@ Configuration:
 ```
 To disable this module, add the following tag to the `MODULES` variable in the `Makefile`: `disable_mod_httpAPI`
 
-#### mod_log (Enabled by default)
+#### mod_log
 Logs each detected active prefix to `STDOUT`.
 
 To disable this module, add the following tag to the `MODULES` variable in the `Makefile`: `disable_mod_log`
 
-#### mod_script (Enabled by default, except for docker builds)
+#### mod_script (Disabled by default for docker builds)
 Allows executing custom scripts when BGP flap events are detected. Scripts can be triggered at both the start and end of flap events.
 
 Configuration:
@@ -110,7 +112,7 @@ The scripts receive flap event data as a JSON string via command line argument.
 
 To disable this module, add the following tag to the `MODULES` variable in the `Makefile`: `disable_mod_script`
 
-#### mod_webhook (Enabled by default)
+#### mod_webhook
 
 Sends HTTP POST requests to specified URLs when BGP flap events are detected (at start and end).
 
@@ -122,9 +124,9 @@ Configuration:
 
 Payload: Flap event data is sent as a JSON string in the request body.
 
-To disable this module, add the following tag to the `MODULES` variable in the Makefile: `disable_mod_webhook`
+To disable this module, add the following tag to the `MODULES` variable in the `Makefile`: `disable_mod_webhook`
 
-#### mod_collector (Enabled by default)
+#### mod_collector
 
 Connects to a FlapAlerted collector via TCP and allows it to retrieve event information.
 
@@ -135,9 +137,9 @@ Configuration:
 
 [Protocol documentation](modules/collector/protocol.md)
 
-To disable this module, add the following tag to the `MODULES` variable in the Makefile: `disable_mod_collector`
+To disable this module, add the following tag to the `MODULES` variable in the `Makefile`: `disable_mod_collector`
 
-#### mod_history (Enabled by default) - *History Provider*
+#### mod_history - *History Provider*
 
 A history provider module that stores flap event data as JSON files on disk. This allows for persistent tracking and retrieval of flapping events after they have concluded.
 
