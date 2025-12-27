@@ -62,7 +62,7 @@ protocol bgp flapalerted {
 ### Module Documentation
 The program supports additional modules that can be customized at build-time.
 
-#### mod_httpAPI (Enabled by default)
+#### mod_httpAPI
 Provides the following http API endpoints on port `8699`:
 
 - `/capabilities`
