@@ -68,7 +68,7 @@ func (m *Module) callWebHook(URL string, f analyze.FlapEvent) {
 		return
 	}
 	l := m.logger.With("url", URL, "prefix", f.Prefix)
-	eventJSON, err := json.Marshal(f)
+	eventJSON, err := json.Marshal(analyze.FlapEventNoPaths(f))
 	if err != nil {
 		l.Error("Marshalling flap information failed", "error", err.Error())
 		return

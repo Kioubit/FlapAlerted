@@ -50,7 +50,7 @@ func getPrefix(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte("null"))
 		return
 	}
-	_ = json.NewEncoder(w).Encode(analyze.FullFlapEvent(f))
+	_ = json.NewEncoder(w).Encode(f)
 }
 
 func getHistoricalPrefix(w http.ResponseWriter, r *http.Request) {
@@ -96,9 +96,9 @@ func getHistoricalPrefix(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_ = json.NewEncoder(w).Encode(struct {
-		Event analyze.FullFlapEvent
+		Event analyze.FlapEvent
 		Meta  monitor.HistoricalEventMeta
-	}{analyze.FullFlapEvent(*f), meta})
+	}{*f, meta})
 }
 
 func getHistoricalList(w http.ResponseWriter, _ *http.Request) {

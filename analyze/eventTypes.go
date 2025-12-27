@@ -28,10 +28,9 @@ type FlapEventNotification struct {
 	IsStart bool
 }
 
-// FullFlapEvent bypasses the default summary serialization
-type FullFlapEvent FlapEvent
+type FlapEventNoPaths FlapEvent
 
-func (fe *FlapEvent) MarshalJSON() ([]byte, error) {
+func (fe *FlapEventNoPaths) MarshalJSON() ([]byte, error) {
 	type Alias FlapEvent
 
 	return json.Marshal(&struct {

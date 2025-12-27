@@ -81,7 +81,7 @@ func (m *Module) saveToDisk(f analyze.FlapEvent) {
 	filename := m.metaToFilename(meta)
 	path := filepath.Join(*historyDir, filename)
 
-	jsonData, err := json.Marshal(analyze.FullFlapEvent(f))
+	jsonData, err := json.Marshal(f)
 	if err != nil {
 		m.logger.Error("failed to marshal flap event", "error", err)
 		return

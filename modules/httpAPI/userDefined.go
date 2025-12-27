@@ -82,5 +82,5 @@ func getUserDefinedStatistic(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte("null"))
 		return
 	}
-	_ = json.NewEncoder(w).Encode(analyze.FullFlapEvent(f))
+	_ = json.NewEncoder(w).Encode(f)
 }

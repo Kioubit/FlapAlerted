@@ -48,7 +48,7 @@ func (m *Module) runScript(path string, f analyze.FlapEvent) {
 		return
 	}
 	l := m.logger.With("path", path, "prefix", f.Prefix)
-	eventJSON, err := json.Marshal(f)
+	eventJSON, err := json.Marshal(analyze.FlapEventNoPaths(f))
 	if err != nil {
 		l.Error("Marshalling flap information failed", "error", err.Error())
 		return
