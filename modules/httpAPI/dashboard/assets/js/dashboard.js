@@ -193,6 +193,8 @@ function updateCapabilities(response) {
         infoBox.innerText = `Table listing criteria: > ${data.UserParameters.RouteChangeCounter} route changes/min for ${data.UserParameters.OverThresholdTarget}min to list; ${data.UserParameters.UnderThresholdTarget}min below ${data.UserParameters.ExpiryRouteChangeCounter}/min to expire.`;
     }
 
+    historicalDialogOpenBtn.disabled = data.HistoryProviderAvailable === false;
+
     gageDisableDynamic = data.modHttp.gageDisableDynamic;
     gageMaxValue = data.modHttp.gageMaxValue;
     gauge.refresh(lastGageValue, gageMaxValue * gageMaxValueModifier);
@@ -477,17 +479,17 @@ getStats();
     };
 }
 
-
+const historicalDialogOpenBtn = document.getElementById('viewHistoricalEvents');
 {
     const historicalDialog = document.getElementById('historicalDialog');
-    const openBtn = document.getElementById('viewHistoricalEvents');
+
     const closeBtn = document.getElementById('closeHistoricalDialog');
     const tableBody = document.getElementById('historicalTableBody');
     const loadingElem = document.getElementById('historicalLoading');
     const errorElem = document.getElementById('historicalError');
     const tableContainer = document.getElementById('historicalTableContainer');
 
-    openBtn.addEventListener('click', () => {
+    historicalDialogOpenBtn.addEventListener('click', () => {
         historicalDialog.showModal();
         loadHistoricalEvents().then();
     });

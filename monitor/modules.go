@@ -135,9 +135,10 @@ func GetHistoryProvider() HistoryProvider {
 // ---------------------------------------------------------------------------------------------------------------------
 
 type Capabilities struct {
-	Version        string
-	Modules        []string
-	UserParameters UserParameters
+	Version                  string
+	Modules                  []string
+	HistoryProviderAvailable bool
+	UserParameters           UserParameters
 }
 
 type UserParameters struct {
@@ -151,8 +152,9 @@ type UserParameters struct {
 
 func GetCapabilities() Capabilities {
 	return Capabilities{
-		Version: programVersion,
-		Modules: GetRegisteredModuleNames(),
+		Version:                  programVersion,
+		Modules:                  GetRegisteredModuleNames(),
+		HistoryProviderAvailable: GetHistoryProvider() != nil,
 		UserParameters: UserParameters{
 			RouteChangeCounter:       config.GlobalConf.RouteChangeCounter,
 			OverThresholdTarget:      config.GlobalConf.OverThresholdTarget,
