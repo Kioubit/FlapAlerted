@@ -207,13 +207,13 @@ function updateCapabilities(response) {
 }
 
 let hideZeroRateEvents = false;
-if (localStorage.getItem("hideZeroRate") === "true") {
+if (localStorage.getItem("fa_hideZeroRate") === "true") {
     hideZeroRateEvents = true;
     document.getElementById("hideZeroRateEventsCheckbox").checked = true;
 }
 document.getElementById("hideZeroRateEventsCheckbox").addEventListener("click", (e) => {
     hideZeroRateEvents = e.target.checked;
-    localStorage.setItem("hideZeroRate", hideZeroRateEvents.toString());
+    localStorage.setItem("fa_hideZeroRate", hideZeroRateEvents.toString());
 });
 
 
@@ -555,7 +555,7 @@ getStats();
 const gaugeOnlyToggle = document.getElementById("gaugeOnlyToggle");
 if (gaugeOnlyToggle) {
     // Load saved preference
-    const isGaugeOnly = localStorage.getItem("gaugeOnlyView") === "true";
+    const isGaugeOnly = localStorage.getItem("fa_gaugeOnlyView") === "true";
     if (isGaugeOnly) {
         document.body.classList.add("gauge-only");
         gaugeOnlyToggle.textContent = "Full view";
@@ -564,6 +564,6 @@ if (gaugeOnlyToggle) {
     gaugeOnlyToggle.addEventListener("click", () => {
         const currentlyGaugeOnly = document.body.classList.toggle("gauge-only");
         gaugeOnlyToggle.textContent = currentlyGaugeOnly ? "Full view" : "Gauge-only view";
-        localStorage.setItem("gaugeOnlyView", currentlyGaugeOnly.toString());
+        localStorage.setItem("fa_gaugeOnlyView", currentlyGaugeOnly.toString());
     });
 }
