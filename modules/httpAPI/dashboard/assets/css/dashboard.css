@@ -288,6 +288,7 @@ a:hover {
     display: flex;
     align-items: center;
     gap: 0.75rem;
+    justify-content: center;
 }
 
 .control-item label {
@@ -305,16 +306,11 @@ a:hover {
     height: 18px;
 }
 
-#userDefinedTracking {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-
 #userDefinedTracking .title {
     font-size: 1rem;
     font-weight: 600;
     color: var(--text-primary);
+    margin-bottom: 0.4em;
 }
 
 #userDefinedTracking form {
@@ -334,6 +330,10 @@ a:hover {
 @media screen and (max-width: 800px) {
     .controls-grid {
         grid-template-columns: 1fr;
+    }
+
+    .control-item {
+        justify-content: start;
     }
 
     #userDefinedTracking form {
