@@ -201,6 +201,8 @@ function updateCapabilities(response) {
 
     if (data.modHttp.maxUserDefined === 0) {
         const userDefinedTrackingForm = document.querySelector("#userDefinedTracking form");
+        const submit = userDefinedTrackingForm.querySelector("button[type='submit']");
+        submit.disabled = true;
         userDefinedTrackingForm?.addEventListener("submit", (e) => {
             e.preventDefault();
             alert("This feature is disabled on this instance");
