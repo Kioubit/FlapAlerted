@@ -200,7 +200,7 @@ func (m *Module) rotate() {
 	var remainingFiles []os.DirEntry
 
 	for _, f := range files {
-		if !strings.HasSuffix(f.Name(), ".json") {
+		if f.IsDir() || !strings.HasSuffix(f.Name(), ".json") {
 			continue
 		}
 
