@@ -518,23 +518,35 @@ const historicalDialogOpenBtn = document.getElementById('viewHistoricalEvents');
             const data = await response.json();
 
             if (data.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="3" style="text-align:center">No historical events found.</td></tr>';
+                const row = document.createElement("tr")
+                const cell = document.createElement("td")
+                cell.textContent = "No historical events found";
+                cell.colSpan = 3;
+                cell.style.cssText = "text-align: center; padding-top: 1em;";
+                row.appendChild(cell);
+                tableBody.appendChild(row)
             } else {
-                data.forEach(event => {
-                    const row = document.createElement('tr');
-                    row.className = 'historicalDialog-row';
+                data.forEach(({ Prefix, Timestamp }) => {
+                    const row = document.createElement("tr");
+                    row.className = "historicalDialog-row";
 
-                    // Convert Unix timestamp to readable date
-                    const date = new Date(event.Timestamp * 1000).toLocaleString();
+                    const date = new Date(Timestamp * 1000).toLocaleString();
+                    const url = `analyze/?prefix=${encodeURIComponent(Prefix)}&timestamp=${Timestamp}`;
 
-                    // Create URL for tracking button
-                    const trackUrl = `analyze/?prefix=${encodeURIComponent(event.Prefix)}&timestamp=${event.Timestamp}`;
+                    const prefixTd = document.createElement("td");
+                    prefixTd.textContent = Prefix;
 
-                    row.innerHTML = `
-                        <td>${escapeHtml(event.Prefix)}</td>
-                        <td>${date}</td>
-                        <td><a href="${trackUrl}" class="historicalDialog-trackBtn">View</a></td>
-                    `;
+                    const dateTd = document.createElement("td");
+                    dateTd.textContent = date;
+
+                    const actionTd = document.createElement("td");
+                    const link = document.createElement("a");
+                    link.href = url;
+                    link.className = "historicalDialog-trackBtn";
+                    link.textContent = "View";
+                    actionTd.appendChild(link);
+
+                    row.append(prefixTd, dateTd, actionTd);
                     tableBody.appendChild(row);
                 });
             }
@@ -546,12 +558,6 @@ const historicalDialogOpenBtn = document.getElementById('viewHistoricalEvents');
             loadingElem.style.display = 'none';
             errorElem.textContent = `Failed to load events: ${error.message}`;
         }
-    }
-
-    function escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
     }
 }
 
