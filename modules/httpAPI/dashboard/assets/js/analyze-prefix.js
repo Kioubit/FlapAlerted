@@ -1,4 +1,4 @@
-import "./chartjs/4.5.0/chart.umd.min.js";
+import "./chartjs/4.5.1/chart.umd.min.js";
 import "./chartjs/chartjs-adapter-date-fns.bundle.min.js";
 
 function getFetchOptions() {
