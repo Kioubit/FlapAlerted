@@ -26,10 +26,10 @@
     <div id="grid-container-main">
         <div id="justgage"></div>
         <div id="prefixTableBox">
-            <table id="prefixTable">
+            <table id="tablePrefixes">
                 <thead>
                 <tr>
-                    <th>Prefix</th>
+                    <th class="toggle-view-btn" title="Switch to Peers view">Prefix <span class="toggle-view-icon">⇄</span></th>
                     <th>Duration</th>
                     <th>Route Changes</th>
                     <th>Rate</th>
@@ -38,6 +38,20 @@
                 <tbody id="prefixTableBody">
                 <tr>
                     <td colspan="4" class="centerText">...</td>
+                </tr>
+                </tbody>
+            </table>
+            <table id="tablePeers" class="noDisplay">
+                <thead>
+                <tr>
+                    <th class="toggle-view-btn" title="Switch to Prefixes view">Peer ASN <span class="toggle-view-icon">⇄</span></th>
+                    <th>Avg Rate (60 min)</th>
+                    <th>Rate</th>
+                </tr>
+                </thead>
+                <tbody id="peersTableBody">
+                <tr>
+                    <td colspan="3" class="centerText">...</td>
                 </tr>
                 </tbody>
             </table>
@@ -145,6 +159,15 @@
         </table>
     </div>
     <p id="historicalError" class="historicalDialog-error"></p>
+</dialog>
+<dialog id="peerHistoryDialog">
+    <button id="closePeerHistoryDialog" class="historicalDialog-closeButton">Close</button>
+    <button id="refreshPeerHistory" class="styled-btn">Refresh</button>
+    <h2>Peer <span id="peerHistoryASN"></span> Rate History</h2>
+    <div id="chartPeerHistoryContainer">
+        <canvas id="chartPeerHistory"></canvas>
+    </div>
+    <p id="peerHistoryError" class="historicalDialog-error"></p>
 </dialog>
 </body>
 </html>

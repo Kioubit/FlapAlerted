@@ -20,6 +20,18 @@ func getActiveFlaps(w http.ResponseWriter, _ *http.Request) {
 	_, _ = w.Write(b)
 }
 
+func getActivePeers(w http.ResponseWriter, _ *http.Request) {
+	activePeers := monitor.GetActivePeersSummary()
+
+	b, err := json.Marshal(activePeers)
+	if err != nil {
+		logger.Warn("Failed to marshal list to JSON", "error", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	_, _ = w.Write(b)
+}
+
 func getCapabilities(w http.ResponseWriter, _ *http.Request) {
 	b, err := json.Marshal(monitor.GetCapabilities())
 	if err != nil {

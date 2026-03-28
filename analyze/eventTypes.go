@@ -41,3 +41,17 @@ func (fe *FlapEventNoPaths) MarshalJSON() ([]byte, error) {
 		PathHistory: PathTrackerSummary{fe.PathHistory},
 	})
 }
+
+// ====================
+
+type PeerUpdateRate struct {
+	// ===== Core data =====
+	PeerASN uint32
+
+	// ===== Rate calculation =====
+	RateSecHistory []int
+	intervalCount  uint32
+	zeroCount      int
+	RateSec        int
+	RateSecAvg     float64 // Calculated on demand
+}

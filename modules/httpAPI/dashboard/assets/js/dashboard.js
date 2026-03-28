@@ -180,6 +180,66 @@ const liveRouteChart = new Chart(
     }
 );
 
+let peerHistoryChart = null;
+const ctxPeerHistory = document.getElementById("chartPeerHistory").getContext("2d");
+
+function initPeerChart() {
+    if (peerHistoryChart) return;
+    peerHistoryChart = new Chart(ctxPeerHistory, {
+        type: "line",
+        data: {
+            labels: [],
+            datasets: [{
+                label: "Changes/sec",
+                data: [],
+                borderColor: "rgba(37, 99, 235, 1)",
+                backgroundColor: "rgba(37, 99, 235, 0.1)",
+                fill: true,
+                tension: 0.3
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: { display: true, title: { display: true, text: 'Minutes Ago' } },
+                y: { beginAtZero: true }
+            }
+        }
+    });
+}
+
+const peerHistoryDialog = document.getElementById("peerHistoryDialog");
+const peerHistoryASNLabel = document.getElementById("peerHistoryASN");
+
+// Variable to store the currently viewed ASN so the refresh button knows what to fetch
+let currentHistoryASN = null;
+
+async function showPeerHistory(asn) {
+    currentHistoryASN = asn;
+    peerHistoryASNLabel.innerText = asn;
+
+    const errorElem = document.getElementById("peerHistoryError");
+    errorElem.innerText = "";
+
+    peerHistoryDialog.showModal();
+    initPeerChart();
+
+    // Explicitly reset chart data so old data doesn't flicker
+    peerHistoryChart.data.labels = [];
+    peerHistoryChart.data.datasets[0].data = [];
+    peerHistoryChart.update();
+
+    await fetchPeerHistory(asn);
+}
+
+// Add the Refresh Button event listener
+document.getElementById("refreshPeerHistory").addEventListener("click", () => {
+    if (currentHistoryASN) {
+        fetchPeerHistory(currentHistoryASN);
+    }
+});
+document.getElementById("closePeerHistoryDialog").onclick = () => peerHistoryDialog.close();
 
 function updateCapabilities(response) {
     const data = JSON.parse(response);
@@ -245,6 +305,115 @@ function addToChart(liveChart, points, unixTime, dataInterval, update) {
 }
 
 const prefixTable = document.getElementById("prefixTableBody");
+const peersTableBody = document.getElementById("peersTableBody");
+const tablePrefixes = document.getElementById("tablePrefixes");
+const tablePeers = document.getElementById("tablePeers");
+
+let activeTableView = 'prefixes';
+document.querySelectorAll(".toggle-view-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+        if (activeTableView === 'prefixes') {
+            activeTableView = 'peers';
+            tablePrefixes.classList.add('noDisplay');
+            tablePeers.classList.remove('noDisplay');
+        } else {
+            activeTableView = 'prefixes';
+            tablePrefixes.classList.remove('noDisplay');
+            tablePeers.classList.add('noDisplay');
+        }
+    });
+});
+
+function updatePeers(peerList) {
+    if (!peerList) {
+        peersTableBody.innerHTML = '<tr><td colspan="3" class="centerText"><b>Please wait</b></td></tr>';
+        return;
+    }
+
+    if (peerList.length === 0) {
+        peersTableBody.innerHTML = '<tr><td colspan="3" class="centerText">No active peers detected</td></tr>';
+        return;
+    }
+
+    // Sort array by highest RateSec
+    const sorted = [...peerList].sort((a, b) => b.RateSecAvg - a.RateSecAvg);
+    const limit = Math.min(101, sorted.length);
+
+    peersTableBody.innerHTML = "";
+    for (let i = 0; i < limit; i++) {
+        const item = sorted[i];
+        if (hideZeroRateEvents && item.RateSec < 1) continue;
+
+        const rowClass = item.RateSec < 1 ? ' class="inactive"' : "";
+        const rateDisplayAvg = item.RateSecAvg !== -1 ? `${item.RateSecAvg.toFixed(2)}/s` : "..";
+        const rateDisplay = item.RateSec !== -1 ? `${item.RateSec}/s` : "..";
+
+        const tr = document.createElement("tr");
+        if (rowClass) tr.className = "inactive";
+
+        tr.innerHTML = `
+        <td><a href="#" class="asn-link" data-asn="${item.ASN}">${item.ASN}</a></td>
+        <td>${rateDisplayAvg}</td>
+        <td>${rateDisplay}</td>
+    `;
+        tr.querySelector(".asn-link").addEventListener("click", (e) => {
+            e.preventDefault();
+            showPeerHistory(item.ASN);
+        });
+
+        peersTableBody.appendChild(tr);
+    }
+}
+
+
+async function fetchPeerHistory(asn) {
+    const refreshBtn = document.getElementById("refreshPeerHistory");
+    const errorElem = document.getElementById("peerHistoryError");
+
+    refreshBtn.disabled = true;
+    refreshBtn.classList.add("loading-btn");
+    errorElem.innerText = "Fetching...";
+    errorElem.style.color = "var(--text-secondary)"; // Neutral color while loading
+
+    try {
+        const response = await fetch(`peers/asn?asn=${asn}`, getFetchOptions());
+        if (!response.ok) throw new Error("Failed to fetch history");
+
+        const data = await response.json();
+
+        if (!data || data.RateSecHistory === null || data.RateSecHistory.length === 0) {
+            // Clear chart data
+            peerHistoryChart.data.labels = [];
+            peerHistoryChart.data.datasets[0].data = [];
+            peerHistoryChart.update();
+
+            errorElem.innerText = "No historical data available for this ASN.";
+            errorElem.style.color = "var(--accent-color)"; // Warning color
+            return;
+        }
+
+        const history = data.RateSecHistory;
+        const labels = history.map((_, i) => `${history.length - 1 - i}m`);
+
+        peerHistoryChart.data.labels = labels;
+        peerHistoryChart.data.datasets[0].data = history;
+        peerHistoryChart.update();
+
+        errorElem.innerText = "Data updated just now.";
+        errorElem.style.color = "green";
+
+        // Fade out the success message after 3 seconds
+        setTimeout(() => { if(errorElem.innerText.includes("just now")) errorElem.innerText = ""; }, 3000);
+
+    } catch (err) {
+        errorElem.innerText = `Error: ${err.message}`;
+        errorElem.style.color = "#ff6b6b"; // Error color
+    } finally {
+        refreshBtn.disabled = false;
+        refreshBtn.classList.remove("loading-btn");
+    }
+}
+
 
 function updateList(flapList) {
     if (flapList === null) {
@@ -313,6 +482,7 @@ function getStats() {
             const js = JSON.parse(event.data);
 
             const flapList = js["List"];
+            const peerList = js["ListPeers"];
             const stats = js["Stats"];
             const sessionCount = js["Sessions"];
             if (sessionCount !== -1) {
@@ -331,6 +501,7 @@ function getStats() {
             }
 
             updateList(flapList);
+            updatePeers(peerList);
 
 
             addToChart(liveRouteChart, [stats["Changes"], stats["ListedChanges"]], stats["Time"], dataIntervalSec, update);

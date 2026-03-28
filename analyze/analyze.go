@@ -11,6 +11,7 @@ import (
 
 var (
 	activeMap     = make(map[netip.Prefix]*FlapEvent)
+	activeMapPeer = make(map[uint32]*PeerUpdateRate)
 	activeMapLock sync.RWMutex
 )
 
@@ -22,6 +23,7 @@ var (
 var sendUserDefined atomic.Bool
 
 const intervalSec = 60
+const maxRateHistory = 60
 
 func RecordPathChanges(pathChan <-chan table.PathChange) (<-chan table.PathChange, <-chan []FlapEventNotification) {
 	userPathChangeChan := make(chan table.PathChange, 1000)
@@ -53,13 +55,32 @@ func RecordPathChanges(pathChan <-chan table.PathChange) (<-chan table.PathChang
 					clear(counterMap)
 				}
 				activeMapLock.Lock()
+
+				// Peer update rate tracking
+				for asn, peer := range activeMapPeer {
+					if peer.intervalCount == 0 {
+						peer.zeroCount++
+						if peer.zeroCount >= maxRateHistory {
+							delete(activeMapPeer, asn)
+						}
+					} else {
+						peer.zeroCount = 0
+						peer.RateSec = int(peer.intervalCount / intervalSec)
+						peer.intervalCount = 0
+						peer.RateSecHistory = append(peer.RateSecHistory, peer.RateSec)
+						if len(peer.RateSecHistory) > maxRateHistory {
+							peer.RateSecHistory = peer.RateSecHistory[1:]
+						}
+					}
+				}
+
 				for prefix, event := range activeMap {
 					intervalCount := event.TotalPathChanges - event.lastIntervalCount
 					event.RateSec = int(intervalCount / intervalSec)
 					event.lastIntervalCount = event.TotalPathChanges
 
 					event.RateSecHistory = append(event.RateSecHistory, event.RateSec)
-					if len(event.RateSecHistory) > 60 {
+					if len(event.RateSecHistory) > maxRateHistory {
 						event.RateSecHistory = event.RateSecHistory[1:]
 					}
 
@@ -145,6 +166,23 @@ func RecordPathChanges(pathChan <-chan table.PathChange) (<-chan table.PathChang
 					counterMap[pathChange.Prefix]++
 				}
 			}
+
+			// Peer update rate tracking
+			if len(pathChange.OldPath) != 0 {
+				peerASN := pathChange.OldPath[0]
+				if val, exists := activeMapPeer[peerASN]; exists {
+					val.intervalCount++
+				} else {
+					activeMapPeer[peerASN] = &PeerUpdateRate{
+						PeerASN:        peerASN,
+						RateSecHistory: make([]int, 0, 1),
+						intervalCount:  1,
+						zeroCount:      0,
+						RateSec:        -1,
+					}
+				}
+			}
+
 			activeMapLock.Unlock()
 
 		}

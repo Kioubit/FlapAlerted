@@ -61,6 +61,7 @@ func startComplete() {
 	// --- Primary endpoints ---
 	mux.Handle("/", mainPageHandler())
 	mux.HandleFunc("/flaps/prefix", antiScrapeMiddleware(getPrefix))
+	mux.HandleFunc("/peers/asn", antiScrapeMiddleware(getPeer))
 	mux.HandleFunc("/flaps/statStream", getStatisticStream)
 	mux.HandleFunc("/sessions", antiScrapeMiddleware(getBgpSessions))
 
@@ -74,6 +75,7 @@ func startComplete() {
 
 	// --- Secondary endpoints ---
 	mux.HandleFunc("/capabilities", requireAPIKeyWhenLimited(getCapabilities))
+	mux.HandleFunc("/peers/active", requireAPIKeyWhenLimited(getActivePeers))
 	mux.HandleFunc("/flaps/avgRouteChanges90", requireAPIKeyWhenLimited(getAvgRouteChanges))
 	mux.HandleFunc("/flaps/active/compact", requireAPIKeyWhenLimited(getActiveFlaps))
 	mux.HandleFunc("/flaps/active/roa", requireAPIKeyWhenLimited(getActiveFlapsRoa))

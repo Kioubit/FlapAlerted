@@ -67,6 +67,8 @@ Provides the following http API endpoints on port `8699`:
 
 - `/capabilities`
 - `/sessions`
+- `/peers/active`
+- `/peers/asn`
 - `/flaps/active/compact`
 - `/flaps/active/roa`
 - `/flaps/prefix?prefix=<cidr value>`

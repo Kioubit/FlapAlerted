@@ -53,6 +53,21 @@ func getPrefix(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(f)
 }
 
+func getPeer(w http.ResponseWriter, r *http.Request) {
+	asn, err := strconv.ParseUint(r.URL.Query().Get("asn"), 10, 32)
+	if err != nil {
+		_, _ = w.Write([]byte("null"))
+		return
+	}
+
+	p, found := analyze.GetActivePeer(uint32(asn))
+	if !found {
+		_, _ = w.Write([]byte("null"))
+		return
+	}
+	_ = json.NewEncoder(w).Encode(p)
+}
+
 func getHistoricalPrefix(w http.ResponseWriter, r *http.Request) {
 	timestamp := r.URL.Query().Get("timestamp")
 	prefix, err := netip.ParsePrefix(r.URL.Query().Get("prefix"))

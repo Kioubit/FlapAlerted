@@ -12,6 +12,10 @@
     box-sizing: border-box;
 }
 
+.noDisplay {
+    display: none;
+}
+
 body {
     color: var(--text-primary);
 }
@@ -98,33 +102,34 @@ body {
     overflow: auto;
 }
 
-#prefixTable {
+#prefixTableBox table {
     width: 100%;
     font-family: Arial, Helvetica, sans-serif;
     border-collapse: separate;
     border-spacing: 0;
 }
 
-#prefixTable thead {
+#prefixTableBox table thead {
     position: sticky;
     top: 0;
+    z-index: 2; /* To ensure headers stay above body elements */
 }
 
-#prefixTable td,
-#prefixTable th {
+#prefixTableBox table td,
+#prefixTableBox table th {
     border: 1px solid #ddd;
     padding: 8px;
 }
 
-#prefixTable tr:nth-child(even) {
+#prefixTableBox table tr:nth-child(even) {
     background-color: #f2f2f2;
 }
 
-#prefixTable tr:hover {
+#prefixTableBox table tr:hover {
     background-color: #ddd;
 }
 
-#prefixTable th {
+#prefixTableBox table th {
     padding-top: 12px;
     padding-bottom: 12px;
     text-align: left;
@@ -132,8 +137,25 @@ body {
     color: white;
 }
 
-#prefixTable tr.inactive {
+#prefixTableBox table tr.inactive {
     color: grey;
+}
+
+.toggle-view-btn {
+    cursor: pointer;
+    transition: filter 0.2s ease;
+    user-select: none;
+}
+
+.toggle-view-btn:hover {
+    filter: brightness(0.9);
+}
+
+.toggle-view-icon {
+    float: right;
+    font-size: 1.1em;
+    line-height: 1;
+    opacity: 0.9;
 }
 
 .footer {
@@ -498,4 +520,61 @@ a:hover {
     font-size: 12px;
     white-space: nowrap;
     z-index: 100;
+}
+
+
+.asn-link {
+    color: var(--primary-color);
+    text-decoration: underline;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+#peerHistoryDialog {
+    border: none;
+    border-radius: var(--radius);
+    padding: 2rem;
+    width: 90%;
+    max-width: 700px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+}
+
+#peerHistoryDialog::backdrop {
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(2px);
+}
+
+
+#chartPeerHistoryContainer {
+    height: 300px;
+    margin-top: 20px;
+}
+
+#refreshPeerHistory {
+    float: right;
+    margin-right: 10px;
+    padding: 4px 8px;
+    font-size: 0.8rem;
+}
+
+#refreshPeerHistory:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+#peerHistoryError {
+    text-align: center;
+    margin-top: 1rem;
+    font-weight: 500;
+    min-height: 1.2em; /* Prevents layout jump when text appears */
+}
+
+.loading-btn {
+    animation: btn-pulse 1.5s infinite;
+}
+
+@keyframes btn-pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
 }

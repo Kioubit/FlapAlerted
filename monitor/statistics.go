@@ -74,15 +74,22 @@ func GetMetric() Metric {
 const statisticsCollectionIntervalSec = 5
 
 type statisticWrapper struct {
-	List     []FlapSummary
-	Stats    statistic
-	Sessions int
+	List      []FlapSummary
+	ListPeers []PeerSummary
+	Stats     statistic
+	Sessions  int
 }
 type FlapSummary struct {
 	Prefix     string
 	FirstSeen  int64
 	RateSec    int
 	TotalCount uint64
+}
+
+type PeerSummary struct {
+	ASN        uint32
+	RateSecAvg float64
+	RateSec    int
 }
 
 type statistic struct {
@@ -109,6 +116,7 @@ func SubscribeToStats() chan statisticWrapper {
 }
 
 var lastFlapSummaryList atomic.Pointer[[]FlapSummary]
+var lastPeerSummaryList atomic.Pointer[[]PeerSummary]
 
 func statTracker(ctx context.Context) {
 	ticker := time.NewTicker(time.Duration(statisticsCollectionIntervalSec) * time.Second)
@@ -121,12 +129,20 @@ func statTracker(ctx context.Context) {
 		}
 
 		aFlap, trackedCount := analyze.GetActiveFlapList()
+		aPeer := analyze.GetPeerRates()
 
 		if len(aFlap) > 100 {
 			slices.SortFunc(aFlap, func(a, b analyze.FlapEvent) int {
 				return cmp.Compare(b.TotalPathChanges, a.TotalPathChanges)
 			})
 			aFlap = aFlap[:100]
+		}
+
+		if len(aPeer) > 30 {
+			slices.SortFunc(aPeer, func(a, b analyze.PeerUpdateRate) int {
+				return cmp.Compare(b.RateSecAvg, a.RateSecAvg)
+			})
+			aPeer = aPeer[:30]
 		}
 
 		jsFlapList := make([]FlapSummary, len(aFlap))
@@ -139,7 +155,17 @@ func statTracker(ctx context.Context) {
 			}
 		}
 
+		jsPeerList := make([]PeerSummary, len(aPeer))
+		for i, p := range aPeer {
+			jsPeerList[i] = PeerSummary{
+				ASN:        p.PeerASN,
+				RateSec:    p.RateSec,
+				RateSecAvg: p.RateSecAvg,
+			}
+		}
+
 		lastFlapSummaryList.Store(&jsFlapList)
+		lastPeerSummaryList.Store(&jsPeerList)
 
 		newStatistic := statistic{
 			Time:          time.Now().Unix(),
@@ -149,9 +175,10 @@ func statTracker(ctx context.Context) {
 		}
 
 		newWrapper := statisticWrapper{
-			List:     jsFlapList,
-			Stats:    newStatistic,
-			Sessions: session.GetSessionCount(),
+			List:      jsFlapList,
+			ListPeers: jsPeerList,
+			Stats:     newStatistic,
+			Sessions:  session.GetSessionCount(),
 		}
 
 		statSubscribersLock.Lock()
@@ -178,15 +205,18 @@ func GetStats() []statisticWrapper {
 	result := make([]statisticWrapper, len(statList))
 	for i := range statList {
 		result[i] = statisticWrapper{
-			List:     nil,
-			Stats:    statList[i],
-			Sessions: -1,
+			List:      nil,
+			ListPeers: nil,
+			Stats:     statList[i],
+			Sessions:  -1,
 		}
 	}
 	if len(statList) > 0 {
 		l := lastFlapSummaryList.Load()
+		p := lastPeerSummaryList.Load()
 		if l != nil {
 			result[len(statList)-1].List = *l
+			result[len(statList)-1].ListPeers = *p
 			result[len(statList)-1].Sessions = session.GetSessionCount()
 		}
 	}
@@ -199,4 +229,12 @@ func GetActiveFlapsSummary() []FlapSummary {
 		return make([]FlapSummary, 0)
 	}
 	return *l
+}
+
+func GetActivePeersSummary() []PeerSummary {
+	p := lastPeerSummaryList.Load()
+	if p == nil {
+		return make([]PeerSummary, 0)
+	}
+	return *p
 }
