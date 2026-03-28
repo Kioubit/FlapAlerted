@@ -306,7 +306,7 @@ function addToChart(liveChart, points, unixTime, dataInterval, update) {
         if (shouldShift) {
             dataset.data.shift();
         }
-    })
+    });
 
     liveChart.data.labels.push(timestamp);
     if (shouldShift) {
@@ -364,8 +364,8 @@ function updatePeers(peerList) {
         const tr = document.createElement("tr");
         if (rowClass) tr.className = "inactive";
 
-        const explorerLink = (typeof explorerURLPrefixASN !== 'undefined' && explorerURLPrefixASN)
-            ? `<span>&nbsp;|&nbsp;</span><a href="${explorerURLPrefixASN}${item.ASN}" target="_blank" rel="noopener noreferrer" title="Lookup ASN" class="asnExplorerLink">
+        const explorerLink = (typeof explorerURLPrefixASN !== 'undefined' && explorerURLPrefixASN) ?
+            `<span>&nbsp;|&nbsp;</span><a href="${explorerURLPrefixASN}${item.ASN}" target="_blank" rel="noopener noreferrer" title="Lookup ASN" class="asnExplorerLink">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
                     <polyline points="15 3 21 3 21 9"></polyline>
@@ -420,13 +420,11 @@ async function fetchPeerHistory(asn) {
 
         peerHistoryChartContainer.style.display = "block";
         const history = data.RateSecHistory;
-        const labels = history.map((_, i) => `${history.length - 1 - i}m`);
-
-        peerHistoryChart.data.labels = labels;
+        peerHistoryChart.data.labels = history.map((_, i) => `${history.length - 1 - i}m`);
         peerHistoryChart.data.datasets[0].data = history;
         peerHistoryChart.update();
 
-        peerHistoryDetails.innerText = `Average update rate (60min): ${data.RateSecAvg.toFixed(2)}/sec`
+        peerHistoryDetails.innerText = `Average update rate (60min): ${data.RateSecAvg.toFixed(2)}/sec`;
 
         errorElem.innerText = "Data updated just now.";
         errorElem.style.color = "green";
@@ -488,7 +486,7 @@ function getStats() {
     const noBGPFeedsElem = document.getElementById("noBGPFeeds");
     const evtSource = new EventSource("flaps/statStream");
     evtSource.addEventListener("u", (event) => {
-        dataUpdate(event, true)
+        dataUpdate(event, true);
     });
     evtSource.addEventListener("ready", (event) => {
         try {
@@ -501,7 +499,7 @@ function getStats() {
         liveFlapChart.update('none');
     });
     evtSource.addEventListener("c", (event) => {
-        dataUpdate(event, false)
+        dataUpdate(event, false);
     });
 
     const dataIntervalSec = 5;
@@ -644,7 +642,7 @@ getStats();
                 row.appendChild(cell);
                 fragment.appendChild(row);
             } else {
-                data.sort((a,b) => a.RouterID.localeCompare(b.RouterID))
+                data.sort((a,b) => a.RouterID.localeCompare(b.RouterID));
 
                 data.forEach((entry) => {
                     const row = document.createElement("tr");
@@ -718,13 +716,13 @@ const historicalDialogOpenBtn = document.getElementById('viewHistoricalEvents');
             const data = await response.json();
 
             if (data.length === 0) {
-                const row = document.createElement("tr")
-                const cell = document.createElement("td")
+                const row = document.createElement("tr");
+                const cell = document.createElement("td");
                 cell.textContent = "No historical events found";
                 cell.colSpan = 3;
                 cell.style.cssText = "text-align: center; padding-top: 1em;";
                 row.appendChild(cell);
-                tableBody.appendChild(row)
+                tableBody.appendChild(row);
             } else {
                 data.forEach(({ Prefix, Timestamp }) => {
                     const row = document.createElement("tr");
