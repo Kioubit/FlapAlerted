@@ -19,9 +19,10 @@ func mainPageHandler() http.Handler {
 func getCapsWithModHttpJSON() ([]byte, error) {
 	caps := monitor.GetCapabilities()
 	type ModHttpCaps struct {
-		GageMaxValue       uint `json:"gageMaxValue"`
-		GageDisableDynamic bool `json:"gageDisableDynamic"`
-		MaxUserDefined     uint `json:"maxUserDefined"`
+		GageMaxValue         uint   `json:"gageMaxValue"`
+		GageDisableDynamic   bool   `json:"gageDisableDynamic"`
+		MaxUserDefined       uint   `json:"maxUserDefined"`
+		ExplorerURLPrefixASN string `json:"explorerUrlPrefixASN"`
 	}
 
 	fullCaps := struct {
@@ -30,9 +31,10 @@ func getCapsWithModHttpJSON() ([]byte, error) {
 	}{
 		Capabilities: caps,
 		ModHttpCaps: ModHttpCaps{
-			GageMaxValue:       *gageMaxValue,
-			GageDisableDynamic: *gageDisableDynamic,
-			MaxUserDefined:     *maxUserDefinedMonitors,
+			GageMaxValue:         *gageMaxValue,
+			GageDisableDynamic:   *gageDisableDynamic,
+			MaxUserDefined:       *maxUserDefinedMonitors,
+			ExplorerURLPrefixASN: *explorerURLPrefixASN,
 		},
 	}
 	return json.Marshal(fullCaps)

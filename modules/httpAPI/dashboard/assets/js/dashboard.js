@@ -245,6 +245,7 @@ document.getElementById("refreshPeerHistory").addEventListener("click", () => {
 });
 document.getElementById("closePeerHistoryDialog").onclick = () => peerHistoryDialog.close();
 
+let explorerURLPrefixASN = null;
 function updateCapabilities(response) {
     const data = JSON.parse(response);
     const versionBox = document.getElementById("version");
@@ -258,6 +259,7 @@ function updateCapabilities(response) {
     }
 
     historicalDialogOpenBtn.disabled = data.HistoryProviderAvailable === false;
+    explorerURLPrefixASN = data.modHttp.explorerUrlPrefixASN;
 
     gageDisableDynamic = data.modHttp.gageDisableDynamic;
     gageMaxValue = data.modHttp.gageMaxValue;
@@ -362,8 +364,19 @@ function updatePeers(peerList) {
         const tr = document.createElement("tr");
         if (rowClass) tr.className = "inactive";
 
+        const explorerLink = (typeof explorerURLPrefixASN !== 'undefined' && explorerURLPrefixASN)
+            ? `<span>&nbsp;|&nbsp;</span><a href="${explorerURLPrefixASN}${item.ASN}" target="_blank" rel="noopener noreferrer" title="Lookup ASN" class="asnExplorerLink">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                    <polyline points="15 3 21 3 21 9"></polyline>
+                    <line x1="10" y1="14" x2="21" y2="3"></line>
+                </svg>
+                </a>
+            `
+            : "";
+
         tr.innerHTML = `
-        <td><a href="#" class="asn-link" data-asn="${item.ASN}">${item.ASN}</a></td>
+        <td><a href="#" class="asn-link" data-asn="${item.ASN}">${item.ASN}</a>${explorerLink}</td>
         <td>${rateDisplayAvg}</td>
         <td>${rateDisplay}</td>
     `;

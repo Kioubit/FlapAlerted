@@ -576,3 +576,7 @@ a:hover {
 .overflow-x-auto {
     overflow-x: auto;
 }
+
+.asnExplorerLink {
+    text-decoration: none;
+}

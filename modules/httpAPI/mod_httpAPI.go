@@ -29,6 +29,7 @@ var (
 	gageMaxValue           = flag.Uint("httpGageMaxValue", 400, "HTTP dashboard Gage max value")
 	gageDisableDynamic     = flag.Bool("httpGageDisableDynamic", false, "Disable dynamic Gage max value based on session count")
 	maxUserDefinedMonitors = flag.Uint("httpMaxUserDefined", 5, "Maximum number of user-defined tracked prefixes. Use zero to disable")
+	explorerURLPrefixASN   = flag.String("httpExplorerURLPrefixASN", "", "Prefix for external explorer link to lookup an ASN. Empty to disable")
 )
 
 type Module struct {
