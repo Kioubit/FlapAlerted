@@ -3,16 +3,23 @@ package httpAPI
 import (
 	"FlapAlerted/analyze"
 	"FlapAlerted/monitor"
+	cryptorand "crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/fs"
 	"net/http"
 	"net/netip"
 	"strconv"
-	"time"
 )
 
-var eTag = fmt.Sprintf(`"%x"`, time.Now().Unix())
+var eTag = ""
+
+func init() {
+	b := make([]byte, 12)
+	_, _ = cryptorand.Read(b)
+	eTag = fmt.Sprintf(`"%s"`, base64.RawURLEncoding.EncodeToString(b))
+}
 
 func mainPageHandler() http.Handler {
 	html, _ := fs.Sub(dashboardContent, "dashboard")

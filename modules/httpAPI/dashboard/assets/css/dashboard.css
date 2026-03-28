@@ -141,6 +141,10 @@ body {
     color: white;
 }
 
+#prefixTableBox table#tablePeers th {
+    background: #8525eb;
+}
+
 #prefixTableBox table tr.inactive {
     color: grey;
 }
@@ -468,6 +472,10 @@ a:hover {
     margin: 0;
     gap: 0;
     padding: 2rem;
+}
+
+body.gauge-only {
+    margin: 0;
 }
 
 .gauge-only #justgage {
