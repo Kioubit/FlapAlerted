@@ -24,6 +24,7 @@ var sendUserDefined atomic.Bool
 
 const intervalSec = 60
 const maxRateHistory = 60
+const maxPeers = 1000
 
 func RecordPathChanges(pathChan <-chan table.PathChange) (<-chan table.PathChange, <-chan []FlapEventNotification) {
 	userPathChangeChan := make(chan table.PathChange, 1000)
@@ -173,12 +174,14 @@ func RecordPathChanges(pathChan <-chan table.PathChange) (<-chan table.PathChang
 				if val, exists := activeMapPeer[peerASN]; exists {
 					val.intervalCount++
 				} else {
-					activeMapPeer[peerASN] = &PeerUpdateRate{
-						PeerASN:        peerASN,
-						RateSecHistory: make([]int, 0, 1),
-						intervalCount:  1,
-						zeroCount:      0,
-						RateSec:        -1,
+					if len(activeMapPeer) <= maxPeers {
+						activeMapPeer[peerASN] = &PeerUpdateRate{
+							PeerASN:        peerASN,
+							RateSecHistory: make([]int, 0, 1),
+							intervalCount:  1,
+							zeroCount:      0,
+							RateSec:        -1,
+						}
 					}
 				}
 			}
