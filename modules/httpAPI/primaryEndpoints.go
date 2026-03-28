@@ -4,16 +4,30 @@ import (
 	"FlapAlerted/analyze"
 	"FlapAlerted/monitor"
 	"encoding/json"
+	"fmt"
 	"io/fs"
 	"net/http"
 	"net/netip"
 	"strconv"
+	"time"
 )
 
+var eTag = fmt.Sprintf(`"%x"`, time.Now().Unix())
+
 func mainPageHandler() http.Handler {
-	fSys := fs.FS(dashboardContent)
-	html, _ := fs.Sub(fSys, "dashboard")
-	return http.FileServer(http.FS(html))
+	html, _ := fs.Sub(dashboardContent, "dashboard")
+	fileServer := http.FileServer(http.FS(html))
+
+	withETag := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("If-None-Match") == eTag {
+			w.WriteHeader(http.StatusNotModified)
+			return
+		}
+		w.Header().Set("ETag", eTag)
+		w.Header().Set("Cache-Control", "public, max-age=900")
+		fileServer.ServeHTTP(w, r)
+	})
+	return withETag
 }
 
 func getCapsWithModHttpJSON() ([]byte, error) {
