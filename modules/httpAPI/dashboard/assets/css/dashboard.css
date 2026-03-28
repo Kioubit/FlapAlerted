@@ -328,19 +328,20 @@ a:hover {
     height: 18px;
 }
 
-#userDefinedTracking .title {
+.styledForm .title {
     font-size: 1rem;
     font-weight: 600;
     color: var(--text-primary);
     margin-bottom: 0.4em;
 }
 
-#userDefinedTracking form {
+.styledForm form {
     display: flex;
     gap: 0.5rem;
 }
 
-#userDefinedTracking input[type="text"] {
+.styledForm input[type="text"],
+.styledForm input[type="number"] {
     flex: 1;
     min-width: 150px;
     padding: 0.5rem;
@@ -349,7 +350,7 @@ a:hover {
     font-size: 0.875rem;
 }
 
-@media screen and (max-width: 800px) {
+@media screen and (max-width: 700px) {
     .controls-grid {
         grid-template-columns: 1fr;
     }
@@ -358,11 +359,12 @@ a:hover {
         justify-content: start;
     }
 
-    #userDefinedTracking form {
+    .styledForm form {
         flex-direction: column;
     }
 
-    #userDefinedTracking input[type="text"] {
+    .styledForm input[type="text"],
+    .styledForm input[type="number"] {
         min-width: auto;
     }
 }
@@ -522,14 +524,6 @@ a:hover {
     z-index: 100;
 }
 
-
-.asn-link {
-    color: var(--primary-color);
-    text-decoration: underline;
-    cursor: pointer;
-    font-weight: 600;
-}
-
 #peerHistoryDialog {
     border: none;
     border-radius: var(--radius);
@@ -544,10 +538,10 @@ a:hover {
     backdrop-filter: blur(2px);
 }
 
-
 #chartPeerHistoryContainer {
     height: 300px;
     margin-top: 20px;
+    min-width: 30em;
 }
 
 #refreshPeerHistory {
@@ -577,4 +571,8 @@ a:hover {
     0% { opacity: 1; }
     50% { opacity: 0.5; }
     100% { opacity: 1; }
+}
+
+.overflow-x-auto {
+    overflow-x: auto;
 }

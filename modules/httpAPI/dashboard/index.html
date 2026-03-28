@@ -85,7 +85,14 @@
     </div>
     <div class="controls-section">
         <div class="controls-grid">
-            <div id="userDefinedTracking">
+            <div id="peerLookup" class="styledForm">
+                <div class="title">Peer ASN lookup</div>
+                <form action="user/" method="GET">
+                    <input type="number" name="asn" placeholder="Enter ASN" required>
+                    <button type="submit" class="styled-btn">View</button>
+                </form>
+            </div>
+            <div id="userDefinedTracking" class="styledForm">
                 <div class="title">User-defined tracking</div>
                 <form action="user/" method="GET">
                     <input type="text" name="prefix" placeholder="Enter prefix" required>
@@ -164,9 +171,12 @@
     <button id="closePeerHistoryDialog" class="historicalDialog-closeButton">Close</button>
     <button id="refreshPeerHistory" class="styled-btn">Refresh</button>
     <h2>Peer <span id="peerHistoryASN"></span> Rate History</h2>
-    <div id="chartPeerHistoryContainer">
-        <canvas id="chartPeerHistory"></canvas>
+    <div class="overflow-x-auto">
+        <div id="chartPeerHistoryContainer">
+            <canvas id="chartPeerHistory"></canvas>
+        </div>
     </div>
+    <p id="peerHistoryDetails"></p>
     <p id="peerHistoryError" class="historicalDialog-error"></p>
 </dialog>
 </body>

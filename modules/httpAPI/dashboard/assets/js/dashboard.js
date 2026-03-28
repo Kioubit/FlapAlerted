@@ -181,6 +181,7 @@ const liveRouteChart = new Chart(
 );
 
 let peerHistoryChart = null;
+const peerHistoryChartContainer = document.getElementById("chartPeerHistoryContainer");
 const ctxPeerHistory = document.getElementById("chartPeerHistory").getContext("2d");
 
 function initPeerChart() {
@@ -211,6 +212,7 @@ function initPeerChart() {
 
 const peerHistoryDialog = document.getElementById("peerHistoryDialog");
 const peerHistoryASNLabel = document.getElementById("peerHistoryASN");
+const peerHistoryDetails = document.getElementById("peerHistoryDetails");
 
 // Variable to store the currently viewed ASN so the refresh button knows what to fetch
 let currentHistoryASN = null;
@@ -218,6 +220,8 @@ let currentHistoryASN = null;
 async function showPeerHistory(asn) {
     currentHistoryASN = asn;
     peerHistoryASNLabel.innerText = asn;
+
+    peerHistoryDetails.innerText = "";
 
     const errorElem = document.getElementById("peerHistoryError");
     errorElem.innerText = "";
@@ -269,6 +273,13 @@ function updateCapabilities(response) {
         });
     }
 }
+
+const lookupPeerForm = document.querySelector("#peerLookup form");
+lookupPeerForm?.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const value = new FormData(lookupPeerForm).get("asn");
+    showPeerHistory(value).then();
+});
 
 let hideZeroRateEvents = false;
 if (localStorage.getItem("fa_hideZeroRate") === "true") {
@@ -387,17 +398,22 @@ async function fetchPeerHistory(asn) {
             peerHistoryChart.data.datasets[0].data = [];
             peerHistoryChart.update();
 
+            peerHistoryChartContainer.style.display = "none";
+
             errorElem.innerText = "No historical data available for this ASN.";
             errorElem.style.color = "var(--accent-color)"; // Warning color
             return;
         }
 
+        peerHistoryChartContainer.style.display = "block";
         const history = data.RateSecHistory;
         const labels = history.map((_, i) => `${history.length - 1 - i}m`);
 
         peerHistoryChart.data.labels = labels;
         peerHistoryChart.data.datasets[0].data = history;
         peerHistoryChart.update();
+
+        peerHistoryDetails.innerText = `Average update rate (60min): ${data.RateSecAvg.toFixed(2)}/sec`
 
         errorElem.innerText = "Data updated just now.";
         errorElem.style.color = "green";
