@@ -16,6 +16,10 @@
     display: none;
 }
 
+.overflow-x-auto {
+    overflow-x: auto;
+}
+
 body {
     color: var(--text-primary);
 }
@@ -287,11 +291,6 @@ a:hover {
     display: none;
 }
 
-#sessionsTableContainer {
-    overflow-x: auto;
-}
-
-
 /* Controls Section - separated styling */
 .controls-section {
     border-top: 1px solid #e2e8f0;
@@ -457,8 +456,7 @@ a:hover {
 .gauge-only #prefixTableBox,
 .gauge-only .footer,
 .gauge-only #mainHeading,
-.gauge-only .controls-section,
-.gauge-only #sessionCountLink {
+.gauge-only .controls-section {
     display: none !important;
 }
 
@@ -571,10 +569,6 @@ a:hover {
     0% { opacity: 1; }
     50% { opacity: 0.5; }
     100% { opacity: 1; }
-}
-
-.overflow-x-auto {
-    overflow-x: auto;
 }
 
 .asnExplorerLink {

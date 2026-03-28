@@ -3,8 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <title>FlapAlerted</title>
-    <meta http-equiv="Content-Security-Policy"
-          content="default-src 'none'; base-uri 'none'; form-action 'self'; style-src 'self'; style-src-elem 'self'; script-src 'self'; connect-src 'self'; img-src 'self';">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="assets/css/dashboard.css">
     <script type="module" src="assets/js/dashboard.js"></script>
@@ -122,7 +120,7 @@
         <div class="dialog-spinner"></div>
     </div>
 
-    <div id="sessionsTableContainer">
+    <div id="sessionsTableContainer" class="overflow-x-auto">
         <table id="sessionsTable" class="SessionsDialog-table">
             <thead>
             <tr class="SessionsDialog-headerRow">

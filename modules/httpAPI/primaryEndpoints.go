@@ -19,12 +19,14 @@ func mainPageHandler() http.Handler {
 	fileServer := http.FileServer(http.FS(html))
 
 	withETag := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Security-Policy", "default-src 'self'; base-uri 'none'; form-action 'self'; object-src 'none'; style-src 'self' 'unsafe-inline'")
+		w.Header().Set("ETag", eTag)
+		w.Header().Set("Cache-Control", "public, max-age=900")
+
 		if r.Header.Get("If-None-Match") == eTag {
 			w.WriteHeader(http.StatusNotModified)
 			return
 		}
-		w.Header().Set("ETag", eTag)
-		w.Header().Set("Cache-Control", "public, max-age=900")
 		fileServer.ServeHTTP(w, r)
 	})
 	return withETag
