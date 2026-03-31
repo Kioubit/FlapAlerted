@@ -380,10 +380,13 @@ function updatePeers(peerList) {
         <td>${rateDisplayAvg}</td>
         <td>${rateDisplay}</td>
     `;
-        tr.querySelector(".asn-link").addEventListener("click", (e) => {
+        const asnLink = tr.querySelector(".asn-link");
+        asnLink.addEventListener("click", (e) => {
             e.preventDefault();
             showPeerHistory(item.ASN);
         });
+
+        asnLink.addEventListener("auxclick", (e) => e.preventDefault());
 
         peersTableBody.appendChild(tr);
     }
