@@ -10,4 +10,4 @@ services:
       - FA_ASN=4242423914
     logging:
       options:
-        max-size: "5M"
+        max-size: "1M"
