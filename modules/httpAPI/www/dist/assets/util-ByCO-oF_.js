@@ -1,0 +1,1 @@
+function e(e){let t=3600,n=t*24,r=Math.floor(e/n),i=Math.floor(e%n/t).toString().padStart(2,`0`),a=Math.floor(e%t/60).toString().padStart(2,`0`),o=Math.floor(e%60).toString().padStart(2,`0`),s=``;return r!==0&&(s+=`${r}d `),s+=`${i}:${a}:${o}`,s}export{e as t};

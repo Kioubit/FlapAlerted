@@ -22,7 +22,7 @@ func init() {
 }
 
 func mainPageHandler() http.Handler {
-	html, _ := fs.Sub(dashboardContent, "dashboard")
+	html, _ := fs.Sub(dashboardContent, "www/dist")
 	fileServer := http.FileServer(http.FS(html))
 
 	withETag := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

@@ -19,7 +19,9 @@ import (
 
 var moduleName = "mod_httpAPI"
 
-//go:embed dashboard/*
+//go:generate npm --prefix www run build
+
+//go:embed www/dist
 var dashboardContent embed.FS
 
 var (

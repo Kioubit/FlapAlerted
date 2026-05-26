@@ -1,5 +1,27 @@
-import "./chartjs/4.5.1/chart.umd.min.js";
-import "./chartjs/chartjs-adapter-date-fns.bundle.min.js";
+import {
+    Chart,
+    LineController,
+    LineElement,
+    PointElement,
+    LinearScale,
+    TimeScale,
+    Tooltip,
+    Legend,
+    Filler
+} from "chart.js";
+
+import 'chartjs-adapter-date-fns';
+
+Chart.register(
+    LineController,
+    LineElement,
+    PointElement,
+    LinearScale,
+    TimeScale,
+    Tooltip,
+    Legend,
+    Filler
+);
 
 const dataRouteChange = {
     labels: [],

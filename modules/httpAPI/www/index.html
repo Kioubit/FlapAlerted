@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>FlapAlerted</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="src/dashboard.css">
+    <script type="module" src="src/dashboard.js"></script>
+</head>
+
+<body>
+<div id="loadingScreen">
+    <div class="loader"></div>
+</div>
+
+<div id="mainContainer">
+    <h2 id="mainHeading">FlapAlerted</h2>
+    <div class="error" id="connectionLost">
+        <p>Connection lost</p>
+    </div>
+    <div class="error" id="noBGPFeeds">
+        <p>No BGP feeds are connected to this instance</p>
+    </div>
+    <div id="grid-container-main">
+        <div id="justgage"></div>
+        <div id="prefixTableBox">
+            <table id="tablePrefixes">
+                <thead>
+                <tr>
+                    <th class="toggle-view-btn" title="Switch to Peers view">Prefix <span class="toggle-view-icon">⇄</span></th>
+                    <th>Duration</th>
+                    <th>Route Changes</th>
+                    <th>Rate</th>
+                </tr>
+                </thead>
+                <tbody id="prefixTableBody">
+                <tr>
+                    <td colspan="4" class="centerText">...</td>
+                </tr>
+                </tbody>
+            </table>
+            <table id="tablePeers" class="noDisplay">
+                <thead>
+                <tr>
+                    <th class="toggle-view-btn" title="Switch to Prefixes view">Peer ASN <span class="toggle-view-icon">⇄</span></th>
+                    <th>Avg Rate (60 min)</th>
+                    <th>Rate</th>
+                </tr>
+                </thead>
+                <tbody id="peersTableBody">
+                <tr>
+                    <td colspan="3" class="centerText">...</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div id="grid-container-charts">
+        <div class="chartContainer">
+            <canvas id="chartFlapCount"></canvas>
+        </div>
+        <div class="chartContainer">
+            <canvas id="chartRoute"></canvas>
+        </div>
+    </div>
+    <div class="footer">
+        <div class="footer-grid">
+            <div>
+                <div class="footer-label">Current settings</div>
+                <div class="footer-value"><span id="info">N/A</span></div>
+            </div>
+            <div>
+                <div class="footer-label">Average route changes value</div>
+                <div class="footer-value">90th percentile average over the last 250 seconds, shown as overall route changes per second.</div>
+            </div>
+            <div>
+                <div class="footer-label">Info</div>
+                <div>Connected BGP feeds:&nbsp;<span class="footer-value" id="sessionCount">...</span> <button id="sessionCountLink">View</button></div>
+                <div>
+                    <a href="https://github.com/Kioubit/FlapAlerted/" title="Source Code">FlapAlerted<span id="version"></span></a></div>
+            </div>
+        </div>
+    </div>
+    <div class="controls-section">
+        <div class="controls-grid">
+            <div id="peerLookup" class="styledForm">
+                <div class="title">Peer ASN lookup</div>
+                <form action="user/" method="GET">
+                    <input type="number" name="asn" placeholder="Enter ASN" required>
+                    <button type="submit" class="styled-btn">View</button>
+                </form>
+            </div>
+            <div id="userDefinedTracking" class="styledForm">
+                <div class="title">User-defined tracking</div>
+                <form action="user/" method="GET">
+                    <input type="text" name="prefix" placeholder="Enter prefix" required>
+                    <button type="submit" class="styled-btn" data-tooltip="This feature has been disabled on this instance">Track</button>
+                </form>
+            </div>
+            <div class="control-item">
+                <label>
+                    <input id="hideZeroRateEventsCheckbox" type="checkbox">
+                    Hide events with a rate of zero
+                </label>
+            </div>
+            <div class="control-item">
+                <button id="viewHistoricalEvents" class="styled-btn width-fit-content" data-tooltip="History module not configured">View event history</button>
+            </div>
+        </div>
+    </div>
+</div>
+<button id="gaugeOnlyToggle" class="styled-btn view-toggle">Gauge-only view</button>
+
+<dialog id="sessionsDialog">
+    <button id="closeSessionsDialog" class="SessionsDialog-closeButton">Close</button>
+    <h2>Established Sessions</h2>
+
+    <div id="sessionsLoading" class="SessionsDialog-loading">
+        <p>Loading sessions...</p>
+        <div class="dialog-spinner"></div>
+    </div>
+
+    <div id="sessionsTableContainer" class="overflow-x-auto">
+        <table id="sessionsTable" class="SessionsDialog-table">
+            <thead>
+            <tr class="SessionsDialog-headerRow">
+                <th class="SessionsDialog-headerCell">Remote</th>
+                <th class="SessionsDialog-headerCell">Router ID</th>
+                <th class="SessionsDialog-headerCell">Hostname</th>
+                <th class="SessionsDialog-headerCell">Time Elapsed</th>
+                <th class="SessionsDialog-headerCell">Import Count</th>
+            </tr>
+            </thead>
+            <tbody id="sessionsTableBody"></tbody>
+            <tfoot>
+                <tr>
+                    <th colspan="4" class="SessionsDialog-headerCell rightText">Total routes:</th>
+                    <th id="totalImportCount" class="SessionsDialog-headerCell">0</th>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+    <p id="sessionsError" class="SessionsDialog-error"></p>
+</dialog>
+<dialog id="historicalDialog">
+    <button id="closeHistoricalDialog" class="historicalDialog-closeButton">Close</button>
+    <h2>Historical Flap Events</h2>
+
+    <div id="historicalLoading" class="historicalDialog-loading">
+        <p>Fetching historical data...</p>
+        <div class="dialog-spinner"></div>
+    </div>
+
+    <div id="historicalTableContainer">
+        <table id="historicalTable" class="historicalDialog-table">
+            <thead>
+            <tr class="historicalDialog-headerRow">
+                <th class="historicalDialog-headerCell">Prefix</th>
+                <th class="historicalDialog-headerCell">Timestamp</th>
+                <th class="historicalDialog-headerCell">Action</th>
+            </tr>
+            </thead>
+            <tbody id="historicalTableBody"></tbody>
+        </table>
+    </div>
+    <p id="historicalError" class="historicalDialog-error"></p>
+</dialog>
+<dialog id="peerHistoryDialog">
+    <button id="closePeerHistoryDialog" class="historicalDialog-closeButton">Close</button>
+    <button id="refreshPeerHistory" class="styled-btn">Refresh</button>
+    <h2>Rate History for peer: <span id="peerHistoryASN"></span></h2>
+    <div class="overflow-x-auto">
+        <div id="chartPeerHistoryContainer">
+            <canvas id="chartPeerHistory"></canvas>
+        </div>
+    </div>
+    <p id="peerHistoryDetails"></p>
+    <p id="peerHistoryError" class="historicalDialog-error"></p>
+</dialog>
+</body>
+</html>

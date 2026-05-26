@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Prefix analysis</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="../src/analyze/analyze.css">
+    <script type="module" src="../src/analyze/analyze.js"></script>
+</head>
+<body>
+<div id="loaderText">Loading event information...</div>
+<div id="loader" class="loader"></div>
+<div id="mainContainer">
+    <div id="prefixTitle"></div>
+    <div id="historicalDisplay"></div>
+    <div class="informationText" id="informationText1">
+        <table id="informationTable">
+            <tr>
+                <td><b>Total path changes:</b></td>
+                <td><span id="pathChangeDisplay">N/A</span></td>
+            </tr>
+            <tr>
+                <td><b>First seen:</b></td>
+                <td><span id="fistSeenDisplay">N/A</span></td>
+            </tr>
+            <tr>
+                <td><b>Duration:</b></td>
+                <td><span id="durationDisplay">N/A</span></td>
+            </tr>
+            <tr>
+                <td><b>Average path changes:</b></td>
+                <td><span id="averageDisplay">Awaiting data...</span></td>
+            </tr>
+        </table>
+    </div>
+    <div id="chartRouteCount-outerContainer" class="noDisplay">
+        <div id="chartRouteCount-container">
+            <canvas id="chartRouteCount"></canvas>
+        </div>
+    </div>
+    <div class="informationText" id="informationText2">
+        <span>AS paths sorted by amount of changes (represented by the numbers before each path [announcements/withdrawals]). Grouped by the first ASN and colorized.</span><br>
+        <button id="printButton" class="no-print">Print</button>
+        <br>
+    </div>
+    <div id="pathTableContainer">
+        <div id="pathTable"></div>
+    </div>
+</div>
+</body>
+</html>

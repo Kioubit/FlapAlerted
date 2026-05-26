@@ -1,5 +1,21 @@
-import "./chartjs/4.5.1/chart.umd.min.js";
-import "./chartjs/chartjs-adapter-date-fns.bundle.min.js";
+import {
+    Chart, LineController, LineElement, PointElement, LinearScale, TimeScale, Tooltip, Legend, Filler, CategoryScale
+} from "chart.js";
+
+import 'chartjs-adapter-date-fns';
+import {toTimeElapsed} from "../util";
+
+Chart.register(
+    CategoryScale,
+    LineController,
+    LineElement,
+    PointElement,
+    LinearScale,
+    TimeScale,
+    Tooltip,
+    Legend,
+    Filler
+);
 
 function getFetchOptions() {
     return {
@@ -191,7 +207,7 @@ function displayPrefix(json, userDefined) {
     if (!userDefined) {
         displayRateSecHistory(eventData.RateSecHistory, reportTimestamp)
     } else {
-        document.getElementById("averageDisplay").innerText = "Not available for user-defined"``
+        document.getElementById("averageDisplay").innerText = "Not available for user-defined";
     }
 
     const printButton = document.getElementById("printButton");
@@ -298,20 +314,4 @@ function timeConverter(unixTimestamp) {
     const day = padTo2Digits(date.getDate());
 
     return `${year}-${month}-${day} ${time}`;
-}
-
-function toTimeElapsed(secondsIn) {
-    const secondsMinute = 60;
-    const secondsHour = secondsMinute * 60;
-    const secondsDay = secondsHour * 24;
-    const days = Math.floor(secondsIn / secondsDay);
-    const hours = Math.floor((secondsIn % secondsDay) / secondsHour).toString().padStart(2, "0");
-    const minutes = Math.floor((secondsIn % secondsHour) / secondsMinute).toString().padStart(2, "0");
-    const seconds = Math.floor(secondsIn % secondsMinute).toString().padStart(2, "0");
-    let result = "";
-    if (days !== 0) {
-        result += `${days}d `;
-    }
-    result += `${hours}:${minutes}:${seconds}`;
-    return result;
 }

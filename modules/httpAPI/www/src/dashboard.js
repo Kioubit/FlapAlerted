@@ -1,6 +1,22 @@
-import "./chartjs/4.5.1/chart.umd.min.js";
-import "./chartjs/chartjs-adapter-date-fns.bundle.min.js";
-import {JustGage} from "./justgage/2.0.1/justgage.esm.js";
+import {
+    Chart, LineController, LineElement, PointElement, LinearScale, TimeScale, Tooltip, Legend, Filler, CategoryScale
+} from "chart.js";
+
+import 'chartjs-adapter-date-fns';
+import JustGage from "justgage";
+import {toTimeElapsed} from "./util";
+
+Chart.register(
+    CategoryScale,
+    LineController,
+    LineElement,
+    PointElement,
+    LinearScale,
+    TimeScale,
+    Tooltip,
+    Legend,
+    Filler
+);
 
 function getFetchOptions() {
     return {
@@ -562,22 +578,6 @@ function getStats() {
     evtSource.onopen = () => {
         handleConnectionLost(false);
     };
-}
-
-function toTimeElapsed(secondsIn) {
-    const secondsMinute = 60;
-    const secondsHour = secondsMinute * 60;
-    const secondsDay = secondsHour * 24;
-    const days = Math.floor(secondsIn / secondsDay);
-    const hours = Math.floor((secondsIn % secondsDay) / secondsHour).toString().padStart(2, "0");
-    const minutes = Math.floor((secondsIn % secondsHour) / secondsMinute).toString().padStart(2, "0");
-    const seconds = Math.floor(secondsIn % secondsMinute).toString().padStart(2, "0");
-    let result = "";
-    if (days !== 0) {
-        result += `${days}d `;
-    }
-    result += `${hours}:${minutes}:${seconds}`;
-    return result;
 }
 
 const million = 1000000;
