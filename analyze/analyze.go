@@ -152,16 +152,18 @@ func RecordPathChanges(pathChan <-chan table.PathChange) (<-chan table.PathChang
 				}
 			} else {
 				if counterMap[pathChange.Prefix] == uint32(config.GlobalConf.RouteChangeCounter) {
-					activeMap[pathChange.Prefix] = &FlapEvent{
-						Prefix:             pathChange.Prefix,
-						PathHistory:        newPathTracker(config.GlobalConf.MaxPathHistory),
-						TotalPathChanges:   uint64(counterMap[pathChange.Prefix]) + 1,
-						RateSec:            -1,
-						RateSecHistory:     make([]int, 0, 1),
-						FirstSeen:          now,
-						overThresholdCount: 1,
-						// Special case for the 'display all route changes' mode
-						hasTriggered: config.GlobalConf.RouteChangeCounter == 0,
+					if len(activeMap) <= config.GlobalConf.MaxActivePrefixes {
+						activeMap[pathChange.Prefix] = &FlapEvent{
+							Prefix:             pathChange.Prefix,
+							PathHistory:        newPathTracker(config.GlobalConf.MaxPathHistory),
+							TotalPathChanges:   uint64(counterMap[pathChange.Prefix]) + 1,
+							RateSec:            -1,
+							RateSecHistory:     make([]int, 0, 1),
+							FirstSeen:          now,
+							overThresholdCount: 1,
+							// Special case for the 'display all route changes' mode
+							hasTriggered: config.GlobalConf.RouteChangeCounter == 0,
+						}
 					}
 				} else {
 					counterMap[pathChange.Prefix]++

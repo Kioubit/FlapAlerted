@@ -12,6 +12,7 @@ type UserConfig struct {
 	Asn                      uint32
 	ImportLimit              uint32
 	MaxPathHistory           int
+	MaxActivePrefixes        int
 	UseAddPath               bool
 	Debug                    bool
 	RouterID                 netip.Addr
