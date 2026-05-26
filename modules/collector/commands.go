@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"strconv"
 	"strings"
@@ -35,7 +36,9 @@ func processCommand(command string, cancel context.CancelFunc, logger *slog.Logg
 	case "PING":
 		response = "PONG"
 	case "ACTIVE_FLAPS":
-		response, err = getActiveFlapJSON()
+		response, err = toJSON(monitor.GetActiveFlapsSummary())
+	case "ACTIVE_PEERS":
+		response, err = toJSON(monitor.GetActivePeersSummary())
 	case "AVERAGE_ROUTE_CHANGES_90":
 		response = strconv.FormatFloat(monitor.GetAverageRouteChanges90(), 'f', 2, 64)
 	case "CAPABILITIES":
@@ -60,12 +63,10 @@ func processCommand(command string, cancel context.CancelFunc, logger *slog.Logg
 	return
 }
 
-func getActiveFlapJSON() (string, error) {
-	activeFlaps := monitor.GetActiveFlapsSummary()
-
-	b, err := json.Marshal(activeFlaps)
+func toJSON[T any](data T) (string, error) {
+	b, err := json.Marshal(data)
 	if err != nil {
-		return "", errors.New("failed to marshal list to JSON")
+		return "", fmt.Errorf("failed to marshal to JSON: %w", err)
 	}
 	return string(b), nil
 }
