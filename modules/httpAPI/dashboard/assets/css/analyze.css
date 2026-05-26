@@ -77,6 +77,7 @@
     #chartRouteCount-outerContainer {
         overflow-x: unset !important;
     }
+
     #chartRouteCount-container {
         min-width: unset !important;
         height: unset !important;
