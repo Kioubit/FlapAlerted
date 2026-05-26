@@ -25,6 +25,8 @@ It is recommended to adjust the `routeChangeCounter`, `expiryRouteChangeCounter`
     Minimum change per minute threshold to keep detected flaps. Defaults to the same value as 'routeChangeCounter'.
 -importLimitThousands uint
     Maximum number of allowed routes per session in thousands (default 10000)
+-maxActivePrefixes uint
+    Maximum number of active prefixes. Advanced setting, changing not recommended (default 5000)
 -maxPathHistory uint
     Maximum path history entries per prefix. Advanced setting, changing not recommended (default 1000)
 -overThresholdTarget uint
