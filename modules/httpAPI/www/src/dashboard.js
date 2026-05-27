@@ -70,17 +70,9 @@ const dataFlapCount = {
             fill: false,
             backgroundColor: "rgba(255,47,5,0.4)",
             borderColor: "rgba(255,47,5,1)",
-            borderCapStyle: "butt",
-            borderDashOffset: 0.0,
-            borderJoinStyle: "miter",
-            pointBorderColor: "rgba(255,47,5,0.4)",
-            pointBackgroundColor: "#fff",
             pointBorderWidth: 1,
-            pointHoverRadius: 5,
-            pointHoverBackgroundColor: "rgba(255,47,5,1)",
-            pointHoverBorderColor: "rgba(220,220,220,1)",
-            pointHoverBorderWidth: 2,
-            pointRadius: 5,
+            pointBackgroundColor: "#fff",
+            pointRadius: 4,
             pointHitRadius: 10,
             data: []
         }
@@ -95,17 +87,9 @@ const dataRouteChange = {
             fill: false,
             backgroundColor: "rgba(75,192,192,0.4)",
             borderColor: "rgba(75,192,192,1)",
-            borderCapStyle: "butt",
-            borderDashOffset: 0.0,
-            borderJoinStyle: "miter",
-            pointBorderColor: "rgba(75,192,192,1)",
-            pointBackgroundColor: "#fff",
             pointBorderWidth: 1,
-            pointHoverRadius: 5,
-            pointHoverBackgroundColor: "rgba(75,192,192,1)",
-            pointHoverBorderColor: "rgba(220,220,220,1)",
-            pointHoverBorderWidth: 2,
-            pointRadius: 5,
+            pointBackgroundColor: "#fff",
+            pointRadius: 4,
             pointHitRadius: 10,
             data: []
         },
@@ -114,17 +98,9 @@ const dataRouteChange = {
             fill: false,
             backgroundColor: "rgba(15,151,3,0.4)",
             borderColor: "rgb(50,168,5)",
-            borderCapStyle: "butt",
-            borderDashOffset: 0.0,
-            borderJoinStyle: "miter",
-            pointBorderColor: "rgb(50,168,5)",
-            pointBackgroundColor: "#fff",
             pointBorderWidth: 1,
-            pointHoverRadius: 5,
-            pointHoverBackgroundColor: "rgb(47,163,73)",
-            pointHoverBorderColor: "rgba(220,220,220,1)",
-            pointHoverBorderWidth: 2,
-            pointRadius: 5,
+            pointBackgroundColor: "#fff",
+            pointRadius: 4,
             pointHitRadius: 10,
             data: []
         }
@@ -192,6 +168,50 @@ const liveRouteChart = new Chart(
                     }
                 }
             }
+        }
+    }
+);
+
+const ctxImport = document.getElementById("chartImportCount").getContext("2d");
+
+const dataImportCount = {
+    labels: [],
+    datasets: [
+        {
+            label: "Total Imported Routes",
+            fill: true,
+            backgroundColor: "rgb(37 99 235 / 10%)",
+            borderColor: "rgb(37 99 235)",
+            pointBorderWidth: 1,
+            pointBackgroundColor: "#fff",
+            pointRadius: 4,
+            pointHitRadius: 10,
+            data: []
+        }
+    ]
+};
+
+
+const liveImportChart = new Chart(
+    ctxImport,
+    {
+        type: "line",
+        data: dataImportCount,
+        options: {
+            scales: {
+                x: {
+                    type: "time",
+                    time: {
+                        unit: "minute",
+                        displayFormats: { minute: "HH:mm" },
+                        tooltipFormat: "HH:mm:ss"
+                    }
+                },
+                y: {
+                    beginAtZero: false,
+                }
+            },
+            maintainAspectRatio: false
         }
     }
 );
@@ -428,7 +448,7 @@ async function fetchPeerHistory(asn) {
             // Clear chart data
             peerHistoryChart.data.labels = [];
             peerHistoryChart.data.datasets[0].data = [];
-            peerHistoryChart.update();
+            peerHistoryChart.update('none');
 
             peerHistoryChartContainer.style.display = "none";
 
@@ -441,7 +461,7 @@ async function fetchPeerHistory(asn) {
         const history = data.RateSecHistory;
         peerHistoryChart.data.labels = history.map((_, i) => `${history.length - 1 - i}m`);
         peerHistoryChart.data.datasets[0].data = history;
-        peerHistoryChart.update();
+        peerHistoryChart.update('none');
 
         peerHistoryDetails.innerText = `Average update rate (60min): ${data.RateSecAvg.toFixed(2)}/sec`;
 
@@ -516,6 +536,7 @@ function getStats() {
         loadingScreen.style.display = "none";
         liveRouteChart.update('none');
         liveFlapChart.update('none');
+        liveImportChart.update('none');
     });
     evtSource.addEventListener("c", (event) => {
         dataUpdate(event, false);
@@ -552,6 +573,7 @@ function getStats() {
 
             addToChart(liveRouteChart, [stats["Changes"], stats["ListedChanges"]], stats["Time"], dataIntervalSec, update);
             addToChart(liveFlapChart, [stats["Active"]], stats["Time"], 1, update);
+            addToChart(liveImportChart, [stats["RouteCount"]], stats["Time"], 1, update);
 
             avgArray.push(stats["Changes"]);
             if (avgArray.length > 50) {

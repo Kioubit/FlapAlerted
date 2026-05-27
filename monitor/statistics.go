@@ -14,6 +14,8 @@ import (
 	"time"
 )
 
+const NumDataPoints = 51
+
 func GetAverageRouteChanges90() float64 {
 	stats := GetStats()
 	changesList := make([]uint64, len(stats))
@@ -97,6 +99,7 @@ type statistic struct {
 	Changes       uint64
 	ListedChanges uint64
 	Active        int
+	RouteCount    uint32
 }
 
 var (
@@ -172,6 +175,7 @@ func statTracker(ctx context.Context) {
 			Changes:       analyze.GlobalTotalRouteChangeCounter.Swap(0),
 			ListedChanges: analyze.GlobalListedRouteChangeCounter.Swap(0),
 			Active:        trackedCount,
+			RouteCount:    session.GetTotalImportCount(),
 		}
 
 		newWrapper := statisticWrapper{
@@ -192,7 +196,7 @@ func statTracker(ctx context.Context) {
 
 		statListLock.Lock()
 		statList = append(statList, newStatistic)
-		if len(statList) > 50 {
+		if len(statList) > NumDataPoints {
 			statList = statList[1:]
 		}
 		statListLock.Unlock()

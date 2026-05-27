@@ -75,7 +75,7 @@ body {
 #grid-container-charts {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: repeat(2, 15em);
+    grid-template-rows: repeat(3, 15em);
     gap: 10px;
 }
 

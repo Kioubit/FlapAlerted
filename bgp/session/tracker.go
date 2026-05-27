@@ -46,6 +46,16 @@ func GetSessionCount() int {
 	return len(sessionTracker)
 }
 
+func GetTotalImportCount() uint32 {
+	sessionTrackerLock.RLock()
+	defer sessionTrackerLock.RUnlock()
+	var totalCount uint32
+	for _, session := range sessionTracker {
+		totalCount += session.table.ImportCount()
+	}
+	return totalCount
+}
+
 func GetSessionInfoJson() (string, error) {
 	sessionTrackerLock.RLock()
 	defer sessionTrackerLock.RUnlock()
