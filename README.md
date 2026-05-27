@@ -77,11 +77,10 @@ Provides the following http API endpoints on port `8699`:
 - `/flaps/metrics/json`
 - `/flaps/metrics/prometheus`
 - `/flaps/avgRouteChanges90`
-- `/flaps/historical/prefix`
+- `/flaps/historical/prefix?prefix=<cidr value>`
 - `/flaps/historical/list`
 
-It also provides a user interface (on the same port) at path:
-- `/`
+It also provides a user interface (on the same port) at `/`.
 
 Configuration:
 ```
