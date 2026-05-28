@@ -4,14 +4,24 @@ Documentation=https://github.com/Kioubit/FlapAlerted
 After=network.target
 
 [Service]
+Type=simple
 DynamicUser=true
-NoNewPrivileges=true
-ProtectSystem=strict
-RestrictNamespaces=true
-
 ExecStart=/usr/local/bin/FlapAlerted -asn 4242423914
 Restart=always
-RestartSec=10s
+RestartSec=10
+
+# Set State Directory if history storage is enabled
+# StateDirectory=flapalerted
+# WorkingDirectory=%S/flapalerted/
+
+# Hardening
+ProtectSystem=strict
+RestrictNamespaces=true
+NoNewPrivileges=true
+PrivateDevices=yes
+MemoryDenyWriteExecute=true
+SystemCallArchitectures=native
+ProtectProc=invisible
 
 [Install]
 WantedBy=multi-user.target
