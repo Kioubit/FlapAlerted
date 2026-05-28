@@ -76,6 +76,7 @@ Provides the following http API endpoints on port `8699`:
 - `/flaps/prefix?prefix=<cidr value>`
 - `/flaps/metrics/json`
 - `/flaps/metrics/prometheus`
+- `/flaps/metrics/prometheus/activePeerRates`
 - `/flaps/avgRouteChanges90`
 - `/flaps/historical/prefix?prefix=<cidr value>`
 - `/flaps/historical/list`

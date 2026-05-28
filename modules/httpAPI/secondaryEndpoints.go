@@ -1,6 +1,7 @@
 package httpAPI
 
 import (
+	"FlapAlerted/analyze"
 	"FlapAlerted/monitor"
 	"encoding/json"
 	"fmt"
@@ -58,26 +59,52 @@ func metrics(w http.ResponseWriter, _ *http.Request) {
 }
 
 func prometheus(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "text/plain")
+
 	metric := monitor.GetMetric()
-	output := fmt.Sprintln("# HELP active_flap_count Number of actively flapping prefixes")
-	output += fmt.Sprintln("# TYPE active_flap_count gauge")
-	output += fmt.Sprintln("active_flap_count", metric.ActiveFlapCount)
+	_, _ = fmt.Fprintln(w, "# HELP active_flap_count Number of actively flapping prefixes")
+	_, _ = fmt.Fprintln(w, "# TYPE active_flap_count gauge")
+	_, _ = fmt.Fprintln(w, "active_flap_count", metric.ActiveFlapCount)
 
-	output += fmt.Sprintln("# HELP active_flap_route_change_count Number of path changes caused by actively flapping prefixes")
-	output += fmt.Sprintln("# TYPE active_flap_route_change_count gauge")
-	output += fmt.Sprintln("active_flap_route_change_count", metric.ActiveFlapTotalPathChangeCount)
+	_, _ = fmt.Fprintln(w, "# HELP active_flap_route_change_count Number of path changes caused by actively flapping prefixes")
+	_, _ = fmt.Fprintln(w, "# TYPE active_flap_route_change_count gauge")
+	_, _ = fmt.Fprintln(w, "active_flap_route_change_count", metric.ActiveFlapTotalPathChangeCount)
 
-	output += fmt.Sprintln("# HELP route_change_count Number of path changes by all prefixes")
-	output += fmt.Sprintln("# TYPE route_change_count gauge")
-	output += fmt.Sprintln("route_change_count", metric.TotalPathChangeCount)
+	_, _ = fmt.Fprintln(w, "# HELP route_change_count Number of path changes by all prefixes")
+	_, _ = fmt.Fprintln(w, "# TYPE route_change_count gauge")
+	_, _ = fmt.Fprintln(w, "route_change_count", metric.TotalPathChangeCount)
 
-	output += fmt.Sprintln("# HELP average_route_changes_90 90th percentile average of route changes over the last 250 seconds, as overall route changes per second")
-	output += fmt.Sprintln("# TYPE average_route_changes_90 gauge")
-	output += fmt.Sprintln("average_route_changes_90", metric.AverageRouteChanges90)
+	_, _ = fmt.Fprintln(w, "# HELP average_route_changes_90 90th percentile average of route changes over the last 250 seconds, as overall route changes per second")
+	_, _ = fmt.Fprintln(w, "# TYPE average_route_changes_90 gauge")
+	_, _ = fmt.Fprintln(w, "average_route_changes_90", metric.AverageRouteChanges90)
 
-	output += fmt.Sprintln("# HELP sessions Number of connected BGP feeds")
-	output += fmt.Sprintln("# TYPE sessions gauge")
-	output += fmt.Sprintln("sessions", metric.Sessions)
+	_, _ = fmt.Fprintln(w, "# HELP sessions Number of connected BGP feeds")
+	_, _ = fmt.Fprintln(w, "# TYPE sessions gauge")
+	_, _ = fmt.Fprintln(w, "sessions", metric.Sessions)
+}
 
-	_, _ = w.Write([]byte(output))
+func prometheusActivePeerRates(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "text/plain")
+
+	rates := analyze.GetPeerRates()
+
+	_, _ = fmt.Fprintln(w, "# HELP bgp_updates_per_second BGP update rate per second for each peer")
+	_, _ = fmt.Fprintln(w, "# TYPE bgp_updates_per_second gauge")
+
+	_, _ = fmt.Fprintln(w, "# HELP bgp_updates_avg_per_second BGP update rate per second for each peer (averaged)")
+	_, _ = fmt.Fprintln(w, "# TYPE bgp_updates_avg_per_second gauge")
+
+	for _, r := range rates {
+		if _, err := fmt.Fprintf(
+			w, "bgp_updates_per_second{asn=%d} %d\n", r.PeerASN, r.RateSec,
+		); err != nil {
+			return
+		}
+
+		if _, err := fmt.Fprintf(
+			w, "bgp_updates_avg_per_second{asn=%d} %.6f\n", r.PeerASN, r.RateSecAvg,
+		); err != nil {
+			return
+		}
+	}
 }

@@ -84,6 +84,7 @@ func startComplete() {
 	mux.HandleFunc("/flaps/active/roa", requireAPIKeyWhenLimited(getActiveFlapsRoa))
 	mux.HandleFunc("/flaps/metrics/json", requireAPIKeyWhenLimited(metrics))
 	mux.HandleFunc("/flaps/metrics/prometheus", requireAPIKeyWhenLimited(prometheus))
+	mux.HandleFunc("/flaps/metrics/prometheus/activePeerRates", requireAPIKeyWhenLimited(prometheusActivePeerRates))
 
 	s := &http.Server{
 		ReadHeaderTimeout: 10 * time.Second,
