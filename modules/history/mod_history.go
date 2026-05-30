@@ -5,10 +5,13 @@ package history
 import (
 	"FlapAlerted/analyze"
 	"FlapAlerted/monitor"
+	"bufio"
+	"bytes"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"log/slog"
+	"math"
 	"net/netip"
 	"os"
 	"path/filepath"
@@ -65,41 +68,80 @@ func (m *Module) ActiveHistoryProvider() bool {
 	return m.enabled
 }
 
-// metaToFilename converts meta to "timestamp_prefix.json"
+// keyToFilename converts meta to "timestamp_prefix.json"
 // Replacing '/' in prefix with '_' for valid filename
-func (m *Module) metaToFilename(meta monitor.HistoricalEventMeta) string {
+func (m *Module) keyToFilename(meta monitor.HistoricalEventKey) string {
 	safePrefix := strings.ReplaceAll(meta.Prefix.String(), "/", "_")
 	return fmt.Sprintf("%d_%s.json", meta.Timestamp, safePrefix)
 }
 
 func (m *Module) saveToDisk(f analyze.FlapEvent) {
-	meta := monitor.HistoricalEventMeta{
+	now := time.Now().Unix()
+	key := monitor.HistoricalEventKey{
 		Prefix:    f.Prefix,
-		Timestamp: time.Now().Unix(),
+		Timestamp: now,
 	}
 
-	filename := m.metaToFilename(meta)
+	filename := m.keyToFilename(key)
 	path := filepath.Join(*historyDir, filename)
+	logger := m.logger.With("path", path)
 
-	jsonData, err := json.Marshal(f)
+	var avgChangeRate60 = math.NaN()
+	if n := len(f.RateSecHistory); n > 0 {
+		var rsSum uint32
+		for _, rs := range f.RateSecHistory {
+			rsSum += uint32(rs)
+		}
+		avgChangeRate60 = float64(rsSum) / float64(n)
+	}
+
+	duration := now - f.FirstSeen
+
+	header := monitor.HistoricalEventMeta{
+		AvgChangeRate60: avgChangeRate60,
+		AvgChangeRate:   float64(f.TotalPathChanges) / float64(duration),
+	}
+
+	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
-		m.logger.Error("failed to marshal flap event", "error", err)
+		logger.Error("failed to open file to write", "error", err)
+		return
+	}
+	defer func() {
+		_ = file.Close()
+	}()
+
+	headerJSON, err := json.Marshal(header)
+	if err != nil {
+		logger.Error("failed to marshal event header", "error", err)
 		return
 	}
 
-	if err := os.WriteFile(path, jsonData, 0644); err != nil {
-		m.logger.Error("failed to write history file", "path", path, "error", err)
+	if _, err = file.Write(append(headerJSON, []byte("\n")...)); err != nil {
+		logger.Error("failed to write event header", "error", err)
+		return
+	}
+
+	eventJSON, err := json.Marshal(f)
+	if err != nil {
+		logger.Error("failed to marshal flap event", "error", err)
+		return
+	}
+
+	if _, err = file.Write(eventJSON); err != nil {
+		logger.Error("failed to write event header", "error", err)
+		return
 	}
 }
 
 // GetHistoricalEventList implements HistoryProvider
-func (m *Module) GetHistoricalEventList() ([]monitor.HistoricalEventMeta, error) {
+func (m *Module) GetHistoricalEventList() ([]monitor.HistoricalEvent, error) {
 	files, err := os.ReadDir(*historyDir)
 	if err != nil {
 		return nil, err
 	}
 
-	var list = make([]monitor.HistoricalEventMeta, 0)
+	var list = make([]monitor.HistoricalEvent, 0)
 	for _, file := range files {
 		if file.IsDir() || filepath.Ext(file.Name()) != ".json" {
 			continue
@@ -123,9 +165,37 @@ func (m *Module) GetHistoricalEventList() ([]monitor.HistoricalEventMeta, error)
 			continue
 		}
 
-		list = append(list, monitor.HistoricalEventMeta{
-			Prefix:    prefix,
-			Timestamp: ts,
+		readFunc := func() (monitor.HistoricalEventMeta, error) {
+			f, err := os.Open(filepath.Join(*historyDir, file.Name()))
+			if err != nil {
+				return monitor.HistoricalEventMeta{}, err
+			}
+			defer func() {
+				_ = f.Close()
+			}()
+			reader := bufio.NewReader(f)
+			headerBytes, err := reader.ReadBytes('\n')
+			if err != nil {
+				return monitor.HistoricalEventMeta{}, err
+			}
+			var hdr monitor.HistoricalEventMeta
+			err = json.Unmarshal(headerBytes, &hdr)
+			if err != nil {
+				return monitor.HistoricalEventMeta{}, err
+			}
+			return hdr, nil
+		}
+		hdr, err := readFunc()
+		if err != nil {
+			continue
+		}
+
+		list = append(list, monitor.HistoricalEvent{
+			HistoricalEventKey: monitor.HistoricalEventKey{
+				Prefix:    prefix,
+				Timestamp: ts,
+			},
+			HistoricalEventMeta: hdr,
 		})
 	}
 
@@ -138,8 +208,8 @@ func (m *Module) GetHistoricalEventList() ([]monitor.HistoricalEventMeta, error)
 }
 
 // GetHistoricalEvent implements HistoryProvider
-func (m *Module) GetHistoricalEvent(meta monitor.HistoricalEventMeta) (f *analyze.FlapEvent, err error) {
-	filename := m.metaToFilename(meta)
+func (m *Module) GetHistoricalEvent(meta monitor.HistoricalEventKey) (f *analyze.FlapEvent, err error) {
+	filename := m.keyToFilename(meta)
 
 	root, err := os.OpenRoot(*historyDir)
 	if err != nil {
@@ -164,7 +234,13 @@ func (m *Module) GetHistoricalEvent(meta monitor.HistoricalEventMeta) (f *analyz
 		return
 	}
 
-	if err = json.Unmarshal(data, &f); err != nil {
+	nl := bytes.IndexByte(data, '\n')
+	if nl < 0 || nl+1 >= len(data) {
+		err = fmt.Errorf("file %s does not contain a second line", filename)
+		return
+	}
+
+	if err = json.Unmarshal(data[nl+1:], &f); err != nil {
 		err = fmt.Errorf("failed to unmarshal event: %w", err)
 		return
 	}
@@ -173,7 +249,7 @@ func (m *Module) GetHistoricalEvent(meta monitor.HistoricalEventMeta) (f *analyz
 }
 
 // GetHistoricalEventLatest implements HistoryProvider
-func (m *Module) GetHistoricalEventLatest(prefix netip.Prefix) (f *analyze.FlapEvent, meta monitor.HistoricalEventMeta, err error) {
+func (m *Module) GetHistoricalEventLatest(prefix netip.Prefix) (f *analyze.FlapEvent, meta monitor.HistoricalEventKey, err error) {
 	list, err := m.GetHistoricalEventList()
 	if err != nil {
 		err = fmt.Errorf("failed to list history: %w", err)
@@ -181,8 +257,9 @@ func (m *Module) GetHistoricalEventLatest(prefix netip.Prefix) (f *analyze.FlapE
 	}
 
 	// Find the first occurrence (the newest) matching the prefix
-	for _, meta = range list {
-		if meta.Prefix == prefix {
+	for _, mk := range list {
+		if mk.Prefix == prefix {
+			meta = mk.HistoricalEventKey
 			f, err = m.GetHistoricalEvent(meta)
 			return
 		}

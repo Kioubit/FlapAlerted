@@ -744,12 +744,12 @@ const historicalDialogOpenBtn = document.getElementById('viewHistoricalEvents');
                 const row = document.createElement("tr");
                 const cell = document.createElement("td");
                 cell.textContent = "No historical events found";
-                cell.colSpan = 3;
+                cell.colSpan = 4;
                 cell.style.cssText = "text-align: center; padding-top: 1em;";
                 row.appendChild(cell);
                 tableBody.appendChild(row);
             } else {
-                data.forEach(({ Prefix, Timestamp }) => {
+                data.forEach(({ Prefix, Timestamp, AvgChangeRate }) => {
                     const row = document.createElement("tr");
                     row.className = "historicalDialog-row";
 
@@ -762,6 +762,9 @@ const historicalDialogOpenBtn = document.getElementById('viewHistoricalEvents');
                     const dateTd = document.createElement("td");
                     dateTd.textContent = date;
 
+                    const avgChangeRateTd = document.createElement("td");
+                    avgChangeRateTd.textContent = AvgChangeRate.toFixed(2);
+
                     const actionTd = document.createElement("td");
                     const link = document.createElement("a");
                     link.href = url;
@@ -769,7 +772,7 @@ const historicalDialogOpenBtn = document.getElementById('viewHistoricalEvents');
                     link.textContent = "View";
                     actionTd.appendChild(link);
 
-                    row.append(prefixTd, dateTd, actionTd);
+                    row.append(prefixTd, dateTd, avgChangeRateTd, actionTd);
                     tableBody.appendChild(row);
                 });
             }

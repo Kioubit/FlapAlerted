@@ -102,20 +102,30 @@ func GetRegisteredModuleNames() []string {
 
 // -- Providers --
 
-type HistoricalEventMeta struct {
+type HistoricalEventKey struct {
 	Prefix    netip.Prefix
 	Timestamp int64
 }
 
+type HistoricalEventMeta struct {
+	AvgChangeRate   float64
+	AvgChangeRate60 float64
+}
+
+type HistoricalEvent struct {
+	HistoricalEventKey
+	HistoricalEventMeta
+}
+
 type HistoryProvider interface {
-	// GetHistoricalEvent returns the corresponding event to the HistoricalEventMeta.
+	// GetHistoricalEvent returns the corresponding event to a HistoricalEventKey.
 	// If the event was not found, it returns nil and not an error.
-	GetHistoricalEvent(m HistoricalEventMeta) (*analyze.FlapEvent, error)
-	// GetHistoricalEventLatest returns the most recent event for a prefix along with HistoricalEventMeta metadata.
+	GetHistoricalEvent(m HistoricalEventKey) (*analyze.FlapEvent, error)
+	// GetHistoricalEventLatest returns the most recent event for a prefix along with HistoricalEventKey metadata.
 	// If no event was found, it returns nil and not an error.
-	GetHistoricalEventLatest(prefix netip.Prefix) (*analyze.FlapEvent, HistoricalEventMeta, error)
+	GetHistoricalEventLatest(prefix netip.Prefix) (*analyze.FlapEvent, HistoricalEventKey, error)
 	// GetHistoricalEventList returns the list of available past events. Must be sorted newest first.
-	GetHistoricalEventList() ([]HistoricalEventMeta, error)
+	GetHistoricalEventList() ([]HistoricalEvent, error)
 	// ActiveHistoryProvider must return true if a history provider is enabled.
 	ActiveHistoryProvider() bool
 }

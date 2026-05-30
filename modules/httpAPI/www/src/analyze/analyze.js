@@ -122,10 +122,10 @@ function displayPrefix(json, userDefined) {
     let reportTimestamp = Math.floor(Date.now() / 1000);
     const histDisplayEl = document.getElementById("historicalDisplay");
 
-    if (json.Event && json.Meta) {
+    if (json.Event && json.EventKey) {
         // Handle historical wrapper format
         eventData = json.Event;
-        reportTimestamp = json.Meta.Timestamp;
+        reportTimestamp = json.EventKey.Timestamp;
 
         if (histDisplayEl) {
             histDisplayEl.style.display = "block";
@@ -209,6 +209,11 @@ function displayPrefix(json, userDefined) {
     } else {
         document.getElementById("averageDisplay").innerText = "Not available for user-defined";
     }
+
+    const durationSeconds = reportTimestamp - eventData.FirstSeen
+    const averageTotal = eventData.TotalPathChanges / durationSeconds;
+    document.getElementById("averageTotalDisplay").innerText = `${averageTotal.toFixed(2)}/s (total)`;
+
 
     const printButton = document.getElementById("printButton");
     if (printButton !== null) {

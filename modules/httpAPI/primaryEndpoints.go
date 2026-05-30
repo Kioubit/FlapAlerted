@@ -108,9 +108,9 @@ func getHistoricalPrefix(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var f *analyze.FlapEvent
-	var meta monitor.HistoricalEventMeta
+	var eventKey monitor.HistoricalEventKey
 	if timestamp == "" {
-		f, meta, err = provider.GetHistoricalEventLatest(prefix)
+		f, eventKey, err = provider.GetHistoricalEventLatest(prefix)
 	} else {
 		var timestampInt int64
 		timestampInt, err = strconv.ParseInt(timestamp, 10, 64)
@@ -119,11 +119,11 @@ func getHistoricalPrefix(w http.ResponseWriter, r *http.Request) {
 			_, _ = w.Write([]byte("Invalid timestamp value"))
 			return
 		}
-		meta = monitor.HistoricalEventMeta{
+		eventKey = monitor.HistoricalEventKey{
 			Prefix:    prefix,
 			Timestamp: timestampInt,
 		}
-		f, err = provider.GetHistoricalEvent(meta)
+		f, err = provider.GetHistoricalEvent(eventKey)
 	}
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -136,9 +136,9 @@ func getHistoricalPrefix(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_ = json.NewEncoder(w).Encode(struct {
-		Event analyze.FlapEvent
-		Meta  monitor.HistoricalEventMeta
-	}{*f, meta})
+		Event    analyze.FlapEvent
+		EventKey monitor.HistoricalEventKey
+	}{*f, eventKey})
 }
 
 func getHistoricalList(w http.ResponseWriter, _ *http.Request) {
