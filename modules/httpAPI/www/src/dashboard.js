@@ -4,7 +4,7 @@ import {
 
 import 'chartjs-adapter-date-fns';
 import JustGage from "justgage";
-import {toTimeElapsed} from "./util";
+import {getRelativeTime, toTimeElapsed, truncateRouteChanges} from "./util";
 
 Chart.register(
     CategoryScale,
@@ -259,8 +259,8 @@ async function showPeerHistory(asn) {
 
     peerHistoryDetails.innerText = "";
 
-    const errorElem = document.getElementById("peerHistoryError");
-    errorElem.innerText = "";
+    const statusElem = document.getElementById("peerHistoryStatus");
+    statusElem.innerText = "";
 
     peerHistoryDialog.showModal();
     initPeerChart();
@@ -363,12 +363,12 @@ document.querySelectorAll(".toggle-view-btn").forEach(btn => {
     btn.addEventListener("click", () => {
         if (activeTableView === 'prefixes') {
             activeTableView = 'peers';
-            tablePrefixes.classList.add('noDisplay');
-            tablePeers.classList.remove('noDisplay');
+            tablePrefixes.classList.add('d-none');
+            tablePeers.classList.remove('d-none');
         } else {
             activeTableView = 'prefixes';
-            tablePrefixes.classList.remove('noDisplay');
-            tablePeers.classList.add('noDisplay');
+            tablePrefixes.classList.remove('d-none');
+            tablePeers.classList.add('d-none');
         }
     });
 });
@@ -419,7 +419,7 @@ function updatePeers(peerList) {
         const asnLink = tr.querySelector(".asn-link");
         asnLink.addEventListener("click", (e) => {
             e.preventDefault();
-            showPeerHistory(item.ASN);
+            showPeerHistory(item.ASN).then();
         });
 
         asnLink.addEventListener("auxclick", (e) => e.preventDefault());
@@ -431,12 +431,12 @@ function updatePeers(peerList) {
 
 async function fetchPeerHistory(asn) {
     const refreshBtn = document.getElementById("refreshPeerHistory");
-    const errorElem = document.getElementById("peerHistoryError");
+    const statusElem = document.getElementById("peerHistoryStatus");
 
     refreshBtn.disabled = true;
     refreshBtn.classList.add("loading-btn");
-    errorElem.innerText = "Fetching...";
-    errorElem.style.color = "var(--text-secondary)"; // Neutral color while loading
+    statusElem.removeAttribute("data-result-type");
+    statusElem.innerText = "Fetching...";
 
     try {
         const response = await fetch(`peers/asn?asn=${asn}`, getFetchOptions());
@@ -450,14 +450,13 @@ async function fetchPeerHistory(asn) {
             peerHistoryChart.data.datasets[0].data = [];
             peerHistoryChart.update('none');
 
-            peerHistoryChartContainer.style.display = "none";
+            peerHistoryChartContainer.classList.add('d-none');
 
-            errorElem.innerText = "No historical data available for this ASN.";
-            errorElem.style.color = "var(--accent-color)"; // Warning color
+            statusElem.innerText = "No historical data available for this ASN";
             return;
         }
 
-        peerHistoryChartContainer.style.display = "block";
+        peerHistoryChartContainer.classList.remove('d-none');
         const history = data.RateSecHistory;
         peerHistoryChart.data.labels = history.map((_, i) => `${history.length - 1 - i}m`);
         peerHistoryChart.data.datasets[0].data = history;
@@ -465,15 +464,15 @@ async function fetchPeerHistory(asn) {
 
         peerHistoryDetails.innerText = `Average update rate (60min): ${data.RateSecAvg.toFixed(2)}/sec`;
 
-        errorElem.innerText = "Data updated just now.";
-        errorElem.style.color = "green";
+        statusElem.innerText = "Data updated just now.";
+        statusElem.setAttribute("data-result-type", "success");
 
         // Fade out the success message after 3 seconds
-        setTimeout(() => { if(errorElem.innerText.includes("just now")) errorElem.innerText = ""; }, 3000);
+        setTimeout(() => { if(statusElem.innerText.includes("just now")) statusElem.innerText = ""; }, 3000);
 
     } catch (err) {
-        errorElem.innerText = `Error: ${err.message}`;
-        errorElem.style.color = "#ff6b6b"; // Error color
+        statusElem.innerText = `Error: ${err.message}`;
+        statusElem.setAttribute("data-result-type", "error")
     } finally {
         refreshBtn.disabled = false;
         refreshBtn.classList.remove("loading-btn");
@@ -517,7 +516,7 @@ function updateList(flapList) {
     prefixTable.innerHTML = rows.join('');
 }
 
-const loadingScreen = document.getElementById("loadingScreen");
+const loadingScreen = document.getElementById("loading-screen");
 
 let lastGageValue = 0;
 function getStats() {
@@ -533,7 +532,7 @@ function getStats() {
         } catch (error) {
             console.error("updateCapabilities failed:", error);
         }
-        loadingScreen.style.display = "none";
+        loadingScreen.classList.add("d-none");
         liveRouteChart.update('none');
         liveFlapChart.update('none');
         liveImportChart.update('none');
@@ -562,9 +561,9 @@ function getStats() {
             }
 
             if (sessionCount === 0) {
-                noBGPFeedsElem.style.display = "block";
+                noBGPFeedsElem.classList.remove("d-none");
             } else {
-                noBGPFeedsElem.style.display = "none";
+                noBGPFeedsElem.classList.add("d-none");
             }
 
             updateList(flapList);
@@ -593,7 +592,7 @@ function getStats() {
     }
 
     evtSource.onerror = (err) => {
-        loadingScreen.style.display = "none";
+        loadingScreen.classList.add("d-none");
         handleConnectionLost(true);
         console.log(err);
     };
@@ -602,29 +601,12 @@ function getStats() {
     };
 }
 
-const million = 1000000;
-const billion = million * 1000;
-const trillion = billion * 1000;
-
-function truncateRouteChanges(routeChanges) {
-    if (routeChanges < million) {
-        return routeChanges;
-    } else if (routeChanges >= million && routeChanges < billion) {
-        return `${Number(routeChanges / million).toFixed(3)} million`;
-    } else if (routeChanges >= billion && routeChanges < trillion) {
-        return `${Number(routeChanges / billion).toFixed(3)} billion`;
-    } else if (routeChanges >= trillion) {
-        return `${Number(routeChanges / trillion).toFixed(2)} trillion`;
-    }
-    return routeChanges;
-}
-
-
 function handleConnectionLost(lost) {
+    const lostErrorElem = document.getElementById("connectionLost");
     if (lost) {
-        document.getElementById("connectionLost").style.display = "block";
+        lostErrorElem.classList.remove("d-none");
     } else {
-        document.getElementById("connectionLost").style.display = "none";
+        lostErrorElem.classList.add("d-none");
     }
 }
 
@@ -643,9 +625,9 @@ getStats();
 
     document.getElementById("sessionCountLink").onclick = async (ev) => {
         ev.preventDefault();
-        loading.style.display = "block";
-        table.style.display = "none";
-        error.style.display = "none";
+        loading.classList.remove("d-none");
+        table.classList.add("d-none");
+        error.classList.add("d-none");
         tbody.innerHTML = "";
 
         dialog.showModal();
@@ -663,7 +645,6 @@ getStats();
                 const cell = document.createElement("td");
                 cell.textContent = "No established sessions";
                 cell.colSpan = 5;
-                cell.style.cssText = "border: 1px solid #ddd; padding: 8px; text-align: center;";
                 row.appendChild(cell);
                 fragment.appendChild(row);
             } else {
@@ -694,97 +675,144 @@ getStats();
             }
 
             tbody.appendChild(fragment);
-            loading.style.display = "none";
-            table.style.display = "table";
+            loading.classList.add("d-none");
+            table.classList.remove("d-none");
         } catch (err) {
-            loading.style.display = "none";
+            loading.classList.add("d-none");
             error.textContent = `Error loading sessions: ${err.message}`;
-            error.style.display = "block";
+            error.classList.remove("d-none");
         }
     };
 }
 
 const historicalDialogOpenBtn = document.getElementById('viewHistoricalEvents');
+
 {
     const historicalDialog = document.getElementById('historicalDialog');
-
     const closeBtn = document.getElementById('closeHistoricalDialog');
     const tableBody = document.getElementById('historicalTableBody');
     const loadingElem = document.getElementById('historicalLoading');
     const errorElem = document.getElementById('historicalError');
     const tableContainer = document.getElementById('historicalTableContainer');
+    const toggleFullTimestamp = document.getElementById('historicalToggleFullTimestamp');
 
-    historicalDialogOpenBtn.addEventListener('click', () => {
+    let showFullTimestamps = false;
+    let loading = false;
+
+    historicalDialogOpenBtn.addEventListener('click', async () => {
         historicalDialog.showModal();
-        loadHistoricalEvents().then();
+
+        if (!loading) {
+            await loadHistoricalEvents();
+        }
     });
 
     closeBtn.addEventListener('click', () => {
         historicalDialog.close();
     });
 
+    function formatTimestamp(timestamp) {
+        const date = new Date(timestamp * 1000);
+
+        return showFullTimestamps
+            ? date.toLocaleString()
+            : getRelativeTime(date);
+    }
+
+    function updateVisibleTimestamps() {
+        for (const cell of tableBody.querySelectorAll('[data-timestamp]')) {
+            cell.textContent = formatTimestamp(Number(cell.dataset.timestamp));
+        }
+    }
+
     async function loadHistoricalEvents() {
-        // Reset view
-        tableBody.innerHTML = '';
+        loading = true;
+
+        tableBody.replaceChildren();
         errorElem.textContent = '';
-        loadingElem.style.display = 'block';
-        tableContainer.style.display = 'none';
+        loadingElem.classList.remove('d-none');
+        tableContainer.classList.add('d-none');
 
         try {
-            const response = await fetch('flaps/historical/list', getFetchOptions());
+            const response = await fetch(
+                'flaps/historical/list',
+                getFetchOptions()
+            );
 
             if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(errorText || `Error ${response.status}: ${response.statusText}`);
+                throw new Error(
+                    (await response.text()) ||
+                    `Error ${response.status}: ${response.statusText}`
+                );
             }
 
             const data = await response.json();
 
             if (data.length === 0) {
-                const row = document.createElement("tr");
-                const cell = document.createElement("td");
-                cell.textContent = "No historical events found";
+                const row = document.createElement('tr');
+                const cell = document.createElement('td');
+
+                cell.textContent = 'No historical events found';
                 cell.colSpan = 4;
-                cell.style.cssText = "text-align: center; padding-top: 1em;";
+
                 row.appendChild(cell);
                 tableBody.appendChild(row);
-            } else {
-                data.forEach(({ Prefix, Timestamp, AvgChangeRate }) => {
-                    const row = document.createElement("tr");
-                    row.className = "historicalDialog-row";
 
-                    const date = new Date(Timestamp * 1000).toLocaleString();
-                    const url = `analyze/?prefix=${encodeURIComponent(Prefix)}&timestamp=${Timestamp}`;
-
-                    const prefixTd = document.createElement("td");
-                    prefixTd.textContent = Prefix;
-
-                    const dateTd = document.createElement("td");
-                    dateTd.textContent = date;
-
-                    const avgChangeRateTd = document.createElement("td");
-                    avgChangeRateTd.textContent = AvgChangeRate.toFixed(2);
-
-                    const actionTd = document.createElement("td");
-                    const link = document.createElement("a");
-                    link.href = url;
-                    link.className = "historicalDialog-trackBtn";
-                    link.textContent = "View";
-                    actionTd.appendChild(link);
-
-                    row.append(prefixTd, dateTd, avgChangeRateTd, actionTd);
-                    tableBody.appendChild(row);
-                });
+                tableContainer.classList.remove("d-none");
+                return;
             }
 
-            loadingElem.style.display = 'none';
-            tableContainer.style.display = 'block';
+            const fragment = document.createDocumentFragment();
 
+            for (const { Prefix, Timestamp, AvgChangeRate } of data) {
+                const row = document.createElement('tr');
+                row.className = 'historicalDialog-row';
+
+                const prefixTd = document.createElement('td');
+                prefixTd.textContent = Prefix;
+
+                const dateTd = document.createElement('td');
+                dateTd.dataset.timestamp = String(Timestamp);
+                dateTd.textContent = formatTimestamp(Timestamp);
+
+                const avgChangeRateTd = document.createElement('td');
+                avgChangeRateTd.textContent = AvgChangeRate.toFixed(2);
+
+                const actionTd = document.createElement('td');
+
+                const link = document.createElement('a');
+                link.href =
+                    `analyze/?prefix=${encodeURIComponent(Prefix)}` +
+                    `&timestamp=${Timestamp}`;
+                link.textContent = 'View';
+
+                actionTd.appendChild(link);
+
+                row.append(
+                    prefixTd,
+                    dateTd,
+                    avgChangeRateTd,
+                    actionTd
+                );
+
+                fragment.appendChild(row);
+            }
+
+            tableBody.appendChild(fragment);
+            tableContainer.classList.remove('d-none');
         } catch (error) {
-            loadingElem.style.display = 'none';
-            errorElem.textContent = `Failed to load events: ${error.message}`;
+            errorElem.textContent =
+                `Failed to load events: ${error.message}`;
+        } finally {
+            loading = false;
+            loadingElem.classList.add('d-none');
         }
     }
+
+    toggleFullTimestamp.addEventListener('change', () => {
+        showFullTimestamps = toggleFullTimestamp.checked;
+        updateVisibleTimestamps();
+    });
 }
 
 // Gauge-only view toggle

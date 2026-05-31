@@ -85,7 +85,7 @@ const liveRouteChart = new Chart(
 
 let fatalErrorReported = false;
 (function start() {
-    const loadingScreen = document.getElementById("loadingScreen");
+    const loadingScreen = document.getElementById("loading-screen");
     const totalChangesDiv = document.getElementById("totalChanges");
     const prefixDisplay = document.getElementById("prefix");
     const prefixLink = document.getElementById("prefixLink");
@@ -95,10 +95,10 @@ let fatalErrorReported = false;
 
     const prefix = new URL(location.href).searchParams.get("prefix").trim();
     if (prefix === null) {
-        loadingScreen.style.display = "none";
-        mainInfoDiv.style.display = "none";
+        loadingScreen.classList.add("d-none");
+        mainInfoDiv.classList.add("d-none");
         errorDisplay.innerText = "Prefix not provided";
-        errorDisplay.style.display = "block";
+        errorDisplay.classList.remove("d-none");
         return
     }
 
@@ -107,9 +107,9 @@ let fatalErrorReported = false;
     let lastValue = null;
     evtSource.addEventListener("e", (event) => {
         errorDisplay.innerText = event.data;
-        errorDisplay.style.display = "block";
+        errorDisplay.classList.remove("d-none");
         fatalErrorReported = true;
-        mainInfoDiv.style.display = "none";
+        mainInfoDiv.classList.add("d-none");
         evtSource.close();
     });
     evtSource.addEventListener("valid", (_) => {
@@ -127,9 +127,9 @@ let fatalErrorReported = false;
         lastValue = js.Count;
 
         if (js.Sessions === 0) {
-            noBGPFeeds.style.display = "block";
+            noBGPFeeds.classList.remove("d-none");
         } else {
-            noBGPFeeds.style.display = "none";
+            noBGPFeeds.classList.add("d-none");
         }
 
         totalChangesDiv.innerText = `Total path changes: ${js.Count}`;
@@ -144,15 +144,15 @@ let fatalErrorReported = false;
             liveRouteChart.data.labels.shift()
         }
         liveRouteChart.data.labels.push(Date.now());
-        liveRouteChart.update();
+        liveRouteChart.update('none');
     });
     evtSource.onerror = (err) => {
-        loadingScreen.style.display = "none";
+        loadingScreen.classList.add("d-none");
         handleConnectionLost(true);
         console.log(err);
     };
     evtSource.onopen = () => {
-        loadingScreen.style.display = "none";
+        loadingScreen.classList.add("d-none");
         handleConnectionLost(false);
     };
 })();
@@ -161,10 +161,11 @@ function handleConnectionLost(lost) {
     if (fatalErrorReported) {
         return;
     }
+    const lostErrorElem = document.getElementById("connectionLost");
     if (lost) {
-        document.getElementById("connectionLost").style.display = "block";
+        lostErrorElem.classList.remove("d-none");
     } else {
-        document.getElementById("connectionLost").style.display = "none";
+        lostErrorElem.classList.add("d-none");
     }
 }
 

@@ -6,7 +6,6 @@ import (
 	"FlapAlerted/analyze"
 	"FlapAlerted/monitor"
 	"bufio"
-	"bytes"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -75,6 +74,35 @@ func (m *Module) keyToFilename(meta monitor.HistoricalEventKey) string {
 	return fmt.Sprintf("%d_%s.json", meta.Timestamp, safePrefix)
 }
 
+func (m *Module) filenameToKey(filename string) (monitor.HistoricalEventKey, error) {
+	var key monitor.HistoricalEventKey
+
+	name := strings.TrimSuffix(filename, ".json")
+	if name == filename {
+		return key, fmt.Errorf("invalid filename %q: missing .json suffix", filename)
+	}
+
+	parts := strings.SplitN(name, "_", 2)
+	if len(parts) != 2 {
+		return key, fmt.Errorf("invalid filename %q", filename)
+	}
+
+	timestamp, err := strconv.ParseInt(parts[0], 10, 64)
+	if err != nil {
+		return key, fmt.Errorf("invalid timestamp in filename %q: %w", filename, err)
+	}
+
+	prefixStr := strings.ReplaceAll(parts[1], "_", "/")
+
+	key.Timestamp = timestamp
+	key.Prefix, err = netip.ParsePrefix(prefixStr)
+	if err != nil {
+		return key, fmt.Errorf("invalid prefix in filename %q: %w", filename, err)
+	}
+
+	return key, nil
+}
+
 func (m *Module) saveToDisk(f analyze.FlapEvent) {
 	now := time.Now().Unix()
 	key := monitor.HistoricalEventKey{
@@ -95,43 +123,46 @@ func (m *Module) saveToDisk(f analyze.FlapEvent) {
 		avgChangeRate60 = float64(rsSum) / float64(n)
 	}
 
+	var avgRate float64
 	duration := now - f.FirstSeen
+	if duration > 0 {
+		avgRate = float64(f.TotalPathChanges) / float64(duration)
+	} else {
+		avgRate = math.NaN()
+	}
 
 	header := monitor.HistoricalEventMeta{
 		AvgChangeRate60: avgChangeRate60,
-		AvgChangeRate:   float64(f.TotalPathChanges) / float64(duration),
+		AvgChangeRate:   avgRate,
 	}
 
-	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE, 0644)
+	var success = false
+
+	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
 		logger.Error("failed to open file to write", "error", err)
 		return
 	}
 	defer func() {
 		_ = file.Close()
+		if !success {
+			_ = os.Remove(path)
+		}
 	}()
 
-	headerJSON, err := json.Marshal(header)
-	if err != nil {
+	enc := json.NewEncoder(file)
+
+	if err = enc.Encode(header); err != nil {
 		logger.Error("failed to marshal event header", "error", err)
 		return
 	}
 
-	if _, err = file.Write(append(headerJSON, []byte("\n")...)); err != nil {
-		logger.Error("failed to write event header", "error", err)
+	if err = enc.Encode(f); err != nil {
+		logger.Error("failed to marshal event", "error", err)
 		return
 	}
 
-	eventJSON, err := json.Marshal(f)
-	if err != nil {
-		logger.Error("failed to marshal flap event", "error", err)
-		return
-	}
-
-	if _, err = file.Write(eventJSON); err != nil {
-		logger.Error("failed to write event header", "error", err)
-		return
-	}
+	success = true
 }
 
 // GetHistoricalEventList implements HistoryProvider
@@ -165,25 +196,25 @@ func (m *Module) GetHistoricalEventList() ([]monitor.HistoricalEvent, error) {
 			continue
 		}
 
-		readFunc := func() (monitor.HistoricalEventMeta, error) {
+		readFunc := func() (hdr monitor.HistoricalEventMeta, err error) {
 			f, err := os.Open(filepath.Join(*historyDir, file.Name()))
 			if err != nil {
-				return monitor.HistoricalEventMeta{}, err
+				return
 			}
 			defer func() {
 				_ = f.Close()
 			}()
 			reader := bufio.NewReader(f)
-			headerBytes, err := reader.ReadBytes('\n')
+			headerBytes, err := reader.ReadSlice('\n')
 			if err != nil {
-				return monitor.HistoricalEventMeta{}, err
+				// ErrBufferFull is not relevant here
+				return
 			}
-			var hdr monitor.HistoricalEventMeta
 			err = json.Unmarshal(headerBytes, &hdr)
 			if err != nil {
-				return monitor.HistoricalEventMeta{}, err
+				return
 			}
-			return hdr, nil
+			return
 		}
 		hdr, err := readFunc()
 		if err != nil {
@@ -228,19 +259,26 @@ func (m *Module) GetHistoricalEvent(meta monitor.HistoricalEventKey) (f *analyze
 		return
 	}
 
-	data, err := root.ReadFile(filename)
+	file, err := root.Open(filename)
 	if err != nil {
-		err = fmt.Errorf("could not read event file %s: %w", filename, err)
+		err = fmt.Errorf("could not open event file %s: %w", filename, err)
+		return
+	}
+	defer func() {
+		_ = file.Close()
+	}()
+
+	reader := bufio.NewReader(file)
+	_, err = reader.ReadSlice('\n')
+	if err != nil {
+		// ErrBufferFull is not relevant here
+		err = fmt.Errorf("error finding delimiter for second line %s: %w", filename, err)
 		return
 	}
 
-	nl := bytes.IndexByte(data, '\n')
-	if nl < 0 || nl+1 >= len(data) {
-		err = fmt.Errorf("file %s does not contain a second line", filename)
-		return
-	}
+	dec := json.NewDecoder(reader)
 
-	if err = json.Unmarshal(data[nl+1:], &f); err != nil {
+	if err = dec.Decode(&f); err != nil {
 		err = fmt.Errorf("failed to unmarshal event: %w", err)
 		return
 	}
@@ -274,6 +312,7 @@ func (m *Module) rotate() {
 	}
 
 	now := time.Now()
+	cutoff := now.Add(-*historyMaxAge).Unix()
 	var remainingFiles []os.DirEntry
 
 	for _, f := range files {
@@ -281,12 +320,12 @@ func (m *Module) rotate() {
 			continue
 		}
 
-		info, err := f.Info()
+		key, err := m.filenameToKey(f.Name())
 		if err != nil {
 			continue
 		}
 
-		if now.Sub(info.ModTime()) > *historyMaxAge {
+		if key.Timestamp < cutoff {
 			if err = os.Remove(filepath.Join(*historyDir, f.Name())); err != nil {
 				m.logger.Error("failed to remove history file. Will stop saving events.", "path", f.Name(), "error", err)
 				m.hasFailed = true
@@ -297,11 +336,19 @@ func (m *Module) rotate() {
 	}
 
 	if len(remainingFiles) > *historyMaxFiles {
-		// Sort by ModTime ascending (oldest first)
+		// Sort by time ascending (oldest first)
 		sort.Slice(remainingFiles, func(i, j int) bool {
-			infoI, _ := remainingFiles[i].Info()
-			infoJ, _ := remainingFiles[j].Info()
-			return infoI.ModTime().Before(infoJ.ModTime())
+			keyI, errI := m.filenameToKey(remainingFiles[i].Name())
+			if errI != nil {
+				return true
+			}
+
+			keyJ, errJ := m.filenameToKey(remainingFiles[j].Name())
+			if errJ != nil {
+				return false
+			}
+
+			return keyI.Timestamp < keyJ.Timestamp
 		})
 
 		toDelete := len(remainingFiles) - *historyMaxFiles

@@ -58,7 +58,7 @@ func getUserDefinedStatisticStream(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			_, err = w.Write(formatEventStreamMessage("u", string(result)))
+			_, err = w.Write(formatEventStreamMessage("u", result))
 			if err != nil {
 				return
 			}

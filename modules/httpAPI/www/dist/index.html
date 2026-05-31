@@ -4,23 +4,23 @@
     <meta charset="UTF-8">
     <title>FlapAlerted</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script type="module" crossorigin src="./assets/main-ClWDCZDS.js"></script>
+  <script type="module" crossorigin src="./assets/main-BfCf6ti6.js"></script>
   <link rel="modulepreload" crossorigin href="./assets/chartjs-adapter-date-fns.esm-DCN3i_-e.js">
-  <link rel="modulepreload" crossorigin href="./assets/util-ByCO-oF_.js">
-  <link rel="stylesheet" crossorigin href="./assets/dashboard-dgRCR_yz.css">
+  <link rel="modulepreload" crossorigin href="./assets/util-CHuplq2c.js">
+  <link rel="stylesheet" crossorigin href="./assets/main-DQWu_MAa.css">
 </head>
 
 <body>
-<div id="loadingScreen">
+<div id="loading-screen">
     <div class="loader"></div>
 </div>
 
-<div id="main-container">
+<div class="main-container">
     <h2 id="mainHeading">FlapAlerted</h2>
-    <div class="error" id="connectionLost">
+    <div class="error-banner d-none" id="connectionLost">
         <p>Connection lost</p>
     </div>
-    <div class="error" id="noBGPFeeds">
+    <div class="error-banner d-none" id="noBGPFeeds">
         <p>No BGP feeds are connected to this instance</p>
     </div>
     <div id="grid-container-main">
@@ -41,7 +41,7 @@
                 </tr>
                 </tbody>
             </table>
-            <table id="tablePeers" class="noDisplay">
+            <table id="tablePeers" class="d-none">
                 <thead>
                 <tr>
                     <th class="toggle-view-btn" title="Switch to Prefixes view">Peer ASN <span class="toggle-view-icon">⇄</span></th>
@@ -80,7 +80,7 @@
             </div>
             <div>
                 <div class="footer-label">Info</div>
-                <div>Connected BGP feeds:&nbsp;<span class="footer-value" id="sessionCount">...</span> <button id="sessionCountLink">View</button></div>
+                <div>Connected BGP feeds:&nbsp;<span class="footer-value" id="sessionCount">...</span> <button id="sessionCountLink" class="styled-btn square secondary">View</button></div>
                 <div>
                     <a href="https://github.com/Kioubit/FlapAlerted/" title="Source Code">FlapAlerted<span id="version"></span></a></div>
             </div>
@@ -169,6 +169,10 @@
             <tbody id="historicalTableBody"></tbody>
         </table>
     </div>
+    <label id="historicalToggleFullTimestampLabel">
+        <input type="checkbox" id="historicalToggleFullTimestamp">
+        Show full timestamps
+    </label>
     <p id="historicalError" class="historicalDialog-error"></p>
 </dialog>
 <dialog id="peerHistoryDialog">
@@ -181,7 +185,7 @@
         </div>
     </div>
     <p id="peerHistoryDetails"></p>
-    <p id="peerHistoryError" class="historicalDialog-error"></p>
+    <p id="peerHistoryStatus"></p>
 </dialog>
 </body>
 </html>

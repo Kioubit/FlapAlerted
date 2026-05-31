@@ -1,3 +1,12 @@
+@charset "UTF-8";
+@import "../shared.css";
+
+@media screen and (width <= 800px) {
+    #mainHeading {
+        text-align: center;
+    }
+}
+
 .chartContainer {
     height: 15em;
 }

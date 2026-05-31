@@ -5,7 +5,6 @@ package httpAPI
 import (
 	"FlapAlerted/monitor"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"sync"
 )
@@ -46,7 +45,7 @@ func getStatisticStream(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			continue
 		}
-		_, err = w.Write(formatEventStreamMessage("c", string(m)))
+		_, err = w.Write(formatEventStreamMessage("c", m))
 		if err != nil {
 			return
 		}
@@ -56,7 +55,7 @@ func getStatisticStream(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		capabilities = []byte("{}")
 	}
-	_, err = w.Write(formatEventStreamMessage("ready", string(capabilities)))
+	_, err = w.Write(formatEventStreamMessage("ready", capabilities))
 	if err != nil {
 		return
 	}
@@ -91,7 +90,7 @@ func streamServe() {
 		clientMutex.Lock()
 		for c := range clients {
 			select {
-			case c <- formatEventStreamMessage("u", string(m)):
+			case c <- formatEventStreamMessage("u", m):
 			default:
 				delete(clients, c)
 				close(c)
@@ -102,6 +101,14 @@ func streamServe() {
 	}
 }
 
-func formatEventStreamMessage(eventName string, data string) []byte {
-	return []byte(fmt.Sprintf("event: %s\ndata: %s\n\n", eventName, data))
+func formatEventStreamMessage[T string | []byte](eventName string, data T) []byte {
+	b := make([]byte, 0, len(eventName)+len(data)+16)
+
+	b = append(b, "event: "...)
+	b = append(b, eventName...)
+	b = append(b, "\ndata: "...)
+	b = append(b, data...)
+	b = append(b, "\n\n"...)
+
+	return b
 }

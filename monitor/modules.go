@@ -14,13 +14,13 @@ var (
 )
 
 type Module interface {
-	// Name Module name
+	// Name returns the Module name
 	Name() string
 
 	// OnStart is called before the monitoring starts
 	// Implementation should check if it needs to receive events.
 	// True must be returned to subscribe to events.
-	// Background goroutines may be spawned here if needed as well.
+	// Background goroutines may be spawned here if needed.
 	OnStart() bool
 
 	// OnEvent is called when a flap event occurs.
@@ -121,22 +121,21 @@ type HistoryProvider interface {
 	// GetHistoricalEvent returns the corresponding event to a HistoricalEventKey.
 	// If the event was not found, it returns nil and not an error.
 	GetHistoricalEvent(m HistoricalEventKey) (*analyze.FlapEvent, error)
-	// GetHistoricalEventLatest returns the most recent event for a prefix along with HistoricalEventKey metadata.
+	// GetHistoricalEventLatest returns the most recent event for a prefix along with its HistoricalEventKey.
 	// If no event was found, it returns nil and not an error.
 	GetHistoricalEventLatest(prefix netip.Prefix) (*analyze.FlapEvent, HistoricalEventKey, error)
-	// GetHistoricalEventList returns the list of available past events. Must be sorted newest first.
+	// GetHistoricalEventList returns the list of available past events. It is sorted newest first.
 	GetHistoricalEventList() ([]HistoricalEvent, error)
-	// ActiveHistoryProvider must return true if a history provider is enabled.
+	// ActiveHistoryProvider returns true if the history provider is enabled.
 	ActiveHistoryProvider() bool
 }
 
 func GetHistoryProvider() HistoryProvider {
 	for _, m := range moduleList {
 		if hp, ok := m.(HistoryProvider); ok {
-			if !hp.ActiveHistoryProvider() {
-				continue
+			if hp.ActiveHistoryProvider() {
+				return hp
 			}
-			return hp
 		}
 	}
 	return nil

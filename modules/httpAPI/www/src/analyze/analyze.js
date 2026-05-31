@@ -80,7 +80,7 @@ const dataRouteChangeCount = {
     const userDefined = ownURL.searchParams.get("userDefined") === "true";
     const timestamp = ownURL.searchParams.get("timestamp");
     if (!prefix) {
-        document.getElementById("loader").style.display = "none";
+        document.getElementById("loader").classList.add("d-none");
         document.getElementById("loaderText").innerText = "Invalid link";
         return;
     }
@@ -103,7 +103,7 @@ const dataRouteChangeCount = {
         }
         displayPrefix(json, userDefined);
     }).catch((error) => {
-        document.getElementById("loader").style.display = "none";
+        document.getElementById("loader").classList.add("d-none");
         document.getElementById("loaderText").innerText = "An error occurred";
         alert("Network error");
         console.log(error);
@@ -112,7 +112,7 @@ const dataRouteChangeCount = {
 
 function displayPrefix(json, userDefined) {
     if (json === null) {
-        document.getElementById("loader").style.display = "none";
+        document.getElementById("loader").classList.add("d-none");
         document.getElementById("loaderText").innerText = "Prefix not found. The link may have expired";
         return;
     }
@@ -128,12 +128,12 @@ function displayPrefix(json, userDefined) {
         reportTimestamp = json.EventKey.Timestamp;
 
         if (histDisplayEl) {
-            histDisplayEl.style.display = "block";
+            histDisplayEl.classList.remove("d-none");
             histDisplayEl.innerText = `Historical Report (Event end date: ${timeConverter(reportTimestamp)})`;
         }
     } else {
         if (histDisplayEl) {
-            histDisplayEl.style.display = "none";
+            histDisplayEl.classList.add("d-none");
         }
     }
 
@@ -142,7 +142,7 @@ function displayPrefix(json, userDefined) {
     const pathMap = new Map();
 
     if (pJson === null || pJson.length === 0) {
-        document.getElementById("informationText2").innerText = "No path data is available yet. Try refreshing later.";
+        document.getElementById("informationText").innerText = "No path data is available yet. Try refreshing later.";
     } else {
         for (let i = 0; i < pJson.length; i++) {
             const firstAsn = pJson[i].Path[0];
@@ -192,8 +192,8 @@ function displayPrefix(json, userDefined) {
 
 
     document.getElementById("prefixTitle").innerHTML = `Flap report for ${eventData.Prefix}`;
-    document.getElementById("loader").style.display = "none";
-    document.getElementById("loaderText").style.display = "none";
+    document.getElementById("loader").classList.add("d-none");
+    document.getElementById("loaderText").classList.add("d-none");
 
 
     document.getElementById("pathChangeDisplay").innerText = eventData.TotalPathChanges;
@@ -201,8 +201,8 @@ function displayPrefix(json, userDefined) {
     document.getElementById("durationDisplay").innerText = toTimeElapsed(reportTimestamp - eventData.FirstSeen);
 
 
-    document.getElementById("informationText1").style.display = "block";
-    document.getElementById("informationText2").style.display = "block";
+    document.getElementById("informationTable").classList.remove("d-none");
+    document.getElementById("informationText").classList.remove("d-none");
 
     if (!userDefined) {
         displayRateSecHistory(eventData.RateSecHistory, reportTimestamp)
@@ -226,7 +226,7 @@ function displayPrefix(json, userDefined) {
 
 function displayRateSecHistory(history, endTimestamp) {
     const dataIntervalSeconds = 60;
-    document.getElementById("chartRouteCount-outerContainer").classList.remove("noDisplay");
+    document.getElementById("chartRouteCount-outerContainer").classList.remove("d-none");
     const RouteChangeChart = new Chart(ctxRouteCount, {
         type: "line",
         plugins: [noDataPlugin],

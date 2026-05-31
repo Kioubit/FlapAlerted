@@ -37,6 +37,7 @@ func RecordPathChanges(pathChan <-chan table.PathChange) (<-chan table.PathChang
 		defer close(notificationChannel)
 
 		cleanupTicker := time.NewTicker(intervalSec * time.Second)
+		defer cleanupTicker.Stop()
 		counterMap := make(map[netip.Prefix]uint32)
 		now := time.Now().Unix()
 
