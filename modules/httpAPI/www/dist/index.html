@@ -4,10 +4,10 @@
     <meta charset="UTF-8">
     <title>FlapAlerted</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script type="module" crossorigin src="./assets/main-D2vMgGg3.js"></script>
+  <script type="module" crossorigin src="./assets/main-ClWDCZDS.js"></script>
   <link rel="modulepreload" crossorigin href="./assets/chartjs-adapter-date-fns.esm-DCN3i_-e.js">
   <link rel="modulepreload" crossorigin href="./assets/util-ByCO-oF_.js">
-  <link rel="stylesheet" crossorigin href="./assets/dashboard-CFZGPxOf.css">
+  <link rel="stylesheet" crossorigin href="./assets/dashboard-dgRCR_yz.css">
 </head>
 
 <body>
@@ -15,7 +15,7 @@
     <div class="loader"></div>
 </div>
 
-<div id="mainContainer">
+<div id="main-container">
     <h2 id="mainHeading">FlapAlerted</h2>
     <div class="error" id="connectionLost">
         <p>Connection lost</p>
@@ -37,7 +37,7 @@
                 </thead>
                 <tbody id="prefixTableBody">
                 <tr>
-                    <td colspan="4" class="centerText">...</td>
+                    <td colspan="4" class="text-center">...</td>
                 </tr>
                 </tbody>
             </table>
@@ -51,7 +51,7 @@
                 </thead>
                 <tbody id="peersTableBody">
                 <tr>
-                    <td colspan="3" class="centerText">...</td>
+                    <td colspan="3" class="text-center">...</td>
                 </tr>
                 </tbody>
             </table>
@@ -117,7 +117,7 @@
 <button id="gaugeOnlyToggle" class="styled-btn view-toggle">Gauge-only view</button>
 
 <dialog id="sessionsDialog">
-    <button id="closeSessionsDialog" class="SessionsDialog-closeButton">Close</button>
+    <button id="closeSessionsDialog" class="styled-btn square float-right">Close</button>
     <h2>Established Sessions</h2>
 
     <div id="sessionsLoading" class="SessionsDialog-loading">
@@ -139,8 +139,8 @@
             <tbody id="sessionsTableBody"></tbody>
             <tfoot>
                 <tr>
-                    <th colspan="4" class="SessionsDialog-headerCell rightText">Total routes:</th>
-                    <th id="totalImportCount" class="SessionsDialog-headerCell">0</th>
+                    <th colspan="4" class="SessionsDialog-bodyCell text-right">Total routes:</th>
+                    <th id="totalImportCount" class="SessionsDialog-bodyCell">0</th>
                 </tr>
             </tfoot>
         </table>
@@ -148,7 +148,7 @@
     <p id="sessionsError" class="SessionsDialog-error"></p>
 </dialog>
 <dialog id="historicalDialog">
-    <button id="closeHistoricalDialog" class="historicalDialog-closeButton">Close</button>
+    <button id="closeHistoricalDialog" class="styled-btn square float-right">Close</button>
     <h2>Historical Flap Events</h2>
 
     <div id="historicalLoading" class="historicalDialog-loading">
@@ -156,7 +156,7 @@
         <div class="dialog-spinner"></div>
     </div>
 
-    <div id="historicalTableContainer">
+    <div id="historicalTableContainer" class="overflow-x-auto">
         <table id="historicalTable" class="historicalDialog-table">
             <thead>
             <tr class="historicalDialog-headerRow">
@@ -172,8 +172,8 @@
     <p id="historicalError" class="historicalDialog-error"></p>
 </dialog>
 <dialog id="peerHistoryDialog">
-    <button id="closePeerHistoryDialog" class="historicalDialog-closeButton">Close</button>
-    <button id="refreshPeerHistory" class="styled-btn">Refresh</button>
+    <button id="closePeerHistoryDialog" class="styled-btn square float-right">Close</button>
+    <button id="refreshPeerHistory" class="styled-btn square float-right">Refresh</button>
     <h2>Rate History for peer: <span id="peerHistoryASN"></span></h2>
     <div class="overflow-x-auto">
         <div id="chartPeerHistoryContainer">

@@ -8,7 +8,9 @@
     --radius: 0.75rem;
 }
 
-* {
+*,
+::before,
+::after {
     box-sizing: border-box;
 }
 
@@ -21,6 +23,7 @@
 }
 
 body {
+    font-family: system-ui, sans-serif;
     color: var(--text-primary);
 }
 
@@ -60,7 +63,7 @@ body {
     backdrop-filter: blur(4px);
 }
 
-#mainContainer {
+#main-container {
     margin: auto;
     max-width: 70em;
 }
@@ -209,12 +212,16 @@ body {
     margin: 0.5rem 0;
 }
 
-.centerText {
+.text-center {
     text-align: center;
 }
 
-.rightText {
+.text-right {
     text-align: right !important;
+}
+
+.float-right {
+    float: right;
 }
 
 a {
@@ -229,6 +236,42 @@ a:hover {
     max-width: fit-content;
 }
 
+dialog {
+    opacity: 0;
+    transition:
+            opacity 0.2s ease-out,
+            overlay 0.2s ease-out allow-discrete,
+            display 0.2s ease-out allow-discrete;
+}
+
+dialog::backdrop {
+    background: rgb(0 0 0 / 60%);
+    backdrop-filter: blur(2px);
+    opacity: 0;
+    transition:
+            opacity 0.2s ease-out,
+            overlay 0.2s ease-out allow-discrete,
+            display 0.2s ease-out allow-discrete;
+}
+
+dialog[open] {
+    opacity: 1;
+}
+
+dialog[open]::backdrop {
+    opacity: 1;
+}
+
+@starting-style {
+    dialog[open] {
+        opacity: 0;
+    }
+
+    dialog[open]::backdrop {
+        opacity: 0;
+    }
+}
+
 .styled-btn {
     padding: 0.5rem 1rem;
     background: var(--primary-color);
@@ -240,13 +283,41 @@ a:hover {
     transition: filter 0.2s ease;
 }
 
+.styled-btn.square {
+    border-radius: 4px;
+    padding: 5px 10px
+}
+
 .styled-btn:hover {
     filter: brightness(0.9);
 }
 
-.SessionsDialog-closeButton {
-    float: right;
-    margin-bottom: 10px;
+.styled-btn:disabled {
+    background-color: #888 !important;
+    position: relative;
+    pointer-events: auto;
+    cursor: not-allowed;
+}
+
+/* Tooltip Base Style */
+.styled-btn:disabled:hover::after,
+.styled-btn:disabled:active::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 125%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #333;
+    color: #fff;
+    padding: 6px 10px;
+    border-radius: 4px;
+    min-width: 14em;
+    z-index: 100;
+}
+
+.styled-btn:disabled:not([data-tooltip]):hover::after,
+.styled-btn:disabled:not([data-tooltip]):active::after{
+    content: none;
 }
 
 .SessionsDialog-loading {
@@ -382,24 +453,9 @@ a:hover {
     box-shadow: 0 4px 20px rgb(0 0 0 / 50%);
 }
 
-#historicalDialog::backdrop {
-    background: rgb(0 0 0 / 80%);
-}
-
-.historicalDialog-closeButton {
-    float: right;
-    background: var(--primary-color);
-    border: none;
-    color: white;
-    padding: 5px 10px;
-    cursor: pointer;
-    border-radius: 4px;
-}
-
 .historicalDialog-table {
     width: 100%;
     border-collapse: collapse;
-    margin-top: 20px;
 }
 
 .historicalDialog-headerCell {
@@ -426,11 +482,6 @@ a:hover {
     border-left-color: #09f;
     animation: spin 1s linear infinite;
     display: inline-block;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
 }
 
 .historicalDialog-error {
@@ -492,9 +543,6 @@ body.gauge-only {
     right: 1rem;
     margin: 0;
     z-index: 1000;
-    background: rgb(37 99 235 / 90%);
-    backdrop-filter: blur(4px);
-    box-shadow: 0 2px 8px rgb(0 0 0 / 10%);
 }
 
 @media screen and (width <= 800px) {
@@ -508,30 +556,6 @@ body.gauge-only {
     }
 }
 
-.styled-btn:disabled {
-    background-color: #888 !important;
-    position: relative;
-    pointer-events: auto;
-    cursor: not-allowed;
-}
-
-/* Tooltip Base Style */
-.styled-btn:disabled:hover::after,
-.styled-btn:disabled:active::after {
-    content: attr(data-tooltip);
-    position: absolute;
-    bottom: 125%;
-    left: 50%;
-    transform: translateX(-50%);
-    background: #333;
-    color: #fff;
-    padding: 6px 10px;
-    border-radius: 4px;
-    font-size: 12px;
-    white-space: nowrap;
-    z-index: 100;
-}
-
 #peerHistoryDialog {
     border: none;
     border-radius: var(--radius);
@@ -541,27 +565,14 @@ body.gauge-only {
     box-shadow: 0 10px 25px rgb(0 0 0 / 20%);
 }
 
-#peerHistoryDialog::backdrop {
-    background: rgb(0 0 0 / 60%);
-    backdrop-filter: blur(2px);
-}
-
 #chartPeerHistoryContainer {
     height: 300px;
     margin-top: 20px;
-    min-width: 30em;
+    min-width: 20em;
 }
 
 #refreshPeerHistory {
-    float: right;
-    margin-right: 10px;
-    padding: 4px 8px;
-    font-size: 0.8rem;
-}
-
-#refreshPeerHistory:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
+    margin-right: 0.5rem;
 }
 
 #peerHistoryError {

@@ -375,12 +375,12 @@ document.querySelectorAll(".toggle-view-btn").forEach(btn => {
 
 function updatePeers(peerList) {
     if (!peerList) {
-        peersTableBody.innerHTML = '<tr><td colspan="3" class="centerText"><b>Please wait</b></td></tr>';
+        peersTableBody.innerHTML = '<tr><td colspan="3" class="text-center"><b>Please wait</b></td></tr>';
         return;
     }
 
     if (peerList.length === 0) {
-        peersTableBody.innerHTML = '<tr><td colspan="3" class="centerText">No active peers detected</td></tr>';
+        peersTableBody.innerHTML = '<tr><td colspan="3" class="text-center">No active peers detected</td></tr>';
         return;
     }
 
@@ -483,12 +483,12 @@ async function fetchPeerHistory(asn) {
 
 function updateList(flapList) {
     if (flapList === null) {
-        prefixTable.innerHTML = '<tr><td colspan="4" class="centerText"><b>Please wait</b></td></tr>';
+        prefixTable.innerHTML = '<tr><td colspan="4" class="text-center"><b>Please wait</b></td></tr>';
         return;
     }
 
     if (flapList.length === 0) {
-        prefixTable.innerHTML = '<tr><td colspan="4" class="centerText">No flapping prefixes detected</td></tr>';
+        prefixTable.innerHTML = '<tr><td colspan="4" class="text-center">No flapping prefixes detected</td></tr>';
         return;
     }
 
