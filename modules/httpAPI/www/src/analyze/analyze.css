@@ -9,6 +9,7 @@
 #analyze-container {
     max-width: 150em;
     margin: 0 auto;
+    padding: 0.75rem 0.75rem 0;
 }
 
 #prefixTitle {
@@ -44,9 +45,20 @@
     margin-bottom: 1em;
 }
 
+#chartRouteCount-container {
+    position: relative;
+    height: 12em;
+    min-width: 70em;
+    margin-bottom: 1em;
+}
+
+#historicalDisplay {
+    color: darkred;
+}
+
 @media print
 {
-    .no-print, .no-print *
+    .no-print
     {
         display: none !important;
     }
@@ -59,15 +71,13 @@
         min-width: unset !important;
         height: unset !important;
     }
-}
 
-#chartRouteCount-container {
-    position: relative;
-    height: 12em;
-    min-width: 70em;
-    margin-bottom: 1em;
-}
-
-#historicalDisplay {
-    color: darkred;
+    #pathTableContainer {
+        overflow-x: visible !important;
+        overflow-wrap: anywhere !important;
+    }
+    
+    #pathTable {
+        white-space: normal !important;
+    }
 }
