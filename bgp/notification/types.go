@@ -74,3 +74,4 @@ func (m Msg) LogValue() slog.Value {
 var ErrImportLimit = errors.New("import limit reached")
 var ErrAdministrativeShutdown = errors.New("administrative session shutdown")
 var ErrHoldTimeExpired = errors.New("hold timer expired")
+var ErrPeerNotification = errors.New("received BGP NOTIFICATION")

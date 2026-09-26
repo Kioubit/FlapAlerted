@@ -46,12 +46,12 @@ func GetSessionCount() int {
 	return len(sessionTracker)
 }
 
-func GetTotalImportCount() uint32 {
+func GetTotalImportCount() uint64 {
 	sessionTrackerLock.RLock()
 	defer sessionTrackerLock.RUnlock()
-	var totalCount uint32
+	var totalCount uint64
 	for _, session := range sessionTracker {
-		totalCount += session.table.ImportCount()
+		totalCount += uint64(session.table.ImportCount())
 	}
 	return totalCount
 }

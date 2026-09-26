@@ -7,7 +7,6 @@ import (
 	"context"
 	"math"
 	"slices"
-	"sort"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -99,7 +98,7 @@ type statistic struct {
 	Changes       uint64
 	ListedChanges uint64
 	Active        int
-	RouteCount    uint32
+	RouteCount    uint64
 }
 
 var (

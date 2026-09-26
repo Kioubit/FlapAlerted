@@ -134,6 +134,9 @@ func newBGPConnection(ctx context.Context, logger *slog.Logger, conn net.Conn, s
 				hasFourByteAsn = true
 			case open.AddPathCapabilityList:
 				for _, ac := range v {
+					if ac.SAFI != common.UNICAST {
+						continue
+					}
 					switch ac.AFI {
 					case common.AFI4:
 						if ac.TXRX != open.ReceiveOnly {
@@ -246,16 +249,49 @@ func handleEstablished(ctx context.Context, ctxCancel context.CancelCauseFunc, c
 	}
 
 	keepAliveChan := make(chan struct{}, 1)
-	defer close(keepAliveChan)
 	var wg sync.WaitGroup
-	defer wg.Wait()
+
+	ioDone := make(chan struct{})
+	stopIO := context.AfterFunc(ctx, func() {
+		defer close(ioDone)
+
+		now := time.Now()
+
+		// Ensure anything remaining (like bgp notification writes) terminates quickly
+		if err := conn.SetWriteDeadline(now.Add(3 * time.Second)); err != nil {
+			_ = conn.Close()
+			return
+		}
+
+		// Stop any reads immediately
+		if err := conn.SetReadDeadline(now); err != nil {
+			_ = conn.Close()
+		}
+	})
+
+	defer func() {
+		ctxCancel(nil)
+		wg.Wait()
+		if !stopIO() {
+			<-ioDone
+		}
+		close(keepAliveChan)
+		_ = conn.Close()
+	}()
+
 	keepAliveHandler(ctx, ctxCancel, &wg, logger, keepAliveChan, conn, session.ApplicableHoldTime)
 
 	err = handleMessages(ctx, logger, conn, session, updateChannel, keepAliveChan, session.HasExtendedMessages)
 	if err != nil {
+		if errors.Is(err, notification.ErrPeerNotification) {
+			// The peer already sent a notification. Don't send a response
+			return err
+		}
+
 		// Give the receiver time to receive the notification before closing the connection
 		defer time.Sleep(1 * time.Second)
 
+		// Locally generated notifications
 		ctxCause := context.Cause(ctx)
 		if ctxCause != nil {
 			// Context has been canceled
@@ -276,7 +312,13 @@ func handleEstablished(ctx context.Context, ctxCancel context.CancelCauseFunc, c
 		}
 		// Context was not canceled, error in the function
 		if nMsg, err := notification.GetNotification(notification.UpdateMessageError, notification.UpdateMessageErrorUnspecific, []byte{}); err == nil {
-			_, _ = conn.Write(nMsg)
+			if deadlineErr := conn.SetWriteDeadline(
+				time.Now().Add(3 * time.Second),
+			); deadlineErr != nil {
+				_ = conn.Close()
+			} else {
+				_, _ = conn.Write(nMsg)
+			}
 		}
 		return err
 	}
@@ -289,11 +331,8 @@ func keepAliveHandler(ctx context.Context, ctxCancel context.CancelCauseFunc, wg
 		return
 	}
 	holdDuration := time.Duration(holdTime) * time.Second
-	keepAliveInterval := holdDuration / 4
-	updateThreshold := holdDuration / 10
-	if updateThreshold < 2*time.Second {
-		updateThreshold = 2 * time.Second
-	}
+	keepAliveInterval := max(holdDuration/4, 1*time.Second)
+	updateThreshold := max(holdDuration/10, 2*time.Second)
 	sleepTimer := time.NewTimer(updateThreshold)
 
 	wg.Go(func() {
@@ -302,16 +341,6 @@ func keepAliveHandler(ctx context.Context, ctxCancel context.CancelCauseFunc, wg
 		for {
 			select {
 			case <-ctx.Done():
-				// Ensure anything remaining (like bgp notification writes) terminates quickly
-				err := conn.SetWriteDeadline(time.Now().Add(3 * time.Second))
-				if err != nil {
-					_ = conn.Close()
-				}
-				// Stop any reads immediately
-				err = conn.SetReadDeadline(time.Now())
-				if err != nil {
-					_ = conn.Close()
-				}
 				return
 			case <-ticker.C:
 			}
@@ -374,13 +403,16 @@ func handleMessages(ctx context.Context, logger *slog.Logger, conn io.Reader, se
 		case common.MsgNotification:
 			notificationMsg, err := notification.ParseMsgNotification(r)
 			if err != nil {
-				return fmt.Errorf("failed parsing NOTIFICATION message %w", err)
+				return fmt.Errorf(
+					"%w: failed to parse message: %w",
+					notification.ErrPeerNotification, err,
+				)
 			}
 			logger.Debug("BGP notification", "message", notificationMsg)
-			if notificationMsg.ErrorCode != notification.Cease {
-				return notificationMsg
+			if notificationMsg.ErrorCode == notification.Cease {
+				return nil
 			}
-			return nil
+			return fmt.Errorf("%w: %w", notification.ErrPeerNotification, notificationMsg)
 		case common.MsgKeepAlive:
 			logger.Debug("Received keepalive message")
 			select {
@@ -399,9 +431,13 @@ func handleMessages(ctx context.Context, logger *slog.Logger, conn io.Reader, se
 			if err != nil {
 				return fmt.Errorf("failed parsing UPDATE message %w", err)
 			}
-			updateChannel <- table.SessionUpdateMessage{
+			select {
+			case updateChannel <- table.SessionUpdateMessage{
 				Msg:     msg.Body.(update.Msg),
 				Session: session,
+			}:
+			case <-ctx.Done():
+				return ctx.Err()
 			}
 		}
 
