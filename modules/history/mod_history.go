@@ -222,10 +222,8 @@ func (m *Module) GetHistoricalEventList() ([]monitor.HistoricalEvent, error) {
 		}
 
 		list = append(list, monitor.HistoricalEvent{
-			HistoricalEventKey: monitor.HistoricalEventKey{
-				Prefix:    prefix,
-				Timestamp: ts,
-			},
+			Prefix:              prefix,
+			Timestamp:           ts,
 			HistoricalEventMeta: hdr,
 		})
 	}
@@ -352,7 +350,7 @@ func (m *Module) rotate() {
 		})
 
 		toDelete := len(remainingFiles) - *historyMaxFiles
-		for i := 0; i < toDelete; i++ {
+		for i := range toDelete {
 			if err = os.Remove(filepath.Join(*historyDir, remainingFiles[i].Name())); err != nil {
 				m.logger.Error("failed to remove history file. Will stop saving events.", "path", remainingFiles[i].Name(), "error", err)
 				m.hasFailed = true

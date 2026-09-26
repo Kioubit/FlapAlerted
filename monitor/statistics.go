@@ -21,7 +21,7 @@ func GetAverageRouteChanges90() float64 {
 	for i, stat := range stats {
 		changesList[i] = stat.Stats.Changes
 	}
-	sort.Slice(changesList, func(i, j int) bool { return changesList[i] < changesList[j] })
+	slices.Sort(changesList)
 	cutLength := int(math.Ceil(float64(len(changesList)) * 0.90))
 	changesList = changesList[:cutLength]
 
