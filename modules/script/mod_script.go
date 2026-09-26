@@ -5,11 +5,13 @@ package script
 import (
 	"FlapAlerted/analyze"
 	"FlapAlerted/monitor"
+	"context"
 	"encoding/json"
 	"flag"
 	"log/slog"
 	"os"
 	"os/exec"
+	"sync"
 )
 
 var (
@@ -26,7 +28,7 @@ func (m *Module) Name() string {
 	return m.name
 }
 
-func (m *Module) OnStart() bool {
+func (m *Module) OnStart(_ context.Context, _ *sync.WaitGroup) bool {
 	if *scriptFileStart == "" && *scriptFileEnd == "" {
 		return false
 	}

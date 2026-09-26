@@ -96,7 +96,7 @@ func main() {
 
 	modules := monitor.GetRegisteredModuleNames()
 	if len(modules) != 0 {
-		slog.Info("Enabled", "modules", strings.Join(modules, ","))
+		slog.Info("Enabled modules", slog.Any("modules", modules))
 	}
 
 	if conf.Debug {

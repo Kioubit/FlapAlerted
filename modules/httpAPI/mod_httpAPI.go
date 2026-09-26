@@ -5,8 +5,10 @@ package httpAPI
 import (
 	"FlapAlerted/analyze"
 	"FlapAlerted/monitor"
+	"context"
 	"crypto/subtle"
 	"embed"
+	"errors"
 	"flag"
 	"log/slog"
 	"net"
@@ -14,6 +16,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -35,15 +38,25 @@ var (
 )
 
 type Module struct {
-	name string
+	name   string
+	logger *slog.Logger
 }
 
 func (m *Module) Name() string {
 	return m.name
 }
 
-func (m *Module) OnStart() bool {
-	go startComplete()
+func (m *Module) OnStart(ctx context.Context, wg *sync.WaitGroup) bool {
+	m.logger = slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{})).With("module", m.name)
+
+	wg.Go(func() {
+		startHTTPServer(ctx)
+	})
+
+	wg.Go(func() {
+		streamServe(ctx)
+	})
+
 	return false
 }
 
@@ -57,9 +70,7 @@ func init() {
 
 var logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{})).With("module", moduleName)
 
-func startComplete() {
-	go streamServe()
-
+func startHTTPServer(ctx context.Context) {
 	mux := http.NewServeMux()
 	// --- Primary endpoints ---
 	mux.Handle("/", mainPageHandler())
@@ -86,10 +97,31 @@ func startComplete() {
 	mux.HandleFunc("/flaps/metrics/prometheus", requireAPIKeyWhenLimited(prometheus))
 	mux.HandleFunc("/flaps/metrics/prometheus/activePeerRates", requireAPIKeyWhenLimited(prometheusActivePeerRates))
 
+	ctx, cancel := context.WithCancel(ctx)
 	s := &http.Server{
 		ReadHeaderTimeout: 10 * time.Second,
 		Handler:           mux,
+		BaseContext:       func(net.Listener) context.Context { return ctx },
 	}
+
+	shutdownDone := make(chan struct{})
+	context.AfterFunc(ctx, func() {
+		defer close(shutdownDone)
+
+		shutdownCtx, cancelShutdownCtx := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancelShutdownCtx()
+
+		if shutdownErr := s.Shutdown(shutdownCtx); shutdownErr != nil {
+			logger.Error("Graceful shutdown failed, forcing close", "error", shutdownErr)
+			_ = s.Close()
+		}
+	})
+
+	defer func() {
+		cancel()
+		<-shutdownDone
+	}()
+
 	var listener net.Listener
 	var err error
 	if strings.HasPrefix(*httpAPIListenAddress, "/") {
@@ -107,9 +139,9 @@ func startComplete() {
 		}
 	}
 	slog.Info("Start HTTP server", "listen_address", *httpAPIListenAddress)
-	err = s.Serve(listener)
-	if err != nil {
-		logger.Error("Error starting HTTP API server", "error", err)
+
+	if err = s.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		logger.Error("Error running HTTP API server", "error", err)
 	}
 }
 

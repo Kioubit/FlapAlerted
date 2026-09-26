@@ -5,9 +5,11 @@ package log
 import (
 	"FlapAlerted/analyze"
 	"FlapAlerted/monitor"
+	"context"
 	"flag"
 	"log/slog"
 	"os"
+	"sync"
 )
 
 var (
@@ -23,7 +25,7 @@ func (m *Module) Name() string {
 	return m.name
 }
 
-func (m *Module) OnStart() bool {
+func (m *Module) OnStart(_ context.Context, _ *sync.WaitGroup) bool {
 	return !*disableLog
 }
 

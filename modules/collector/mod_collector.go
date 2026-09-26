@@ -15,6 +15,7 @@ import (
 	"net"
 	"os"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -33,7 +34,7 @@ func (m *Module) Name() string {
 	return m.name
 }
 
-func (m *Module) OnStart() bool {
+func (m *Module) OnStart(ctx context.Context, wg *sync.WaitGroup) bool {
 	if *collectorEndpoint == "" && *collectorInstanceName == "" {
 		return false
 	}
@@ -42,10 +43,10 @@ func (m *Module) OnStart() bool {
 		m.logger.Error("Collector endpoint specified but no instance name given!")
 	}
 
-	go func() {
-		ctx, cancel := context.WithCancel(context.Background())
-		m.connectAndListen(ctx, cancel)
-	}()
+	wg.Go(func() {
+		ctxB, cancel := context.WithCancel(ctx)
+		m.connectAndListen(ctxB, cancel)
+	})
 
 	return false
 }

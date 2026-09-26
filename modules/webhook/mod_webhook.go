@@ -12,6 +12,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"sync"
 	"time"
 )
 
@@ -41,7 +42,7 @@ func (m *Module) Name() string {
 	return m.name
 }
 
-func (m *Module) OnStart() bool {
+func (m *Module) OnStart(_ context.Context, _ *sync.WaitGroup) bool {
 	if len(*webhookUrlsStart) == 0 && len(*webhookUrlsEnd) == 0 {
 		return false
 	}

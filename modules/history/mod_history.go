@@ -6,6 +6,7 @@ import (
 	"FlapAlerted/analyze"
 	"FlapAlerted/monitor"
 	"bufio"
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -17,6 +18,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -38,7 +40,7 @@ func (m *Module) Name() string {
 	return m.name
 }
 
-func (m *Module) OnStart() bool {
+func (m *Module) OnStart(_ context.Context, _ *sync.WaitGroup) bool {
 	if !*enableHistory {
 		return false
 	}

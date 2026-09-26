@@ -3,8 +3,10 @@ package monitor
 import (
 	"FlapAlerted/analyze"
 	"FlapAlerted/config"
+	"context"
 	"log/slog"
 	"net/netip"
+	"sync"
 	"sync/atomic"
 )
 
@@ -21,7 +23,7 @@ type Module interface {
 	// Implementation should check if it needs to receive events.
 	// True must be returned to subscribe to events.
 	// Background goroutines may be spawned here if needed.
-	OnStart() bool
+	OnStart(ctx context.Context, wg *sync.WaitGroup) bool
 
 	// OnEvent is called when a flap event occurs.
 	// Runs inside a worker goroutine.
@@ -49,9 +51,14 @@ func (w *moduleWorker) run() {
 func notificationHandler(c <-chan []analyze.FlapEventNotification) {
 	modulesStarted.Store(true)
 
+	modulesWG := &sync.WaitGroup{}
+	defer modulesWG.Wait()
+	modulesCtx, modulesCancel := context.WithCancel(context.Background())
+	defer modulesCancel()
+
 	workerList := make([]*moduleWorker, 0)
 	for _, m := range moduleList {
-		subscribeToEvents := m.OnStart()
+		subscribeToEvents := m.OnStart(modulesCtx, modulesWG)
 		if subscribeToEvents {
 			worker := &moduleWorker{
 				impl:      m,

@@ -39,28 +39,28 @@ func mainPageHandler() http.Handler {
 	return withETag
 }
 
-func getCapsWithModHttpJSON() ([]byte, error) {
-	caps := monitor.GetCapabilities()
-	type ModHttpCaps struct {
+func getCapsWithModHTTPJSON() ([]byte, error) {
+	type modHTTPCaps struct {
 		GageMaxValue         uint   `json:"gageMaxValue"`
 		GageDisableDynamic   bool   `json:"gageDisableDynamic"`
 		MaxUserDefined       uint   `json:"maxUserDefined"`
 		ExplorerURLPrefixASN string `json:"explorerUrlPrefixASN"`
 	}
 
-	fullCaps := struct {
+	type fullCaps struct {
 		monitor.Capabilities
-		ModHttpCaps ModHttpCaps `json:"modHttp"`
-	}{
-		Capabilities: caps,
-		ModHttpCaps: ModHttpCaps{
+		ModHTTP modHTTPCaps `json:"modHttp"`
+	}
+
+	return json.Marshal(fullCaps{
+		Capabilities: monitor.GetCapabilities(),
+		ModHTTP: modHTTPCaps{
 			GageMaxValue:         *gageMaxValue,
 			GageDisableDynamic:   *gageDisableDynamic,
 			MaxUserDefined:       *maxUserDefinedMonitors,
 			ExplorerURLPrefixASN: *explorerURLPrefixASN,
 		},
-	}
-	return json.Marshal(fullCaps)
+	})
 }
 
 func getPrefix(w http.ResponseWriter, r *http.Request) {

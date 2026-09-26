@@ -5,6 +5,7 @@ package roaFilter
 import (
 	"FlapAlerted/analyze"
 	"FlapAlerted/monitor"
+	"context"
 	"encoding/json"
 	"flag"
 	"log/slog"
@@ -26,7 +27,7 @@ func (m *Module) Name() string {
 	return m.name
 }
 
-func (m *Module) OnStart() bool {
+func (m *Module) OnStart(_ context.Context, _ *sync.WaitGroup) bool {
 	if *roaJsonFile == "" {
 		return false
 	}

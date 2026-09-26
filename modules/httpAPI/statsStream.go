@@ -4,6 +4,7 @@ package httpAPI
 
 import (
 	"FlapAlerted/monitor"
+	"context"
 	"encoding/json"
 	"net/http"
 	"sync"
@@ -51,7 +52,7 @@ func getStatisticStream(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	capabilities, err := getCapsWithModHttpJSON()
+	capabilities, err := getCapsWithModHTTPJSON()
 	if err != nil {
 		capabilities = []byte("{}")
 	}
@@ -79,25 +80,31 @@ func getStatisticStream(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func streamServe() {
+func streamServe(ctx context.Context) {
 	statChan := monitor.SubscribeToStats()
 	for {
-		s := <-statChan
-		m, err := json.Marshal(s)
-		if err != nil {
-			continue
-		}
-		clientMutex.Lock()
-		for c := range clients {
-			select {
-			case c <- formatEventStreamMessage("u", m):
-			default:
-				delete(clients, c)
-				close(c)
+		select {
+		case <-ctx.Done():
+			return
+		case s, ok := <-statChan:
+			if !ok {
+				return
+			}
+			m, err := json.Marshal(s)
+			if err != nil {
 				continue
 			}
+			clientMutex.Lock()
+			for c := range clients {
+				select {
+				case c <- formatEventStreamMessage("u", m):
+				default:
+					delete(clients, c)
+					close(c)
+				}
+			}
+			clientMutex.Unlock()
 		}
-		clientMutex.Unlock()
 	}
 }
 
