@@ -14,7 +14,7 @@ func ProcessUpdates(cancel context.CancelCauseFunc, updateChannel chan SessionUp
 			return
 		}
 
-		slog.Debug("Received update", "update", u)
+		slog.Debug("Received update", "update", &u)
 
 		nlRi, foundNlRi, err := u.GetMpReachNLRI()
 		if err != nil {

@@ -67,12 +67,12 @@ func RecordPathChanges(pathChan <-chan table.PathChange) (<-chan table.PathChang
 						}
 					} else {
 						peer.zeroCount = 0
-						peer.RateSec = int(peer.intervalCount / intervalSec)
-						peer.intervalCount = 0
-						peer.RateSecHistory = append(peer.RateSecHistory, peer.RateSec)
-						if len(peer.RateSecHistory) > maxRateHistory {
-							peer.RateSecHistory = peer.RateSecHistory[1:]
-						}
+					}
+					peer.RateSec = int(peer.intervalCount / intervalSec)
+					peer.intervalCount = 0
+					peer.RateSecHistory = append(peer.RateSecHistory, peer.RateSec)
+					if len(peer.RateSecHistory) > maxRateHistory {
+						peer.RateSecHistory = peer.RateSecHistory[1:]
 					}
 				}
 
@@ -89,16 +89,15 @@ func RecordPathChanges(pathChan <-chan table.PathChange) (<-chan table.PathChang
 					if intervalCount <= uint64(config.GlobalConf.RouteChangeCounter) {
 						if event.hasTriggered {
 							if intervalCount <= uint64(config.GlobalConf.ExpiryRouteChangeCounter) {
-								if event.underThresholdCount == config.GlobalConf.UnderThresholdTarget {
+								event.underThresholdCount++
+								if event.underThresholdCount >= config.GlobalConf.UnderThresholdTarget {
 									delete(activeMap, prefix)
-									if len(notificationsBatch) <= 50 {
+									if len(notificationsBatch) < 50 {
 										notificationsBatch = append(notificationsBatch, FlapEventNotification{
 											IsStart: false,
 											Event:   copyEvent(event),
 										})
 									}
-								} else {
-									event.underThresholdCount++
 								}
 							}
 						} else {
@@ -109,7 +108,7 @@ func RecordPathChanges(pathChan <-chan table.PathChange) (<-chan table.PathChang
 						if event.overThresholdCount == config.GlobalConf.OverThresholdTarget {
 							event.hasTriggered = true
 							event.overThresholdCount++
-							if len(notificationsBatch) <= 50 {
+							if len(notificationsBatch) < 50 {
 								notificationsBatch = append(notificationsBatch, FlapEventNotification{
 									IsStart: true,
 									Event:   copyEvent(event),
@@ -153,7 +152,7 @@ func RecordPathChanges(pathChan <-chan table.PathChange) (<-chan table.PathChang
 				}
 			} else {
 				if counterMap[pathChange.Prefix] == uint32(config.GlobalConf.RouteChangeCounter) {
-					if len(activeMap) <= config.GlobalConf.MaxActivePrefixes {
+					if len(activeMap) < config.GlobalConf.MaxActivePrefixes {
 						activeMap[pathChange.Prefix] = &FlapEvent{
 							Prefix:             pathChange.Prefix,
 							PathHistory:        newPathTracker(config.GlobalConf.MaxPathHistory),
@@ -177,7 +176,7 @@ func RecordPathChanges(pathChan <-chan table.PathChange) (<-chan table.PathChang
 				if val, exists := activeMapPeer[peerASN]; exists {
 					val.intervalCount++
 				} else {
-					if len(activeMapPeer) <= maxPeers {
+					if len(activeMapPeer) < maxPeers {
 						activeMapPeer[peerASN] = &PeerUpdateRate{
 							PeerASN:        peerASN,
 							RateSecHistory: make([]int, 0, 1),

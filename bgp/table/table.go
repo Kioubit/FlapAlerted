@@ -49,7 +49,10 @@ func (t *PrefixTable) update(prefix netip.Prefix, pathID uint32, isWithdrawal bo
 	} else {
 		entry, found := t.table[prefix]
 		if !found {
-			t.importCount.Add(1)
+			if t.importCount.Add(1) > config.GlobalConf.ImportLimit {
+				t.sessionCancellation(notification.ErrImportLimit)
+				return
+			}
 			entry = &Entry{Paths: make(map[uint32]common.AsPath)}
 			t.table[prefix] = entry
 		} else {
@@ -60,13 +63,13 @@ func (t *PrefixTable) update(prefix netip.Prefix, pathID uint32, isWithdrawal bo
 					OldPath:      oldPath,
 				}
 			} else {
-				t.importCount.Add(1)
+				if t.importCount.Add(1) > config.GlobalConf.ImportLimit {
+					t.sessionCancellation(notification.ErrImportLimit)
+					return
+				}
 			}
 		}
 		entry.Paths[pathID] = asPath
-		if t.importCount.Load() > config.GlobalConf.ImportLimit {
-			t.sessionCancellation(notification.ErrImportLimit)
-		}
 	}
 }
 

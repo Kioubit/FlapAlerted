@@ -12,6 +12,7 @@ import (
 	"log/slog"
 	"net"
 	"sync"
+	"time"
 )
 
 /*
@@ -27,32 +28,36 @@ import (
 
 func StartBGP(ctx context.Context, parentWg *sync.WaitGroup, bgpListenAddress string) (<-chan table.PathChange, error) {
 	pathChangeChan := make(chan table.PathChange, 1000)
+	slog.Info("Start BGP listener", "listen_address", bgpListenAddress)
 	listener, err := net.Listen("tcp", bgpListenAddress)
 	if err != nil {
 		return nil, fmt.Errorf("failed to start listener: %w", err)
 	}
 	parentWg.Go(func() {
-		defer close(pathChangeChan)
 		defer func() {
 			_ = listener.Close()
 		}()
 
-		go func() {
-			<-ctx.Done()
+		context.AfterFunc(ctx, func() {
 			_ = listener.Close()
-		}()
+		})
 
 		var wg sync.WaitGroup
-		defer wg.Wait()
+		defer func() {
+			wg.Wait()
+			close(pathChangeChan)
+			slog.Info("BGP listener stopped", "reason", ctx.Err())
+		}()
+
 		for {
 			conn, err := listener.Accept()
 			if err != nil {
 				select {
 				case <-ctx.Done():
-					slog.Info("BGP listener stopped", "reason", ctx.Err())
 					return
 				default:
 					slog.Warn("Failed to accept TCP connection", "error", err)
+					time.Sleep(time.Second)
 					continue
 				}
 			}
@@ -113,11 +118,10 @@ func handleConnection(parent context.Context, conn net.Conn, pathChangeChan chan
 
 	err = handleEstablished(ctx, cancel, conn, logger, localSession, updateChannel)
 	if err != nil {
-		if !errors.Is(err, notification.ErrAdministrativeShutdown) {
-			logger.Error("connection encountered an error", "error", err.Error())
-		} else {
+		if errors.Is(err, notification.ErrAdministrativeShutdown) {
 			logger.Info("connection closed due to local administrative shutdown")
+		} else {
+			logger.Error("connection encountered an error", "error", err)
 		}
 	}
-
 }

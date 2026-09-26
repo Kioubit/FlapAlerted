@@ -180,10 +180,7 @@ func newBGPConnection(ctx context.Context, logger *slog.Logger, conn net.Conn, s
 		return fmt.Errorf("unacceptable peer hold time of %d seconds", peerHoldTime)
 	}
 
-	applicableHoldTime := ownHoldTime
-	if peerHoldTime < ownHoldTime {
-		applicableHoldTime = peerHoldTime
-	}
+	applicableHoldTime := min(peerHoldTime, ownHoldTime)
 	slog.Debug("Hold time negotiated", "peer_time_seconds", peerHoldTime, "applicable_time_seconds", applicableHoldTime)
 	session.ApplicableHoldTime = applicableHoldTime
 
@@ -312,9 +309,7 @@ func handleEstablished(ctx context.Context, ctxCancel context.CancelCauseFunc, c
 		}
 		// Context was not canceled, error in the function
 		if nMsg, err := notification.GetNotification(notification.UpdateMessageError, notification.UpdateMessageErrorUnspecific, []byte{}); err == nil {
-			if deadlineErr := conn.SetWriteDeadline(
-				time.Now().Add(3 * time.Second),
-			); deadlineErr != nil {
+			if deadlineErr := conn.SetWriteDeadline(time.Now().Add(3 * time.Second)); deadlineErr != nil {
 				_ = conn.Close()
 			} else {
 				_, _ = conn.Write(nMsg)
@@ -322,7 +317,7 @@ func handleEstablished(ctx context.Context, ctxCancel context.CancelCauseFunc, c
 		}
 		return err
 	}
-	logger.Info("BGP Connection closed")
+	logger.Info("BGP session closed")
 	return nil
 }
 

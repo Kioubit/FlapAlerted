@@ -26,7 +26,7 @@ const (
 )
 
 func (m Msg) Error() string {
-	return fmt.Sprintf("BGP %s error (subcode=%d)",
+	return fmt.Sprintf("BGP %s notification (subcode=%d)",
 		m.ErrorCode.String(), m.ErrorSubCode)
 }
 
