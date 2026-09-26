@@ -6,10 +6,13 @@ import (
 	"FlapAlerted/analyze"
 	"FlapAlerted/monitor"
 	"context"
+	cryptorand "crypto/rand"
 	"crypto/subtle"
 	"embed"
+	"encoding/base64"
 	"errors"
 	"flag"
+	"fmt"
 	"log/slog"
 	"net"
 	"net/http"
@@ -17,10 +20,9 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
-
-var moduleName = "mod_httpAPI"
 
 //go:generate npm --prefix www run build
 
@@ -40,6 +42,14 @@ var (
 type Module struct {
 	name   string
 	logger *slog.Logger
+
+	// eTag for static content
+	eTag string
+	// Statistics stream
+	clientMutex sync.Mutex
+	clients     map[chan []byte]struct{}
+	// User defined monitors
+	userDefinedCount atomic.Int32
 }
 
 func (m *Module) Name() string {
@@ -48,13 +58,17 @@ func (m *Module) Name() string {
 
 func (m *Module) OnStart(ctx context.Context, wg *sync.WaitGroup) bool {
 	m.logger = slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{})).With("module", m.name)
+	b := make([]byte, 12)
+	_, _ = cryptorand.Read(b)
+	m.eTag = fmt.Sprintf(`"%s"`, base64.RawURLEncoding.EncodeToString(b))
+	m.clients = make(map[chan []byte]struct{})
 
 	wg.Go(func() {
-		startHTTPServer(ctx)
+		m.startHTTPServer(ctx)
 	})
 
 	wg.Go(func() {
-		streamServe(ctx)
+		m.streamServe(ctx)
 	})
 
 	return false
@@ -68,33 +82,31 @@ func init() {
 	})
 }
 
-var logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{})).With("module", moduleName)
-
-func startHTTPServer(ctx context.Context) {
+func (m *Module) startHTTPServer(ctx context.Context) {
 	mux := http.NewServeMux()
 	// --- Primary endpoints ---
-	mux.Handle("/", mainPageHandler())
-	mux.HandleFunc("/flaps/prefix", antiScrapeMiddleware(getPrefix))
-	mux.HandleFunc("/peers/asn", antiScrapeMiddleware(getPeer))
-	mux.HandleFunc("/flaps/statStream", getStatisticStream)
-	mux.HandleFunc("/sessions", antiScrapeMiddleware(getBgpSessions))
+	mux.Handle("/", m.mainPageHandler())
+	mux.HandleFunc("/flaps/prefix", antiScrapeMiddleware(m.getPrefix))
+	mux.HandleFunc("/peers/asn", antiScrapeMiddleware(m.getPeer))
+	mux.HandleFunc("/flaps/statStream", m.getStatisticStream)
+	mux.HandleFunc("/sessions", antiScrapeMiddleware(m.getBgpSessions))
 
-	mux.HandleFunc("/flaps/historical/prefix", antiScrapeMiddleware(getHistoricalPrefix))
-	mux.HandleFunc("/flaps/historical/list", antiScrapeMiddleware(getHistoricalList))
+	mux.HandleFunc("/flaps/historical/prefix", antiScrapeMiddleware(m.getHistoricalPrefix))
+	mux.HandleFunc("/flaps/historical/list", antiScrapeMiddleware(m.getHistoricalList))
 
 	if *maxUserDefinedMonitors != 0 {
-		mux.HandleFunc("/userDefined/subscribe", getUserDefinedStatisticStream)
-		mux.HandleFunc("/userDefined/prefix", antiScrapeMiddleware(getUserDefinedStatistic))
+		mux.HandleFunc("/userDefined/subscribe", m.getUserDefinedStatisticStream)
+		mux.HandleFunc("/userDefined/prefix", antiScrapeMiddleware(m.getUserDefinedStatistic))
 	}
 
 	// --- Secondary endpoints ---
-	mux.HandleFunc("/capabilities", requireAPIKeyWhenLimited(getCapabilities))
-	mux.HandleFunc("/peers/active", requireAPIKeyWhenLimited(getActivePeers))
+	mux.HandleFunc("/b", requireAPIKeyWhenLimited(m.getCapabilities))
+	mux.HandleFunc("/peers/active", requireAPIKeyWhenLimited(m.getActivePeers))
 	mux.HandleFunc("/flaps/avgRouteChanges90", requireAPIKeyWhenLimited(getAvgRouteChanges))
-	mux.HandleFunc("/flaps/active/compact", requireAPIKeyWhenLimited(getActiveFlaps))
-	mux.HandleFunc("/flaps/active/roa", requireAPIKeyWhenLimited(getActiveFlapsRoa))
-	mux.HandleFunc("/flaps/metrics/json", requireAPIKeyWhenLimited(metrics))
-	mux.HandleFunc("/flaps/metrics/prometheus", requireAPIKeyWhenLimited(prometheus))
+	mux.HandleFunc("/flaps/active/compact", requireAPIKeyWhenLimited(m.getActiveFlaps))
+	mux.HandleFunc("/flaps/active/roa", requireAPIKeyWhenLimited(m.getActiveFlapsRoa))
+	mux.HandleFunc("/flaps/metrics/json", requireAPIKeyWhenLimited(m.getMetrics))
+	mux.HandleFunc("/flaps/metrics/prometheus", requireAPIKeyWhenLimited(getPrometheus))
 	mux.HandleFunc("/flaps/metrics/prometheus/activePeerRates", requireAPIKeyWhenLimited(prometheusActivePeerRates))
 
 	ctx, cancel := context.WithCancel(ctx)
@@ -112,7 +124,7 @@ func startHTTPServer(ctx context.Context) {
 		defer cancelShutdownCtx()
 
 		if shutdownErr := s.Shutdown(shutdownCtx); shutdownErr != nil {
-			logger.Error("Graceful shutdown failed, forcing close", "error", shutdownErr)
+			m.logger.Error("Graceful shutdown failed, forcing close", "error", shutdownErr)
 			_ = s.Close()
 		}
 	})
@@ -128,20 +140,20 @@ func startHTTPServer(ctx context.Context) {
 		_ = os.Remove(*httpAPIListenAddress)
 		listener, err = net.Listen("unix", *httpAPIListenAddress)
 		if err != nil {
-			logger.Error("Error creating Unix listener", "error", err)
+			m.logger.Error("Error creating Unix listener", "error", err)
 			return
 		}
 	} else {
 		listener, err = net.Listen("tcp", *httpAPIListenAddress)
 		if err != nil {
-			logger.Error("Error creating TCP listener", "error", err)
+			m.logger.Error("Error creating TCP listener", "error", err)
 			return
 		}
 	}
-	slog.Info("Start HTTP server", "listen_address", *httpAPIListenAddress)
+	m.logger.Info("Start HTTP server", "listen_address", *httpAPIListenAddress)
 
 	if err = s.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		logger.Error("Error running HTTP API server", "error", err)
+		m.logger.Error("Error running HTTP API server", "error", err)
 	}
 }
 

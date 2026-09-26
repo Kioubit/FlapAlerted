@@ -59,12 +59,6 @@ func RemoveUserDefinedMonitor(prefix netip.Prefix, channel <-chan UserDefinedMon
 	}
 }
 
-func GetNumberOfUserDefinedMonitorClients() int {
-	userDefinedClientsLock.RLock()
-	defer userDefinedClientsLock.RUnlock()
-	return len(userDefinedClientsMap)
-}
-
 func userDefinedClientWorker() {
 	if !userDefinedClientWorkerRunning.CompareAndSwap(false, true) {
 		return

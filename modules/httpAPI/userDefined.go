@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-func getUserDefinedStatisticStream(w http.ResponseWriter, r *http.Request) {
+func (m *Module) getUserDefinedStatisticStream(w http.ResponseWriter, r *http.Request) {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
 		http.Error(w, "Streaming unsupported!", http.StatusInternalServerError)
@@ -27,10 +27,11 @@ func getUserDefinedStatisticStream(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if monitor.GetNumberOfUserDefinedMonitorClients() >= int(*maxUserDefinedMonitors) {
+	if !m.reserveUserDefinedSlot() {
 		_, _ = w.Write(formatEventStreamMessage("e", "Maximum number of user-defined tracked prefixes reached"))
 		return
 	}
+	defer m.releaseUserDefinedSlot()
 
 	statisticChannel, err := monitor.NewUserDefinedMonitor(prefix)
 	if err != nil {
@@ -70,17 +71,34 @@ func getUserDefinedStatisticStream(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func getUserDefinedStatistic(w http.ResponseWriter, r *http.Request) {
+func (m *Module) reserveUserDefinedSlot() bool {
+	for {
+		cur := m.userDefinedCount.Load()
+		if cur >= int32(*maxUserDefinedMonitors) {
+			return false
+		}
+		if m.userDefinedCount.CompareAndSwap(cur, cur+1) {
+			return true
+		}
+		// Concurrent update, retry
+	}
+}
+
+func (m *Module) releaseUserDefinedSlot() {
+	m.userDefinedCount.Add(-1)
+}
+
+func (m *Module) getUserDefinedStatistic(w http.ResponseWriter, r *http.Request) {
 	prefix, err := netip.ParsePrefix(r.URL.Query().Get("prefix"))
 	if err != nil {
-		_, _ = w.Write([]byte("null"))
+		m.sendAsJSON(w, nil)
 		return
 	}
 
 	f, found := analyze.GetUserDefinedMonitorEvent(prefix)
 	if !found {
-		_, _ = w.Write([]byte("null"))
+		m.sendAsJSON(w, nil)
 		return
 	}
-	_ = json.NewEncoder(w).Encode(f)
+	m.sendAsJSON(w, f)
 }

@@ -4,34 +4,33 @@ package httpAPI
 
 import (
 	"FlapAlerted/monitor"
-	"encoding/json"
 	"net/http"
 	"strings"
 	"time"
 )
 
-type RoaResponse struct {
-	Metadata   RoaMetadata `json:"metadata"`
-	RoaEntries []RoaEntry  `json:"roas"`
+type roaResponse struct {
+	Metadata   roaMetadata `json:"metadata"`
+	RoaEntries []roaEntry  `json:"roas"`
 }
 
-type RoaMetadata struct {
+type roaMetadata struct {
 	Counts    int   `json:"counts"`
 	Generated int64 `json:"generated"`
 	Valid     int64 `json:"valid"`
 }
 
-type RoaEntry struct {
+type roaEntry struct {
 	Prefix    string `json:"prefix"`
 	MaxLength int    `json:"maxLength"`
 	ASN       string `json:"asn"`
 }
 
-func getActiveFlapsRoa(w http.ResponseWriter, _ *http.Request) {
+func (m *Module) getActiveFlapsRoa(w http.ResponseWriter, _ *http.Request) {
 	activeFlaps := monitor.GetActiveFlapsSummary()
 
 	// Build ROA entries
-	roaEntries := make([]RoaEntry, len(activeFlaps))
+	roaEntries := make([]roaEntry, len(activeFlaps))
 	for i, flap := range activeFlaps {
 		// Determine maxLength based on IPv4 or IPv6
 		maxLength := 32
@@ -39,7 +38,7 @@ func getActiveFlapsRoa(w http.ResponseWriter, _ *http.Request) {
 			maxLength = 128
 		}
 
-		roaEntries[i] = RoaEntry{
+		roaEntries[i] = roaEntry{
 			Prefix:    flap.Prefix,
 			MaxLength: maxLength,
 			ASN:       "0",
@@ -51,8 +50,8 @@ func getActiveFlapsRoa(w http.ResponseWriter, _ *http.Request) {
 	validTime := currentTime.Add(1 * time.Hour)
 
 	// Build response
-	response := RoaResponse{
-		Metadata: RoaMetadata{
+	response := roaResponse{
+		Metadata: roaMetadata{
 			Counts:    len(activeFlaps),
 			Generated: currentTime.Unix(),
 			Valid:     validTime.Unix(),
@@ -60,11 +59,5 @@ func getActiveFlapsRoa(w http.ResponseWriter, _ *http.Request) {
 		RoaEntries: roaEntries,
 	}
 
-	b, err := json.Marshal(response)
-	if err != nil {
-		logger.Warn("Failed to marshal ROA data to JSON", "error", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	_, _ = w.Write(b)
+	m.sendAsJSON(w, response)
 }

@@ -1,36 +1,27 @@
+//go:build !disable_mod_httpAPI
+
 package httpAPI
 
 import (
 	"FlapAlerted/analyze"
 	"FlapAlerted/monitor"
-	cryptorand "crypto/rand"
-	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"io/fs"
 	"net/http"
 	"net/netip"
 	"strconv"
 )
 
-var eTag = ""
-
-func init() {
-	b := make([]byte, 12)
-	_, _ = cryptorand.Read(b)
-	eTag = fmt.Sprintf(`"%s"`, base64.RawURLEncoding.EncodeToString(b))
-}
-
-func mainPageHandler() http.Handler {
+func (m *Module) mainPageHandler() http.Handler {
 	html, _ := fs.Sub(dashboardContent, "www/dist")
 	fileServer := http.FileServer(http.FS(html))
 
 	withETag := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Security-Policy", "default-src 'self'; object-src 'none'; form-action 'self'; style-src 'self' 'unsafe-inline'")
-		w.Header().Set("ETag", eTag)
+		w.Header().Set("ETag", m.eTag)
 		w.Header().Set("Cache-Control", "public, max-age=900")
 
-		if r.Header.Get("If-None-Match") == eTag {
+		if r.Header.Get("If-None-Match") == m.eTag {
 			w.WriteHeader(http.StatusNotModified)
 			return
 		}
@@ -63,47 +54,46 @@ func getCapsWithModHTTPJSON() ([]byte, error) {
 	})
 }
 
-func getPrefix(w http.ResponseWriter, r *http.Request) {
+func (m *Module) getPrefix(w http.ResponseWriter, r *http.Request) {
 	prefix, err := netip.ParsePrefix(r.URL.Query().Get("prefix"))
 	if err != nil {
-		_, _ = w.Write([]byte("null"))
+		m.sendAsJSON(w, nil)
 		return
 	}
 
 	f, found := analyze.GetActiveFlapPrefix(prefix)
 	if !found {
-		_, _ = w.Write([]byte("null"))
+		m.sendAsJSON(w, nil)
 		return
 	}
-	_ = json.NewEncoder(w).Encode(f)
+	m.sendAsJSON(w, f)
 }
 
-func getPeer(w http.ResponseWriter, r *http.Request) {
+func (m *Module) getPeer(w http.ResponseWriter, r *http.Request) {
 	asn, err := strconv.ParseUint(r.URL.Query().Get("asn"), 10, 32)
 	if err != nil {
-		_, _ = w.Write([]byte("null"))
+		m.sendAsJSON(w, nil)
 		return
 	}
 
 	p, found := analyze.GetActivePeer(uint32(asn))
 	if !found {
-		_, _ = w.Write([]byte("null"))
+		m.sendAsJSON(w, nil)
 		return
 	}
-	_ = json.NewEncoder(w).Encode(p)
+	m.sendAsJSON(w, p)
 }
 
-func getHistoricalPrefix(w http.ResponseWriter, r *http.Request) {
+func (m *Module) getHistoricalPrefix(w http.ResponseWriter, r *http.Request) {
 	timestamp := r.URL.Query().Get("timestamp")
 	prefix, err := netip.ParsePrefix(r.URL.Query().Get("prefix"))
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		_, _ = w.Write([]byte("Invalid prefix"))
+		m.sendAsJSON(w, nil)
 		return
 	}
 	provider := monitor.GetHistoryProvider()
 	if provider == nil {
-		_, _ = w.Write([]byte("null"))
+		m.sendAsJSON(w, nil)
 		return
 	}
 
@@ -132,20 +122,20 @@ func getHistoricalPrefix(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if f == nil {
-		_, _ = w.Write([]byte("null"))
+		m.sendAsJSON(w, nil)
 		return
 	}
-	_ = json.NewEncoder(w).Encode(struct {
+	m.sendAsJSON(w, struct {
 		Event    analyze.FlapEvent
 		EventKey monitor.HistoricalEventKey
 	}{*f, eventKey})
 }
 
-func getHistoricalList(w http.ResponseWriter, _ *http.Request) {
+func (m *Module) getHistoricalList(w http.ResponseWriter, _ *http.Request) {
 	provider := monitor.GetHistoryProvider()
 	if provider == nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		_, _ = w.Write([]byte("A history provider module needs to be enabled and configured for this functionality"))
+		_, _ = w.Write([]byte("No history provider available"))
 		return
 	}
 	list, err := provider.GetHistoricalEventList()
@@ -154,14 +144,15 @@ func getHistoricalList(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("Retrieval of historical events failed"))
 		return
 	}
-	_ = json.NewEncoder(w).Encode(list)
+	m.sendAsJSON(w, list)
 }
 
-func getBgpSessions(w http.ResponseWriter, _ *http.Request) {
+func (m *Module) getBgpSessions(w http.ResponseWriter, _ *http.Request) {
 	info, err := monitor.GetSessionInfoJson()
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	w.Header().Set("Content-Type", "application/json")
 	_, _ = w.Write([]byte(info))
 }

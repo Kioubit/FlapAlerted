@@ -519,6 +519,7 @@ function updateList(flapList) {
 const loadingScreen = document.getElementById("loading-screen");
 
 let lastGageValue = 0;
+let lastSeenTime = 0;
 function getStats() {
     const sessionCountElem = document.getElementById("sessionCount");
     const noBGPFeedsElem = document.getElementById("noBGPFeeds");
@@ -547,9 +548,14 @@ function getStats() {
         try {
             const js = JSON.parse(event.data);
 
+            const stats = js["Stats"];
+            if (stats["Time"] <= lastSeenTime) {
+                return; // already applied via snapshot replay
+            }
+            lastSeenTime = stats["Time"];
+
             const flapList = js["List"];
             const peerList = js["ListPeers"];
-            const stats = js["Stats"];
             const sessionCount = js["Sessions"];
             if (sessionCount !== -1) {
                 sessionCountElem.innerText = sessionCount;
@@ -597,6 +603,13 @@ function getStats() {
         console.log(err);
     };
     evtSource.onopen = () => {
+        // Reset before data replay arrives
+        [dataFlapCount, dataRouteChange, dataImportCount].forEach(d => {
+            d.labels = [];
+            d.datasets.forEach(ds => ds.data = []);
+        });
+        avgArray.length = 0;
+        lastSeenTime = 0;
         handleConnectionLost(false);
     };
 }
@@ -670,9 +683,9 @@ getStats();
 
                     fragment.appendChild(row);
                 });
-                const total = data.reduce((sum, entry) => sum + Number(entry.ImportCount || 0), 0);
-                document.getElementById("totalImportCount").textContent = total.toLocaleString();
             }
+            const total = data.reduce((sum, entry) => sum + Number(entry.ImportCount || 0), 0);
+            document.getElementById("totalImportCount").textContent = total.toLocaleString();
 
             tbody.appendChild(fragment);
             loading.classList.add("d-none");

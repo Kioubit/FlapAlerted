@@ -93,8 +93,9 @@ let fatalErrorReported = false;
     const noBGPFeeds = document.getElementById("noBGPFeeds");
     const mainInfoDiv = document.getElementById("mainInfo");
 
-    const prefix = new URL(location.href).searchParams.get("prefix").trim();
-    if (prefix === null) {
+    const prefix = new URL(location.href).searchParams.get("prefix")?.trim();
+
+    if (!prefix) {
         loadingScreen.classList.add("d-none");
         mainInfoDiv.classList.add("d-none");
         errorDisplay.innerText = "Prefix not provided";
@@ -115,7 +116,7 @@ let fatalErrorReported = false;
     evtSource.addEventListener("valid", (_) => {
         lastValue = null;
         prefixDisplay.innerText = prefix;
-        prefixLink.href = `../analyze/?prefix=${prefix}&userDefined=true`;
+        prefixLink.href = `../analyze/?prefix=${encodeURIComponent(prefix)}&userDefined=true`;
     })
     evtSource.addEventListener("u", (event) => {
         const js = JSON.parse(event.data);

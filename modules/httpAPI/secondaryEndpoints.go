@@ -1,64 +1,39 @@
+//go:build !disable_mod_httpAPI
+
 package httpAPI
 
 import (
 	"FlapAlerted/analyze"
 	"FlapAlerted/monitor"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
 )
 
-func getActiveFlaps(w http.ResponseWriter, _ *http.Request) {
-	activeFlaps := monitor.GetActiveFlapsSummary()
-
-	b, err := json.Marshal(activeFlaps)
-	if err != nil {
-		logger.Warn("Failed to marshal list to JSON", "error", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	_, _ = w.Write(b)
+func (m *Module) getActiveFlaps(w http.ResponseWriter, _ *http.Request) {
+	m.sendAsJSON(w, monitor.GetActiveFlapsSummary())
 }
 
-func getActivePeers(w http.ResponseWriter, _ *http.Request) {
-	activePeers := monitor.GetActivePeersSummary()
-
-	b, err := json.Marshal(activePeers)
-	if err != nil {
-		logger.Warn("Failed to marshal list to JSON", "error", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	_, _ = w.Write(b)
+func (m *Module) getActivePeers(w http.ResponseWriter, _ *http.Request) {
+	m.sendAsJSON(w, monitor.GetActivePeersSummary())
 }
 
-func getCapabilities(w http.ResponseWriter, _ *http.Request) {
-	b, err := json.Marshal(monitor.GetCapabilities())
-	if err != nil {
-		logger.Warn("JSON marshal failed for getCapabilities", "error", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	_, _ = w.Write(b)
+func (m *Module) getCapabilities(w http.ResponseWriter, _ *http.Request) {
+	m.sendAsJSON(w, monitor.GetCapabilities())
+}
+
+func (m *Module) getMetrics(w http.ResponseWriter, _ *http.Request) {
+	m.sendAsJSON(w, monitor.GetMetric())
 }
 
 func getAvgRouteChanges(w http.ResponseWriter, _ *http.Request) {
 	avg := monitor.GetAverageRouteChanges90()
 	avgStr := strconv.FormatFloat(avg, 'f', 2, 64)
+	w.Header().Set("Content-Type", "text/plain")
 	_, _ = w.Write([]byte(avgStr))
 }
 
-func metrics(w http.ResponseWriter, _ *http.Request) {
-	b, err := json.Marshal(monitor.GetMetric())
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	_, _ = w.Write(b)
-}
-
-func prometheus(w http.ResponseWriter, _ *http.Request) {
+func getPrometheus(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
 
 	metric := monitor.GetMetric()
@@ -96,13 +71,13 @@ func prometheusActivePeerRates(w http.ResponseWriter, _ *http.Request) {
 
 	for _, r := range rates {
 		if _, err := fmt.Fprintf(
-			w, "bgp_updates_per_second{asn=%d} %d\n", r.PeerASN, r.RateSec,
+			w, "bgp_updates_per_second{asn=\"%d\"} %d\n", r.PeerASN, r.RateSec,
 		); err != nil {
 			return
 		}
 
 		if _, err := fmt.Fprintf(
-			w, "bgp_updates_avg_per_second{asn=%d} %.6f\n", r.PeerASN, r.RateSecAvg,
+			w, "bgp_updates_avg_per_second{asn=\"%d\"} %.6f\n", r.PeerASN, r.RateSecAvg,
 		); err != nil {
 			return
 		}

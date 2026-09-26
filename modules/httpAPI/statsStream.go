@@ -7,47 +7,58 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"sync"
+	"time"
 )
 
-var (
-	clientMutex sync.Mutex
-	clients     = make(map[chan []byte]struct{})
-)
+func (m *Module) getStatisticStream(w http.ResponseWriter, r *http.Request) {
+	rc := http.NewResponseController(w)
+	writeFrame := func(msg []byte) error {
+		if err := r.Context().Err(); err != nil {
+			return err
+		}
 
-func getStatisticStream(w http.ResponseWriter, r *http.Request) {
-	flusher, ok := w.(http.Flusher)
-	if !ok {
-		http.Error(w, "Streaming unsupported!", http.StatusInternalServerError)
-		return
+		if err := rc.SetWriteDeadline(time.Now().Add(10 * time.Second)); err != nil {
+			return err
+		}
+
+		if _, err := w.Write(msg); err != nil {
+			return err
+		}
+
+		if err := rc.Flush(); err != nil {
+			return err
+		}
+
+		return rc.SetWriteDeadline(time.Time{})
 	}
-	w.Header().Set("Content-Type", "text/event-stream")
-	w.Header().Set("Cache-Control", "no-cache")
-	w.Header().Set("Connection", "keep-alive")
-	messageChan := make(chan []byte, 40)
 
-	clientMutex.Lock()
-	clients[messageChan] = struct{}{}
-	clientMutex.Unlock()
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache, no-transform")
+	w.Header().Set("X-Accel-Buffering", "no")
+	w.WriteHeader(http.StatusOK)
+
+	messageChan := make(chan []byte, 40)
+	m.clientMutex.Lock()
+	m.clients[messageChan] = struct{}{}
+	m.clientMutex.Unlock()
 
 	defer func() {
-		clientMutex.Lock()
-		if _, ok := clients[messageChan]; ok {
+		m.clientMutex.Lock()
+		if _, ok := m.clients[messageChan]; ok {
 			// If it was not already closed and deleted by streamServe
-			delete(clients, messageChan)
+			delete(m.clients, messageChan)
 			close(messageChan)
 		}
-		clientMutex.Unlock()
+		m.clientMutex.Unlock()
 	}()
 
 	oldStats := monitor.GetStats()
 	for _, stat := range oldStats {
-		m, err := json.Marshal(stat)
+		j, err := json.Marshal(stat)
 		if err != nil {
 			continue
 		}
-		_, err = w.Write(formatEventStreamMessage("c", m))
-		if err != nil {
+		if err := writeFrame(formatEventStreamMessage("c", j)); err != nil {
 			return
 		}
 	}
@@ -56,11 +67,9 @@ func getStatisticStream(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		capabilities = []byte("{}")
 	}
-	_, err = w.Write(formatEventStreamMessage("ready", capabilities))
-	if err != nil {
+	if err := writeFrame(formatEventStreamMessage("ready", capabilities)); err != nil {
 		return
 	}
-	flusher.Flush()
 
 	for {
 		select {
@@ -68,11 +77,9 @@ func getStatisticStream(w http.ResponseWriter, r *http.Request) {
 			if !ok {
 				return
 			}
-			_, err := w.Write(data)
-			if err != nil {
+			if err := writeFrame(data); err != nil {
 				return
 			}
-			flusher.Flush()
 		case <-r.Context().Done():
 			// Listen for connection close
 			return
@@ -80,7 +87,7 @@ func getStatisticStream(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func streamServe(ctx context.Context) {
+func (m *Module) streamServe(ctx context.Context) {
 	statChan := monitor.SubscribeToStats()
 	for {
 		select {
@@ -90,32 +97,22 @@ func streamServe(ctx context.Context) {
 			if !ok {
 				return
 			}
-			m, err := json.Marshal(s)
+			j, err := json.Marshal(s)
 			if err != nil {
 				continue
 			}
-			clientMutex.Lock()
-			for c := range clients {
+			message := formatEventStreamMessage("u", j)
+
+			m.clientMutex.Lock()
+			for c := range m.clients {
 				select {
-				case c <- formatEventStreamMessage("u", m):
+				case c <- message:
 				default:
-					delete(clients, c)
+					delete(m.clients, c)
 					close(c)
 				}
 			}
-			clientMutex.Unlock()
+			m.clientMutex.Unlock()
 		}
 	}
-}
-
-func formatEventStreamMessage[T string | []byte](eventName string, data T) []byte {
-	b := make([]byte, 0, len(eventName)+len(data)+16)
-
-	b = append(b, "event: "...)
-	b = append(b, eventName...)
-	b = append(b, "\ndata: "...)
-	b = append(b, data...)
-	b = append(b, "\n\n"...)
-
-	return b
 }
