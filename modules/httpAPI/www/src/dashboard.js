@@ -401,7 +401,7 @@ function addToChart(liveChart, points, unixTime, dataInterval, update) {
     const { labels, datasets } = liveChart.data;
     const maxPoints = 51;
 
-    // Remove first, so Chart.js processes removals before insertions.
+    // Remove first, so Chart.js processes removals before insertions
     if (labels.length >= maxPoints) {
         labels.shift();
 
@@ -410,7 +410,7 @@ function addToChart(liveChart, points, unixTime, dataInterval, update) {
         });
     }
 
-    // Make the new label available before appending dataset values.
+    // Make the new label available before appending dataset values
     labels.push(unixTime * 1000);
 
     datasets.forEach((dataset, i) => {

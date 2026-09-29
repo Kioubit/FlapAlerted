@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"flag"
 	"log/slog"
-	"os"
 	"os/exec"
 	"sync"
 )
@@ -28,12 +27,11 @@ func (m *Module) Name() string {
 	return m.name
 }
 
-func (m *Module) OnStart(_ context.Context, _ *sync.WaitGroup) bool {
+func (m *Module) OnStart(_ context.Context, _ *sync.WaitGroup, logger *slog.Logger) bool {
 	if *scriptFileStart == "" && *scriptFileEnd == "" {
 		return false
 	}
-
-	m.logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{})).With("module", m.Name())
+	m.logger = logger
 	return true
 }
 

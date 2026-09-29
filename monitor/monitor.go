@@ -40,7 +40,7 @@ func StartMonitoring(ctx context.Context, conf config.UserConfig) error {
 		statTracker(ctx)
 	})
 	wg.Go(func() {
-		notificationHandler(notificationChannel)
+		modulesHandler(notificationChannel)
 	})
 	<-ctx.Done()
 	return ctx.Err()

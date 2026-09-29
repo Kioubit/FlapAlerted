@@ -40,12 +40,12 @@ func (m *Module) Name() string {
 	return m.name
 }
 
-func (m *Module) OnStart(_ context.Context, _ *sync.WaitGroup) bool {
+func (m *Module) OnStart(_ context.Context, _ *sync.WaitGroup, logger *slog.Logger) bool {
 	if !*enableHistory {
 		return false
 	}
 
-	m.logger = slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{})).With("module", m.name)
+	m.logger = logger
 
 	if err := os.MkdirAll(*historyDir, 0755); err != nil {
 		m.logger.Error("failed to create history directory", "error", err)

@@ -94,11 +94,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	modules := monitor.GetRegisteredModuleNames()
-	if len(modules) != 0 {
-		slog.Info("Enabled modules", slog.Any("modules", modules))
-	}
-
 	if conf.Debug {
 		fmt.Println("Debug mode has been activated which will generate a lot of output")
 		fmt.Println("Waiting for 4 seconds...")
@@ -118,6 +113,11 @@ func main() {
 	}
 
 	slog.Info("Started", "parameters", parameterString)
+
+	modules := monitor.GetRegisteredModuleNames()
+	if len(modules) != 0 {
+		slog.Info("Enabled modules", slog.Any("modules", modules))
+	}
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()

@@ -8,7 +8,6 @@ import (
 	"context"
 	"flag"
 	"log/slog"
-	"os"
 	"sync"
 )
 
@@ -25,8 +24,12 @@ func (m *Module) Name() string {
 	return m.name
 }
 
-func (m *Module) OnStart(_ context.Context, _ *sync.WaitGroup) bool {
-	return !*disableLog
+func (m *Module) OnStart(_ context.Context, _ *sync.WaitGroup, logger *slog.Logger) bool {
+	if *disableLog {
+		return false
+	}
+	m.logger = logger
+	return true
 }
 
 func (m *Module) OnEvent(f analyze.FlapEvent, isStart bool) {
@@ -39,7 +42,6 @@ func (m *Module) OnEvent(f analyze.FlapEvent, isStart bool) {
 
 func init() {
 	monitor.RegisterModule(&Module{
-		name:   "mod_log",
-		logger: slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{})).With("module", "mod_log"),
+		name: "mod_log",
 	})
 }

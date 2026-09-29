@@ -6,6 +6,7 @@ import (
 	"context"
 	"log/slog"
 	"net/netip"
+	"os"
 	"sync"
 	"sync/atomic"
 )
@@ -22,8 +23,9 @@ type Module interface {
 	// OnStart is called before the monitoring starts
 	// Implementation should check if it needs to receive events.
 	// True must be returned to subscribe to events.
-	// Background goroutines may be spawned here if needed.
-	OnStart(ctx context.Context, wg *sync.WaitGroup) bool
+	// Background goroutines may be spawned here if needed and added to the wait group.
+	// They must be terminated upon context cancellation.
+	OnStart(ctx context.Context, wg *sync.WaitGroup, logger *slog.Logger) bool
 
 	// OnEvent is called when a flap event occurs.
 	// Runs inside a worker goroutine.
@@ -48,7 +50,7 @@ func (w *moduleWorker) run() {
 	}
 }
 
-func notificationHandler(c <-chan []analyze.FlapEventNotification) {
+func modulesHandler(c <-chan []analyze.FlapEventNotification) {
 	modulesStarted.Store(true)
 
 	modulesWG := &sync.WaitGroup{}
@@ -56,9 +58,19 @@ func notificationHandler(c <-chan []analyze.FlapEventNotification) {
 	modulesCtx, modulesCancel := context.WithCancel(context.Background())
 	defer modulesCancel()
 
+	logLevel := slog.LevelInfo
+	if config.GlobalConf.Debug {
+		logLevel = slog.LevelDebug
+	}
+
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+		Level:     logLevel,
+		AddSource: logLevel == slog.LevelDebug,
+	}))
+
 	workerList := make([]*moduleWorker, 0)
 	for _, m := range moduleList {
-		subscribeToEvents := m.OnStart(modulesCtx, modulesWG)
+		subscribeToEvents := m.OnStart(modulesCtx, modulesWG, logger.With("module", m.Name()))
 		if subscribeToEvents {
 			worker := &moduleWorker{
 				impl:      m,

@@ -56,8 +56,9 @@ func (m *Module) Name() string {
 	return m.name
 }
 
-func (m *Module) OnStart(ctx context.Context, wg *sync.WaitGroup) bool {
-	m.logger = slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{})).With("module", m.name)
+func (m *Module) OnStart(ctx context.Context, wg *sync.WaitGroup, logger *slog.Logger) bool {
+	m.logger = logger
+
 	b := make([]byte, 12)
 	_, _ = cryptorand.Read(b)
 	m.eTag = fmt.Sprintf(`"%s"`, base64.RawURLEncoding.EncodeToString(b))

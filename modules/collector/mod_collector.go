@@ -13,7 +13,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
-	"os"
 	"strings"
 	"sync"
 	"time"
@@ -34,11 +33,13 @@ func (m *Module) Name() string {
 	return m.name
 }
 
-func (m *Module) OnStart(ctx context.Context, wg *sync.WaitGroup) bool {
+func (m *Module) OnStart(ctx context.Context, wg *sync.WaitGroup, logger *slog.Logger) bool {
 	if *collectorEndpoint == "" && *collectorInstanceName == "" {
 		return false
 	}
-	m.logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{})).With("module", m.Name())
+
+	m.logger = logger
+
 	if *collectorInstanceName == "" {
 		m.logger.Error("Collector endpoint specified but no instance name given!")
 	}

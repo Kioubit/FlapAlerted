@@ -15,9 +15,9 @@ jobs:
     if: github.ref_type == 'tag'
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Setup Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
           go-version-file: 'go.mod'
       - name: Build binaries

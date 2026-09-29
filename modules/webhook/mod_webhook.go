@@ -11,7 +11,6 @@ import (
 	"flag"
 	"log/slog"
 	"net/http"
-	"os"
 	"sync"
 	"time"
 )
@@ -42,12 +41,12 @@ func (m *Module) Name() string {
 	return m.name
 }
 
-func (m *Module) OnStart(_ context.Context, _ *sync.WaitGroup) bool {
+func (m *Module) OnStart(_ context.Context, _ *sync.WaitGroup, logger *slog.Logger) bool {
 	if len(*webhookUrlsStart) == 0 && len(*webhookUrlsEnd) == 0 {
 		return false
 	}
 
-	m.logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{})).With("module", m.Name())
+	m.logger = logger
 	m.httpClient = &http.Client{}
 	return true
 }

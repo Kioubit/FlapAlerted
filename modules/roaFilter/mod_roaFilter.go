@@ -27,11 +27,14 @@ func (m *Module) Name() string {
 	return m.name
 }
 
-func (m *Module) OnStart(_ context.Context, _ *sync.WaitGroup) bool {
+func (m *Module) OnStart(ctx context.Context, _ *sync.WaitGroup) bool {
 	if *roaJsonFile == "" {
 		return false
 	}
-	m.logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{})).With("module", m.Name())
+
+	m.logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		Level: monitor.LogLevelFromContext(ctx),
+	})).With("module", m.Name())
 	return true
 }
 
