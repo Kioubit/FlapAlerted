@@ -51,6 +51,7 @@ func (t *PrefixTable) update(prefix netip.Prefix, pathID uint32, isWithdrawal bo
 		entry, found := t.table[prefix]
 		if !found {
 			if t.importCount.Add(1) > config.GlobalConf.ImportLimit {
+				t.importCount.Add(^uint32(0))
 				t.sessionCancellation(notification.ErrImportLimit)
 				return
 			}
@@ -66,6 +67,7 @@ func (t *PrefixTable) update(prefix netip.Prefix, pathID uint32, isWithdrawal bo
 				}
 			} else {
 				if t.importCount.Add(1) > config.GlobalConf.ImportLimit {
+					t.importCount.Add(^uint32(0))
 					t.sessionCancellation(notification.ErrImportLimit)
 					return
 				}
