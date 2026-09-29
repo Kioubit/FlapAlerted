@@ -83,7 +83,7 @@ const dataRouteChange = {
     labels: [],
     datasets: [
         {
-            label: "Route Changes",
+            label: "Total Changes",
             fill: false,
             backgroundColor: "rgba(75,192,192,0.4)",
             borderColor: "rgba(75,192,192,1)",
@@ -94,10 +94,43 @@ const dataRouteChange = {
             data: []
         },
         {
-            label: "Route Changes (listed prefixes)",
+            label: "Total Changes (listed prefixes)",
             fill: false,
             backgroundColor: "rgba(15,151,3,0.4)",
             borderColor: "rgb(50,168,5)",
+            pointBorderWidth: 1,
+            pointBackgroundColor: "#fff",
+            pointRadius: 4,
+            pointHitRadius: 10,
+            data: []
+        },
+        {
+            label: "Path updates",
+            fill: false,
+            backgroundColor: "rgba(153,102,255,0.4)",
+            borderColor: "rgba(153,102,255,1)",
+            pointBorderWidth: 1,
+            pointBackgroundColor: "#fff",
+            pointRadius: 4,
+            pointHitRadius: 10,
+            data: []
+        },
+        {
+            label: "Same-path updates",
+            fill: false,
+            backgroundColor: "rgba(255,159,64,0.4)",
+            borderColor: "rgba(255,159,64,1)",
+            pointBorderWidth: 1,
+            pointBackgroundColor: "#fff",
+            pointRadius: 4,
+            pointHitRadius: 10,
+            data: []
+        },
+        {
+            label: "Path Withdrawals",
+            fill: false,
+            backgroundColor: "rgba(255,99,132,0.4)",
+            borderColor: "rgba(255,99,132,1)",
             pointBorderWidth: 1,
             pointBackgroundColor: "#fff",
             pointRadius: 4,
@@ -576,7 +609,19 @@ function getStats() {
             updatePeers(peerList);
 
 
-            addToChart(liveRouteChart, [stats["Changes"], stats["ListedChanges"]], stats["Time"], dataIntervalSec, update);
+            addToChart(
+                liveRouteChart,
+                [
+                    stats["Changes"],
+                    stats["ListedChanges"],
+                    stats["SamePathChanges"],
+                    stats["WithdrawalChanges"],
+                    stats["Changes"] - stats["SamePathChanges"] - stats["WithdrawalChanges"] // path changes
+                ],
+                stats["Time"],
+                dataIntervalSec,
+                update
+            );
             addToChart(liveFlapChart, [stats["Active"]], stats["Time"], 1, update);
             addToChart(liveImportChart, [stats["RouteCount"]], stats["Time"], 1, update);
 

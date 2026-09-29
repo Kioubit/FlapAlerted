@@ -22,7 +22,7 @@ func RecordUserDefinedMonitors(userPathChangeChan <-chan table.PathChange) {
 		userDefinedMapLock.Lock()
 		if val, exists := userDefinedMap[pathChange.Prefix]; exists {
 			incrementUint64(&val.TotalPathChanges)
-			val.PathHistory.record(pathChange.OldPath, pathChange.IsWithdrawal)
+			val.PathHistory.record(pathChange.OldPath, pathChange.IsWithdrawal, pathChange.IsSamePath)
 		}
 		userDefinedMapLock.Unlock()
 	}

@@ -23,6 +23,7 @@ func NewPrefixTable(pathChangeChan chan PathChange, sessionCancellation context.
 type PathChange struct {
 	Prefix       netip.Prefix
 	IsWithdrawal bool
+	IsSamePath   bool
 	OldPath      common.AsPath
 }
 
@@ -60,6 +61,7 @@ func (t *PrefixTable) update(prefix netip.Prefix, pathID uint32, isWithdrawal bo
 				t.pathChangeChan <- PathChange{
 					Prefix:       prefix,
 					IsWithdrawal: false,
+					IsSamePath:   asPath.Equals(oldPath),
 					OldPath:      oldPath,
 				}
 			} else {

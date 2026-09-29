@@ -20,6 +20,7 @@ type PathInfo struct {
 	Path              common.AsPath
 	AnnouncementCount uint64 `json:"ac"`
 	WithdrawalCount   uint64 `json:"wc"`
+	SamePathCount     uint64 `json:"sc"`
 }
 
 type pathEntry struct {
@@ -28,7 +29,7 @@ type pathEntry struct {
 	ticks int
 }
 
-func (pt *PathTracker) record(path common.AsPath, isWithdrawal bool) {
+func (pt *PathTracker) record(path common.AsPath, isWithdrawal bool, isSamePath bool) {
 	if pt.limit == 0 {
 		return
 	}
@@ -41,6 +42,8 @@ func (pt *PathTracker) record(path common.AsPath, isWithdrawal bool) {
 		entry := elem.Value.(*pathEntry)
 		if isWithdrawal {
 			incrementUint64(&entry.info.WithdrawalCount)
+		} else if isSamePath {
+			incrementUint64(&entry.info.SamePathCount)
 		} else {
 			incrementUint64(&entry.info.AnnouncementCount)
 		}

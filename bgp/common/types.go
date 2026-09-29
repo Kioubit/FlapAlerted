@@ -1,5 +1,7 @@
 package common
 
+import "slices"
+
 type AFI uint16
 
 const (
@@ -15,3 +17,7 @@ const (
 )
 
 type AsPath []uint32
+
+func (p AsPath) Equals(other AsPath) bool {
+	return slices.Equal(p, other)
+}

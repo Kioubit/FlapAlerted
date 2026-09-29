@@ -161,14 +161,14 @@ function displayPrefix(json, userDefined) {
         let elementHTML = "";
         let pathGroupTotalCount = 0;
         value.forEach((item) => {
-            item.Count = item.ac + item.wc;
+            item.Count = item.ac + item.sc + item.wc;
         });
         value.sort((a, b) => b.Count - a.Count);
         for (let c = 0; c < value.length; c++) {
             // For each path
             const count = value[c].Count;
             pathGroupTotalCount += count;
-            elementHTML += `${count} (${value[c].ac}/${value[c].wc}) &nbsp;&nbsp;`;
+            elementHTML += `${count} (${value[c].ac}/${value[c].sc}/${value[c].wc}) &nbsp;&nbsp;`;
             for (let d = 0; d < value[c].Path.length; d++) {
                 // For each ASN in the path
                 let singleAsn = value[c].Path[d].toString();

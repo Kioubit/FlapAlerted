@@ -94,11 +94,13 @@ type PeerSummary struct {
 }
 
 type statistic struct {
-	Time          int64
-	Changes       uint64
-	ListedChanges uint64
-	Active        int
-	RouteCount    uint64
+	Time              int64
+	Changes           uint64
+	SamePathChanges   uint64
+	WithdrawalChanges uint64
+	ListedChanges     uint64
+	Active            int
+	RouteCount        uint64
 }
 
 var (
@@ -170,11 +172,13 @@ func statTracker(ctx context.Context) {
 		lastPeerSummaryList.Store(&jsPeerList)
 
 		newStatistic := statistic{
-			Time:          time.Now().Unix(),
-			Changes:       analyze.GlobalTotalRouteChangeCounter.Swap(0),
-			ListedChanges: analyze.GlobalListedRouteChangeCounter.Swap(0),
-			Active:        trackedCount,
-			RouteCount:    session.GetTotalImportCount(),
+			Time:              time.Now().Unix(),
+			Changes:           analyze.GlobalTotalRouteChangeCounter.Swap(0),
+			SamePathChanges:   analyze.GlobalSamePathChangeCounter.Swap(0),
+			WithdrawalChanges: analyze.GlobalWithdrawalCounter.Swap(0),
+			ListedChanges:     analyze.GlobalListedRouteChangeCounter.Swap(0),
+			Active:            trackedCount,
+			RouteCount:        session.GetTotalImportCount(),
 		}
 
 		newWrapper := statisticWrapper{

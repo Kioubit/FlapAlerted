@@ -17,6 +17,8 @@ var (
 
 var (
 	GlobalTotalRouteChangeCounter  atomic.Uint64
+	GlobalSamePathChangeCounter    atomic.Uint64
+	GlobalWithdrawalCounter        atomic.Uint64
 	GlobalListedRouteChangeCounter atomic.Uint64
 )
 
@@ -142,11 +144,16 @@ func RecordPathChanges(pathChan <-chan table.PathChange) (<-chan table.PathChang
 			}
 
 			GlobalTotalRouteChangeCounter.Add(1)
+			if pathChange.IsSamePath {
+				GlobalSamePathChangeCounter.Add(1)
+			} else if pathChange.IsWithdrawal {
+				GlobalWithdrawalCounter.Add(1)
+			}
 
 			activeMapLock.Lock()
 			if val, exists := activeMap[pathChange.Prefix]; exists {
 				incrementUint64(&val.TotalPathChanges)
-				val.PathHistory.record(pathChange.OldPath, pathChange.IsWithdrawal)
+				val.PathHistory.record(pathChange.OldPath, pathChange.IsWithdrawal, pathChange.IsSamePath)
 				if val.hasTriggered {
 					GlobalListedRouteChangeCounter.Add(1)
 				}
