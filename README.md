@@ -91,8 +91,8 @@ Configuration:
     Disable http API endpoints not needed for the user interface and activate basic scraping protection
 -httpAPIListenAddress string
     Listen address for the HTTP API (TCP address like :8699 or Unix socket path) (default ":8699")
--httpExplorerURLPrefixASN string
-    Prefix for external explorer link to lookup an ASN. Empty to disable
+-httpASNExplorerURL string
+    URL template for an external ASN lookup explorer. '{asn}' is replaced with the ASN. Empty to disable
 -httpGageDisableDynamic
     Disable dynamic Gage max value based on session count
 -httpGageMaxValue uint

@@ -36,7 +36,7 @@ var (
 	gageMaxValue           = flag.Uint("httpGageMaxValue", 400, "HTTP dashboard Gage max value")
 	gageDisableDynamic     = flag.Bool("httpGageDisableDynamic", false, "Disable dynamic Gage max value based on session count")
 	maxUserDefinedMonitors = flag.Uint("httpMaxUserDefined", 5, "Maximum number of user-defined tracked prefixes. Use zero to disable")
-	explorerURLPrefixASN   = flag.String("httpExplorerURLPrefixASN", "", "Prefix for external explorer link to lookup an ASN. Empty to disable")
+	explorerURLASN         = flag.String("httpASNExplorerURL", "", "URL template for an external ASN lookup explorer. '{asn}' is replaced with the ASN. Empty to disable")
 )
 
 type Module struct {
@@ -90,6 +90,7 @@ func (m *Module) startHTTPServer(ctx context.Context) {
 	mux.HandleFunc("/peers/asn", antiScrapeMiddleware(m.getPeer))
 	mux.HandleFunc("/flaps/statStream", m.getStatisticStream)
 	mux.HandleFunc("/sessions", antiScrapeMiddleware(m.getBgpSessions))
+	mux.HandleFunc("/config/asnExplorerURL", antiScrapeMiddleware(m.getASNExplorerURL))
 
 	mux.HandleFunc("/flaps/historical/prefix", antiScrapeMiddleware(m.getHistoricalPrefix))
 	mux.HandleFunc("/flaps/historical/list", antiScrapeMiddleware(m.getHistoricalList))
@@ -100,7 +101,7 @@ func (m *Module) startHTTPServer(ctx context.Context) {
 	}
 
 	// --- Secondary endpoints ---
-	mux.HandleFunc("/b", requireAPIKeyWhenLimited(m.getCapabilities))
+	mux.HandleFunc("/capabilities", requireAPIKeyWhenLimited(m.getCapabilities))
 	mux.HandleFunc("/peers/active", requireAPIKeyWhenLimited(m.getActivePeers))
 	mux.HandleFunc("/flaps/avgRouteChanges90", requireAPIKeyWhenLimited(getAvgRouteChanges))
 	mux.HandleFunc("/flaps/active/compact", requireAPIKeyWhenLimited(m.getActiveFlaps))

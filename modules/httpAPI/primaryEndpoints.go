@@ -32,10 +32,10 @@ func (m *Module) mainPageHandler() http.Handler {
 
 func getCapsWithModHTTPJSON() ([]byte, error) {
 	type modHTTPCaps struct {
-		GageMaxValue         uint   `json:"gageMaxValue"`
-		GageDisableDynamic   bool   `json:"gageDisableDynamic"`
-		MaxUserDefined       uint   `json:"maxUserDefined"`
-		ExplorerURLPrefixASN string `json:"explorerUrlPrefixASN"`
+		GageMaxValue       uint   `json:"gageMaxValue"`
+		GageDisableDynamic bool   `json:"gageDisableDynamic"`
+		MaxUserDefined     uint   `json:"maxUserDefined"`
+		AsnExplorerURL     string `json:"asnExplorerURL"`
 	}
 
 	type fullCaps struct {
@@ -46,10 +46,10 @@ func getCapsWithModHTTPJSON() ([]byte, error) {
 	return json.Marshal(fullCaps{
 		Capabilities: monitor.GetCapabilities(),
 		ModHTTP: modHTTPCaps{
-			GageMaxValue:         *gageMaxValue,
-			GageDisableDynamic:   *gageDisableDynamic,
-			MaxUserDefined:       *maxUserDefinedMonitors,
-			ExplorerURLPrefixASN: *explorerURLPrefixASN,
+			GageMaxValue:       *gageMaxValue,
+			GageDisableDynamic: *gageDisableDynamic,
+			MaxUserDefined:     *maxUserDefinedMonitors,
+			AsnExplorerURL:     *explorerURLASN,
 		},
 	})
 }
@@ -155,4 +155,12 @@ func (m *Module) getBgpSessions(w http.ResponseWriter, _ *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	_, _ = w.Write([]byte(info))
+}
+
+func (m *Module) getASNExplorerURL(w http.ResponseWriter, _ *http.Request) {
+	m.sendAsJSON(w, struct {
+		ASNExplorerURL string `json:"asnExplorerUrl"`
+	}{
+		ASNExplorerURL: *explorerURLASN,
+	})
 }

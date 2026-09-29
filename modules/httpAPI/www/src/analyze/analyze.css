@@ -81,3 +81,16 @@
         white-space: normal !important;
     }
 }
+
+#pathTable a.asn {
+    color: inherit;
+    font: inherit;
+    text-decoration: none;
+    cursor: text;
+    user-select: text;
+}
+
+#pathTable a.asn[href] {
+    cursor: pointer;
+}
+

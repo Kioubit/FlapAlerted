@@ -172,7 +172,7 @@ function displayPrefix(json, userDefined) {
             for (let d = 0; d < value[c].Path.length; d++) {
                 // For each ASN in the path
                 let singleAsn = value[c].Path[d].toString();
-                elementHTML += `<span style='background-color: ${asnToColor(singleAsn)};'>&nbsp;${singleAsn.padStart(10, " ")}</span>`;
+                elementHTML += `<span data-asn="${singleAsn}" style='background-color: ${asnToColor(singleAsn)};'>&nbsp;${singleAsn.padStart(10, " ")}</span>`;
             }
             elementHTML += "<br>";
         }
@@ -188,8 +188,57 @@ function displayPrefix(json, userDefined) {
     });
 
 
-    document.getElementById("pathTable").innerHTML = tableHtml;
+    const table = document.getElementById("pathTable");
+    table.innerHTML = tableHtml;
+    const lookup = document.getElementById("asnLookup");
 
+    let asnExplorerURL = sessionStorage.getItem("fa_asnExplorerUrl");
+
+    const loadExplorerURL = async () => {
+        if (asnExplorerURL) return asnExplorerURL;
+        const response = await fetch("../config/asnExplorerURL", getFetchOptions());
+        if (!response.ok) throw new Error("Explorer configuration unavailable");
+        asnExplorerURL = (await response.json())["asnExplorerUrl"];
+        if (asnExplorerURL) sessionStorage.setItem("fa_asnExplorerUrl", asnExplorerURL);
+        return asnExplorerURL;
+    };
+    loadExplorerURL().then((url) => {
+        lookup.disabled = !url;
+    }).catch((error) => {
+        console.error(error);
+    });
+
+    lookup.onchange = async () => {
+        if (!lookup.checked || lookup.disabled) return;
+
+        if (!asnExplorerURL) {
+            lookup.disabled = true;
+            try {
+                const url = await loadExplorerURL();
+                lookup.checked = !!url;
+                lookup.disabled = !!url;
+            } catch (error) {
+                lookup.checked = false;
+                lookup.disabled = false;
+                console.error(error);
+            }
+        }
+    };
+
+    table.onclick = (event) => {
+        const link = event.target.closest("span[data-asn]");
+        if (!link) return;
+
+        event.preventDefault();
+
+        if (!lookup.checked || lookup.disabled || !asnExplorerURL) return;
+
+        window.open(
+            asnExplorerURL.replace("{asn}", link.dataset.asn),
+            "_blank",
+            "noopener,noreferrer"
+        );
+    };
 
     document.getElementById("prefixTitle").innerHTML = `Flap report for ${eventData.Prefix}`;
     document.getElementById("loader").classList.add("d-none");
@@ -279,7 +328,7 @@ function displayRateSecHistory(history, endTimestamp) {
 
     RouteChangeChart.data.labels = labels;
     RouteChangeChart.data.datasets[0].data = data;
-    RouteChangeChart.update();
+    RouteChangeChart.update('none');
 }
 
 function asnToColor(input) {
