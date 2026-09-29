@@ -196,7 +196,7 @@ function displayPrefix(json, userDefined) {
     document.getElementById("loaderText").classList.add("d-none");
 
 
-    document.getElementById("pathChangeDisplay").innerText = eventData.TotalPathChanges;
+    document.getElementById("totalChangeDisplay").innerText = eventData.TotalPathChanges;
     document.getElementById("fistSeenDisplay").innerText = timeConverter(eventData.FirstSeen);
     document.getElementById("durationDisplay").innerText = toTimeElapsed(reportTimestamp - eventData.FirstSeen);
 

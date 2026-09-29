@@ -83,31 +83,9 @@ const dataRouteChange = {
     labels: [],
     datasets: [
         {
-            label: "Total Changes",
-            fill: false,
-            backgroundColor: "rgba(75,192,192,0.4)",
-            borderColor: "rgba(75,192,192,1)",
-            pointBorderWidth: 1,
-            pointBackgroundColor: "#fff",
-            pointRadius: 4,
-            pointHitRadius: 10,
-            data: []
-        },
-        {
-            label: "Total Changes (listed prefixes)",
-            fill: false,
-            backgroundColor: "rgba(15,151,3,0.4)",
-            borderColor: "rgb(50,168,5)",
-            pointBorderWidth: 1,
-            pointBackgroundColor: "#fff",
-            pointRadius: 4,
-            pointHitRadius: 10,
-            data: []
-        },
-        {
             label: "Path updates",
-            fill: false,
-            backgroundColor: "rgba(153,102,255,0.4)",
+            fill: "origin",
+            backgroundColor: "rgba(153,102,255,0.35)",
             borderColor: "rgba(153,102,255,1)",
             pointBorderWidth: 1,
             pointBackgroundColor: "#fff",
@@ -117,8 +95,8 @@ const dataRouteChange = {
         },
         {
             label: "Same-path updates",
-            fill: false,
-            backgroundColor: "rgba(255,159,64,0.4)",
+            fill: "-1",
+            backgroundColor: "rgba(255,159,64,0.35)",
             borderColor: "rgba(255,159,64,1)",
             pointBorderWidth: 1,
             pointBackgroundColor: "#fff",
@@ -128,9 +106,23 @@ const dataRouteChange = {
         },
         {
             label: "Path Withdrawals",
-            fill: false,
-            backgroundColor: "rgba(255,99,132,0.4)",
+            fill: "-1",
+            backgroundColor: "rgba(255,99,132,0.35)",
             borderColor: "rgba(255,99,132,1)",
+            pointBorderWidth: 1,
+            pointBackgroundColor: "#fff",
+            pointRadius: 4,
+            pointHitRadius: 10,
+            data: []
+        },
+        {
+            label: "Total Changes (listed prefixes)",
+            stack: "listed",
+            fill: false,
+            borderDash: [6, 4],
+            borderWidth: 2,
+            backgroundColor: "rgb(50,168,5)",
+            borderColor: "rgb(50,168,5)",
             pointBorderWidth: 1,
             pointBackgroundColor: "#fff",
             pointRadius: 4,
@@ -177,6 +169,10 @@ const liveRouteChart = new Chart(
         type: "line",
         data: dataRouteChange,
         options: {
+            interaction: {
+                mode: "index",
+                intersect: true
+            },
             scales: {
                 x: {
                     type: "time",
@@ -189,6 +185,7 @@ const liveRouteChart = new Chart(
                     }
                 },
                 y: {
+                    stacked: true,
                     suggestedMin: 0,
                     suggestedMax: 15
                 }
@@ -197,7 +194,11 @@ const liveRouteChart = new Chart(
             plugins: {
                 tooltip: {
                     callbacks: {
-                        label: (context) => `${context.dataset.label}: ${context.parsed.y}/sec`
+                        label: (context) => `${context.dataset.label}: ${context.parsed.y}/sec`,
+                        footer: (items) => {
+                            const stacked = items.filter(i => i.dataset.stack !== "listed");
+                            return `Total: ${stacked.reduce((s, i) => s + i.parsed.y, 0).toFixed(2)}/sec`;
+                        }
                     }
                 }
             }
@@ -248,6 +249,34 @@ const liveImportChart = new Chart(
         }
     }
 );
+
+const compactChartMedia = window.matchMedia("(max-width: 640px)");
+
+function updateChartPresentation() {
+    const compact = compactChartMedia.matches;
+
+    for (const chart of [liveRouteChart, liveFlapChart, liveImportChart]) {
+        for (const dataset of chart.data.datasets) {
+            dataset.pointRadius = compact ? 0 : 4;
+            dataset.pointHoverRadius = compact ? 3 : 4;
+            dataset.pointHitRadius = 10;
+        }
+
+        chart.options.interaction = {
+            mode: "index",
+            axis: "x",
+            intersect: false
+        };
+
+        // Avoid crowded time labels on narrow screens
+        chart.options.scales.x.ticks.maxTicksLimit = compact ? 4 : 10;
+
+        chart.update("none");
+    }
+}
+
+updateChartPresentation();
+compactChartMedia.addEventListener("change", updateChartPresentation);
 
 let peerHistoryChart = null;
 const peerHistoryChartContainer = document.getElementById("chartPeerHistoryContainer");
@@ -364,23 +393,27 @@ document.getElementById("hideZeroRateEventsCheckbox").addEventListener("click", 
 
 
 function addToChart(liveChart, points, unixTime, dataInterval, update) {
-    const timestamp = unixTime * 1000;
-    const shouldShift = liveChart.data.labels.length > 50;
+    const { labels, datasets } = liveChart.data;
+    const maxPoints = 51;
 
-    liveChart.data.datasets.forEach((dataset, i) => {
-        if (i >= points.length) {
-            return;
-        }
-        dataset.data.push(points[i] / dataInterval);
-        if (shouldShift) {
+    // Remove first, so Chart.js processes removals before insertions.
+    if (labels.length >= maxPoints) {
+        labels.shift();
+
+        datasets.forEach(dataset => {
             dataset.data.shift();
-        }
+        });
+    }
+
+    // Make the new label available before appending dataset values.
+    labels.push(unixTime * 1000);
+
+    datasets.forEach((dataset, i) => {
+        if (i >= points.length) return;
+
+        dataset.data.push(points[i] / dataInterval);
     });
 
-    liveChart.data.labels.push(timestamp);
-    if (shouldShift) {
-        liveChart.data.labels.shift();
-    }
     if (update) {
         liveChart.update();
     }
@@ -608,20 +641,20 @@ function getStats() {
             updateList(flapList);
             updatePeers(peerList);
 
-
             addToChart(
                 liveRouteChart,
                 [
-                    stats["Changes"],
-                    stats["ListedChanges"],
-                    stats["SamePathChanges"],
-                    stats["WithdrawalChanges"],
-                    stats["Changes"] - stats["SamePathChanges"] - stats["WithdrawalChanges"] // path changes
+                    stats["Changes"] - stats["SamePathChanges"] - stats["WithdrawalChanges"], // path updates
+                    stats["SamePathChanges"],   // same-path updates
+                    stats["WithdrawalChanges"],  // withdrawals
+                    stats["ListedChanges"]       // listed prefixes total (overlay line)
+
                 ],
                 stats["Time"],
                 dataIntervalSec,
                 update
             );
+
             addToChart(liveFlapChart, [stats["Active"]], stats["Time"], 1, update);
             addToChart(liveImportChart, [stats["RouteCount"]], stats["Time"], 1, update);
 
