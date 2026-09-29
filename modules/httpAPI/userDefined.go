@@ -12,30 +12,48 @@ import (
 )
 
 func (m *Module) getUserDefinedStatisticStream(w http.ResponseWriter, r *http.Request) {
-	flusher, ok := w.(http.Flusher)
-	if !ok {
-		http.Error(w, "Streaming unsupported!", http.StatusInternalServerError)
-		return
+	rc := http.NewResponseController(w)
+	writeFrame := func(msg []byte) error {
+		if err := r.Context().Err(); err != nil {
+			return err
+		}
+
+		if err := rc.SetWriteDeadline(time.Now().Add(10 * time.Second)); err != nil {
+			return err
+		}
+
+		if _, err := w.Write(msg); err != nil {
+			return err
+		}
+
+		if err := rc.Flush(); err != nil {
+			return err
+		}
+
+		return rc.SetWriteDeadline(time.Time{})
 	}
+
 	w.Header().Set("Content-Type", "text/event-stream")
-	w.Header().Set("Cache-Control", "no-cache")
-	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("Cache-Control", "no-cache, no-transform")
+	w.Header().Set("X-Accel-Buffering", "no")
+	w.WriteHeader(http.StatusOK)
 
 	prefix, err := netip.ParsePrefix(r.URL.Query().Get("prefix"))
 	if err != nil {
-		_, _ = w.Write(formatEventStreamMessage("e", "Invalid prefix"))
+		_ = writeFrame(formatEventStreamMessage("e", "Invalid prefix"))
 		return
 	}
+	prefix = prefix.Masked()
 
 	if !m.reserveUserDefinedSlot() {
-		_, _ = w.Write(formatEventStreamMessage("e", "Maximum number of user-defined tracked prefixes reached"))
+		_ = writeFrame(formatEventStreamMessage("e", "Maximum number of user-defined tracked prefixes reached"))
 		return
 	}
 	defer m.releaseUserDefinedSlot()
 
 	statisticChannel, err := monitor.NewUserDefinedMonitor(prefix)
 	if err != nil {
-		_, _ = w.Write(formatEventStreamMessage("e", err.Error()))
+		_ = writeFrame(formatEventStreamMessage("e", err.Error()))
 		return
 	}
 
@@ -45,8 +63,9 @@ func (m *Module) getUserDefinedStatisticStream(w http.ResponseWriter, r *http.Re
 		monitor.RemoveUserDefinedMonitor(prefix, statisticChannel)
 	}()
 
-	_, _ = w.Write(formatEventStreamMessage("valid", ""))
-	flusher.Flush()
+	if err = writeFrame(formatEventStreamMessage("valid", "")); err != nil {
+		return
+	}
 
 	for {
 		select {
@@ -59,11 +78,9 @@ func (m *Module) getUserDefinedStatisticStream(w http.ResponseWriter, r *http.Re
 				return
 			}
 
-			_, err = w.Write(formatEventStreamMessage("u", result))
-			if err != nil {
+			if err = writeFrame(formatEventStreamMessage("u", result)); err != nil {
 				return
 			}
-			flusher.Flush()
 		case <-r.Context().Done():
 			// Listen for connection close
 			return
@@ -94,6 +111,7 @@ func (m *Module) getUserDefinedStatistic(w http.ResponseWriter, r *http.Request)
 		m.sendAsJSON(w, nil)
 		return
 	}
+	prefix = prefix.Masked()
 
 	f, found := analyze.GetUserDefinedMonitorEvent(prefix)
 	if !found {
