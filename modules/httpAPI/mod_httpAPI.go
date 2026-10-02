@@ -114,6 +114,7 @@ func (m *Module) startHTTPServer(ctx context.Context) {
 	ctx, cancel := context.WithCancel(ctx)
 	s := &http.Server{
 		ReadHeaderTimeout: 10 * time.Second,
+		IdleTimeout:       20 * time.Second,
 		Handler:           mux,
 		BaseContext:       func(net.Listener) context.Context { return ctx },
 	}
