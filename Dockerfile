@@ -1,14 +1,14 @@
 FROM golang:1.27-trixie AS build
 
-WORKDIR /go/src/project/
+WORKDIR /src
 COPY . .
 
-RUN make release-docker
+RUN make release MODULES=disable_mod_script
 
 FROM scratch
 WORKDIR /
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
-COPY --from=build /go/src/project/bin/FlapAlerted /bin/FlapAlerted
+COPY --from=build /src/bin/FlapAlerted /bin/FlapAlerted
 
 USER 65534:65534
 
