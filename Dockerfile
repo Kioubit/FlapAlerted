@@ -7,7 +7,6 @@ RUN make release MODULES=disable_mod_script
 
 FROM scratch
 WORKDIR /
-COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=build /src/bin/FlapAlerted /bin/FlapAlerted
 
 USER 65534:65534
