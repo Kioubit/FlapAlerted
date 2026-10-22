@@ -165,12 +165,12 @@ See the command line help for required arguments.
 To enable this module, add the following tag to the `MODULES` variable in the `Makefile`: `mod_roaFilter`
 ***
 
+### Installation
+The GitHub repository contains pre-built binaries in the releases section as well as docker images via the GitHub container registry.
+
 ### Building
-
 #### Manually
-
 Install Go, then build using `make release`. The binary will be placed in the `bin/` directory.
 
 #### Docker
-
 Clone this repository and run `docker build .` to generate a docker image.
